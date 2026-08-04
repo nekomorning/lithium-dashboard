@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>碳酸锂数据看板 · 数据对比</title>
+<style>
+:root{
+  --bg:#f4f6fa; --card:#ffffff; --border:#e5e9f0; --text:#1f2733; --sub:#6b7686;
+  --up:#d92626; --down:#0a9a5c; --flat:#8a93a3; --accent:#0f4c81;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{background:var(--bg); color:var(--text);
+  font-family:"Microsoft YaHei","PingFang SC","Helvetica Neue",Arial,sans-serif; font-size:14px;}
+.wrap{max-width:1560px; margin:0 auto; padding:18px 22px 60px;}
+
+/* 头部 / 导航 */
+.header{display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:14px;}
+.header h1{font-size:24px; color:var(--accent); letter-spacing:1px;}
+.header .date{color:var(--sub); font-size:13px;}
+.tabs{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;}
+.tab{padding:7px 20px; border-radius:8px 8px 0 0; border:1px solid var(--border); border-bottom:none;
+  background:#e9edf3; color:var(--sub); cursor:default; font-size:14px; text-decoration:none; display:inline-block;}
+.tab.active{background:var(--accent); color:#fff; font-weight:600;}
+.tab.disabled{opacity:.55;}
+
+/* 筛选器 */
+.filters{display:flex; gap:18px; flex-wrap:wrap; background:var(--card); border:1px solid var(--border);
+  border-radius:10px; padding:16px 20px; margin-bottom:16px;}
+.fcol{flex:1 1 360px; min-width:260px;}
+.fcol label{display:block; font-size:13px; color:var(--sub); margin-bottom:6px; font-weight:600;}
+.fcol .axhint{display:inline-block; font-size:11px; padding:1px 8px; border-radius:9px; margin-left:8px; color:#fff;}
+.axhint.left{background:#3a7ca5;} .axhint.right{background:#d98324;}
+select{width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:8px; background:#fff;
+  font-size:14px; color:var(--text); cursor:pointer; appearance:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%236b7686' stroke-width='1.6'/></svg>");
+  background-repeat:no-repeat; background-position:right 12px center;}
+select:focus{outline:none; border-color:var(--accent);}
+
+/* 图表卡片 */
+.chartcard{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px 8px;}
+.chartcard .ctitle{font-size:15px; font-weight:700; color:var(--accent); margin-bottom:2px;}
+.chartcard .csub{font-size:12px; color:var(--sub); margin-bottom:8px;}
+.chart{width:100%; height:440px;}
+.meta{display:flex; gap:24px; flex-wrap:wrap; margin-top:8px; font-size:12px; color:var(--sub);}
+.meta b{color:var(--text); font-weight:600;}
+.zoomrow{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px; padding-top:10px; border-top:1px dashed var(--border);}
+.zoomlabel{font-size:12px; color:var(--sub); font-weight:600; margin-right:2px;}
+.zbtn{appearance:none; border:1px solid var(--border); background:#f6f8fb; color:var(--text);
+  font-size:13px; padding:6px 14px; border-radius:8px; cursor:pointer; transition:all .15s;}
+.zbtn:hover{border-color:var(--accent); color:var(--accent); background:rgba(58,124,165,0.06);}
+.zbtn.active{background:var(--accent); border-color:var(--accent); color:#fff;}
+.invrow{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px;}
+.ibtn{appearance:none; border:1px solid var(--border); background:#f6f8fb; color:var(--text);
+  font-size:13px; padding:6px 14px; border-radius:8px; cursor:pointer; transition:all .15s;}
+.ibtn:hover{border-color:#9aa4b2; background:#eef1f6;}
+.ibtn.active{background:#3a7ca5; border-color:#3a7ca5; color:#fff;}
+.footer{margin-top:30px; color:var(--sub); font-size:12px; text-align:center;}
+@media (max-width:720px){ .chart{height:360px;} .wrap{padding:12px 10px 40px;} .filters{gap:12px;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="tabs">
+    <a class="tab" href="p1.html">日度价格</a>
+    <a class="tab" href="p2.html">产量开工利润</a>
+    <a class="tab" href="p3.html">产业链库存</a>
+    <div class="tab active">数据对比</div>
+  </div>
+
+  <div class="header">
+    <h1>数据对比</h1>
+    <div class="date" id="dateRange"></div>
+  </div>
+
+  <div class="filters">
+    <div class="fcol">
+      <label>筛选器一（左轴）<span class="axhint left">左轴</span></label>
+      <select id="sel1"></select>
+    </div>
+    <div class="fcol">
+      <label>筛选器二（右轴）<span class="axhint right">右轴</span></label>
+      <select id="sel2"></select>
+    </div>
+  </div>
+
+  <div class="chartcard">
+    <div class="ctitle" id="ctitle">对比图</div>
+    <div class="csub" id="csub">横轴为真实时间（年-月-日）；左轴对应筛选器一，右轴对应筛选器二，纵轴按各自量纲独立缩放。</div>
+    <div id="chart" class="chart"></div>
+    <div class="meta" id="meta"></div>
+    <div class="invrow">
+      <span class="zoomlabel">轴方向</span>
+      <button class="ibtn" id="invL">左轴逆序</button>
+      <button class="ibtn" id="invR">右轴逆序</button>
+    </div>
+    <div class="zoomrow">
+      <span class="zoomlabel">时间范围</span>
+      <button class="zbtn" data-zoom="all">全部</button>
+      <button class="zbtn" data-zoom="2024">2024 至今</button>
+      <button class="zbtn" data-zoom="1y">近 1 年</button>
+      <button class="zbtn" data-zoom="6m">近 6 个月</button>
+    </div>
+  </div>
+
+  <div class="footer">碳酸锂数据看板 · 页面四（数据对比）· 数据来源于页面一至页面三 · 左轴蓝 / 右轴橙</div>
+</div>
+
+
+<script>
+(function(){
+  fetch('p4.json').then(function(r){return r.json();}).then(function(data){
+    window.__DATA__=data; window.D=data; loadECharts();
+  }).catch(function(){
+    document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
+  });
+})();
+
+function loadECharts(){
+  var urls=[
+    "https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js",
+    "https://cdn.bootcdn.net/ajax/libs/echarts/5.5.0/echarts.min.js",
+    "https://unpkg.com/echarts@5.5.0/dist/echarts.min.js"
+  ];
+  var i=0;
+  function tryNext(){
+    if(i>=urls.length){document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>ECharts 加载失败，请检查网络后刷新。</div>");return;}
+    var s=document.createElement("script");
+    s.src=urls[i++];
+    s.onload=init;
+    s.onerror=tryNext;
+    document.head.appendChild(s);
+  }
+  tryNext();
+}
+
+
+var chart=null;
+var PAGE_CN=["一","二","三","四","五"];
+var sel={1:null,2:null};
+var meta={};
+var gMin=0, gMax=0;
+var invLeft=false, invRight=false;
+
+function fmtDate(ms){
+  var d=new Date(ms);
+  var p=function(x){return (""+x).padStart(2,"0");};
+  return d.getUTCFullYear()+"-"+p(d.getUTCMonth()+1)+"-"+p(d.getUTCDate());
+}
+function fmtShort(ms){
+  var d=new Date(ms);
+  var p=function(x){return (""+x).padStart(2,"0");};
+  return (""+d.getUTCFullYear()).slice(2)+"-"+p(d.getUTCMonth()+1)+"-"+p(d.getUTCDate());
+}
+function fmtVal(v,dec){
+  if(v===null||v===undefined||isNaN(v)) return "—";
+  var n=Number(v).toFixed(dec==null?2:dec);
+  var parts=n.split(".");
+  parts[0]=parts[0].replace(/\B(?=(\d{3})+(?!\d))/g,",");
+  return parts.join(".");
+}
+function fmtAxis(v,dec){
+  if(v===null||v===undefined||isNaN(v)) return "";
+  var n=Math.abs(v);
+  if(n>=1e8) return (v/1e8).toFixed(1)+"亿";
+  if(n>=1e4) return (v/1e4).toFixed(1)+"万";
+  return fmtVal(v,dec);
+}
+
+function buildSelect(selEl, n){
+  selEl.innerHTML="";
+  D.pages.forEach(function(pg, idx){
+    var og=document.createElement("optgroup");
+    og.label="页面"+PAGE_CN[idx]+" · "+pg.name;
+    pg.keys.forEach(function(k){
+      var ind=D.indicators[k];
+      var o=document.createElement("option");
+      o.value=k;
+      o.textContent=ind.title+"（"+ind.unit+"）";
+      og.appendChild(o);
+    });
+    selEl.appendChild(og);
+  });
+  selEl.value = (D.defaults && D.defaults[n-1]) ? D.defaults[n-1] : D.pages[0].keys[0];
+}
+
+function pick(n){
+  var key=(n===1?sel1:sel2).value;
+  sel[n]=D.indicators[key];
+}
+
+function tooltipFn(ps){
+  if(!ps||!ps.length) return "";
+  var s='<div style="font-size:12px;color:#6b7686;margin-bottom:4px">'+fmtDate(ps[0].value[0])+'</div>';
+  ps.forEach(function(p){
+    var m=meta[p.seriesName];
+    if(!m) return;
+    s+='<div style="margin-top:2px;font-size:13px">'+p.marker+" "+p.seriesName+"：<b>"+fmtVal(p.value[1],m.dec)+"</b> "+m.unit+"</div>";
+  });
+  return s;
+}
+
+function render(){
+  pick(1); pick(2);
+  meta={}; meta[sel[1].title]={unit:sel[1].unit,dec:sel[1].dec};
+  meta[sel[2].title]={unit:sel[2].unit,dec:sel[2].dec};
+
+  document.getElementById("ctitle").textContent=sel[1].title+"  vs  "+sel[2].title;
+  var r1=sel[1].ts, r2=sel[2].ts;
+  var d1a=r1.length?fmtDate(r1[0][0]):"—", d1b=r1.length?fmtDate(r1[r1.length-1][0]):"—";
+  var d2a=r2.length?fmtDate(r2[0][0]):"—", d2b=r2.length?fmtDate(r2[r2.length-1][0]):"—";
+  document.getElementById("meta").innerHTML=
+    "<div><b style='color:#3a7ca5'>"+sel[1].title+"</b>："+d1a+" ~ "+d1b+"（"+sel[1].unit+"）</div>"+
+    "<div><b style='color:#d98324'>"+sel[2].title+"</b>："+d2a+" ~ "+d2b+"（"+sel[2].unit+"）</div>";
+
+  var opt={
+    color:["#3a7ca5","#d98324"],
+    tooltip:{trigger:"axis", formatter:tooltipFn, axisPointer:{type:"cross"}},
+    legend:{data:[sel[1].title, sel[2].title], top:4, textStyle:{fontSize:13, color:"#333"}},
+    grid:{left:64, right:72, top:48, bottom:96},
+    xAxis:{type:"time",
+      axisLabel:{formatter:function(v){return fmtShort(v);}, color:"#6b7686"},
+      axisLine:{lineStyle:{color:"#c8d0db"}},
+      splitLine:{show:false}},
+    yAxis:[
+      {type:"value", name:sel[1].title+"（"+sel[1].unit+"）", position:"left",
+        inverse:invLeft,
+        nameTextStyle:{color:"#3a7ca5", fontSize:12, align:"left"},
+        axisLabel:{color:"#3a7ca5", formatter:function(v){return fmtAxis(v,sel[1].dec);}},
+        axisLine:{show:true, lineStyle:{color:"#3a7ca5"}},
+        splitLine:{lineStyle:{color:"#eef1f6"}}},
+      {type:"value", name:sel[2].title+"（"+sel[2].unit+"）", position:"right",
+        inverse:invRight,
+        nameTextStyle:{color:"#d98324", fontSize:12, align:"right"},
+        axisLabel:{color:"#d98324", formatter:function(v){return fmtAxis(v,sel[2].dec);}},
+        axisLine:{show:true, lineStyle:{color:"#d98324"}},
+        splitLine:{show:false}}
+    ],
+    series:[
+      {name:sel[1].title, type:"line", yAxisIndex:0, showSymbol:false, smooth:false,
+        connectNulls:true, data:sel[1].ts, lineStyle:{width:2},
+        markPoint:{symbolSize:0}},
+      {name:sel[2].title, type:"line", yAxisIndex:1, showSymbol:false, smooth:false,
+        connectNulls:true, data:sel[2].ts, lineStyle:{width:2}}
+    ],
+    dataZoom:[
+      {type:"inside", throttle:50},
+      {type:"slider", bottom:12, height:24, borderColor:"#dfe4ec",
+        backgroundColor:"rgba(255,255,255,0)",
+        fillerColor:"rgba(58,124,165,0.12)",
+        handleStyle:{color:"#3a7ca5"},
+        moveHandleStyle:{color:"#3a7ca5"},
+        dataBackground:{lineStyle:{color:"#c8d0db"}, areaStyle:{color:"#eef1f6"}},
+        selectedDataBackground:{lineStyle:{color:"#3a7ca5"}, areaStyle:{color:"rgba(58,124,165,0.15)"}},
+        textStyle:{color:"#6b7686"},
+        labelFormatter:function(v){ return fmtShort(v); }}
+    ]
+  };
+  chart.setOption(opt, true);
+
+  // 计算当前两条序列的时间范围，供缩放预设使用
+  var allMs=[];
+  [sel[1].ts, sel[2].ts].forEach(function(arr){
+    arr.forEach(function(p){ if(p[0]!=null) allMs.push(p[0]); });
+  });
+  gMin = allMs.length ? Math.min.apply(null, allMs) : 0;
+  gMax = allMs.length ? Math.max.apply(null, allMs) : 0;
+  setActiveZoom("all");
+}
+
+function setActiveZoom(kind){
+  document.querySelectorAll(".zbtn").forEach(function(b){
+    b.classList.toggle("active", b.getAttribute("data-zoom")===kind);
+  });
+}
+
+function applyZoom(kind){
+  if(!chart) return;
+  if(kind==="all"){
+    chart.dispatchAction({type:"dataZoom", start:0, end:100});
+  } else {
+    var end=gMax, start;
+    if(kind==="2024") start=Date.UTC(2024,0,1);
+    else if(kind==="1y") start=gMax - 365*86400000;
+    else if(kind==="6m") start=gMax - 182*86400000;
+    if(start<gMin) start=gMin;
+    chart.dispatchAction({type:"dataZoom", startValue:start, endValue:end});
+  }
+  setActiveZoom(kind);
+}
+
+function toggleInv(which){
+  if(!chart) return;
+  if(which==="L") invLeft=!invLeft; else invRight=!invRight;
+  chart.setOption({yAxis:[{inverse:invLeft},{inverse:invRight}]});
+  document.getElementById("invL").classList.toggle("active", invLeft);
+  document.getElementById("invR").classList.toggle("active", invRight);
+}
+
+function init(){
+  chart=echarts.init(document.getElementById("chart"));
+  buildSelect(sel1,1);
+  buildSelect(sel2,2);
+  render();
+  sel1.addEventListener("change", render);
+  sel2.addEventListener("change", render);
+  document.querySelectorAll(".zbtn").forEach(function(b){
+    b.addEventListener("click", function(){ applyZoom(b.getAttribute("data-zoom")); });
+  });
+  document.getElementById("invL").addEventListener("click", function(){ toggleInv("L"); });
+  document.getElementById("invR").addEventListener("click", function(){ toggleInv("R"); });
+  window.addEventListener("resize", function(){ chart.resize(); });
+}
+</script>
+</body>
+</html>
