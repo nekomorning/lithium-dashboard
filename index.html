@@ -64,7 +64,22 @@ tr.abn td{background:#fff7f0;}
 .grid.c3{grid-template-columns:repeat(3,1fr);}
 .grid.c4{grid-template-columns:repeat(4,1fr);}
 @media (max-width:1200px){ .grid.c4{grid-template-columns:repeat(2,1fr);} .grid.c3{grid-template-columns:repeat(2,1fr);} }
-@media (max-width:720px){ .grid.c1,.grid.c2,.grid.c3,.grid.c4{grid-template-columns:1fr;} .wrap{padding:12px 10px 40px;} }
+@media (max-width:720px){
+  .grid.c1,.grid.c2,.grid.c3,.grid.c4{grid-template-columns:repeat(2,1fr);}
+  .wrap{padding:12px 10px 40px;}
+  /* 一览表改为纵向卡片，避免横滑 */
+  .tablecard{overflow-x:visible; padding:10px 12px;}
+  table{ min-width:0 !important; font-size:12px; }
+  table thead{ display:none; }
+  table, tbody, tr, td{ display:block; width:100%; }
+  tbody tr.grp{ margin-top:12px; }
+  tbody tr.grp td{ background:#eef2f8; color:var(--accent); font-weight:700; padding:6px 12px; border-radius:6px; }
+  tbody tr:not(.grp){ border:1px solid var(--border); border-radius:8px; margin-bottom:8px; background:#fff; }
+  tbody tr:not(.grp) td{ display:flex; justify-content:space-between; align-items:center; text-align:right; padding:4px 12px; border-bottom:1px solid #f1f3f7; white-space:normal; }
+  tbody tr:not(.grp) td:last-child{ border-bottom:none; }
+  tbody tr:not(.grp) td:first-child{ background:#f7f9fc; font-weight:700; color:var(--accent); text-align:left; justify-content:flex-start; }
+  tbody tr:not(.grp) td::before{ content:attr(data-label); color:var(--sub); font-weight:500; text-align:left; margin-right:12px; flex:0 0 auto; }
+}
 
 /* 图表卡片 */
 .card{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px 6px; min-width:0;}
@@ -254,17 +269,17 @@ function buildTable(){
     var tr=document.createElement("tr");
     if(dAbn||wAbn) tr.className="abn";
     tr.innerHTML=
-      "<td>"+r.title+"</td><td style='color:var(--sub)'>"+r.unit+"</td>"+
-      "<td style='color:var(--sub)'>"+(r.latestDate||"—")+"</td>"+
-      "<td><b>"+fmt(r.latest,r.dec)+"</b></td>"+
-      "<td>"+(isWeekly?"—":fmt(r.prev,r.dec))+"</td>"+
-      "<td class='"+dCls+"'>"+(isWeekly?"—":((r.chg>0?"+":"")+fmt(r.chg,r.dec)))+"</td>"+
-      "<td class='"+dCls+"'>"+(isWeekly?"—":(r.pct===null?"—":(r.pct>0?"+":"")+r.pct.toFixed(2)+"%"))+"</td>"+
-      "<td>"+(dAbn?"<span class='badge"+(r.chg<0?" dn":"")+"'>大幅"+(r.chg>0?"上涨":"下跌")+"</span>":"")+"</td>"+
-      "<td>"+fmt(r.weekAgo,r.dec)+"</td>"+
-      "<td class='"+wCls+"'>"+((r.weekChg>0?"+":"")+fmt(r.weekChg,r.dec))+"</td>"+
-      "<td class='"+wCls+"'>"+(r.weekPct===null?"—":(r.weekPct>0?"+":"")+r.weekPct.toFixed(2)+"%")+"</td>"+
-      "<td>"+(wAbn?"<span class='badge"+(r.weekChg<0?" dn":"")+"'>大幅"+(r.weekChg>0?"上涨":"下跌")+"</span>":"")+"</td>";
+      "<td data-label='指标'>"+r.title+"</td><td data-label='单位' style='color:var(--sub)'>"+r.unit+"</td>"+
+      "<td data-label='最新日期' style='color:var(--sub)'>"+(r.latestDate||"—")+"</td>"+
+      "<td data-label='最新值'><b>"+fmt(r.latest,r.dec)+"</b></td>"+
+      "<td data-label='前值'>"+(isWeekly?"—":fmt(r.prev,r.dec))+"</td>"+
+      "<td data-label='日环比增减' class='"+dCls+"'>"+(isWeekly?"—":((r.chg>0?"+":"")+fmt(r.chg,r.dec)))+"</td>"+
+      "<td data-label='日环比%' class='"+dCls+"'>"+(isWeekly?"—":(r.pct===null?"—":(r.pct>0?"+":"")+r.pct.toFixed(2)+"%"))+"</td>"+
+      "<td data-label='日标记'>"+(dAbn?"<span class='badge"+(r.chg<0?" dn":"")+"'>大幅"+(r.chg>0?"上涨":"下跌")+"</span>":"")+"</td>"+
+      "<td data-label='上周值'>"+fmt(r.weekAgo,r.dec)+"</td>"+
+      "<td data-label='周环比增减' class='"+wCls+"'>"+((r.weekChg>0?"+":"")+fmt(r.weekChg,r.dec))+"</td>"+
+      "<td data-label='周环比%' class='"+wCls+"'>"+(r.weekPct===null?"—":(r.weekPct>0?"+":"")+r.weekPct.toFixed(2)+"%")+"</td>"+
+      "<td data-label='周标记'>"+(wAbn?"<span class='badge"+(r.weekChg<0?" dn":"")+"'>大幅"+(r.weekChg>0?"上涨":"下跌")+"</span>":"")+"</td>";
     tb.appendChild(tr);
   });
 }
