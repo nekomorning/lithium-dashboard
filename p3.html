@@ -179,7 +179,7 @@ function arrow(c){ if(c===null||c===undefined||c===0) return "→"; return c>0?"
 
 function init(){
   document.getElementById("latestDate").textContent=D.latestDataDate;
-  D.years.forEach(function(y){ yearVisible[y]=(y!=="2023"); });
+  D.years.forEach(function(y){ yearVisible[y]=(String(y)!=="2023"); });
   buildFilter(); buildSummary(); buildTable(); buildSections();
   var t; window.addEventListener("resize",function(){ clearTimeout(t); t=setTimeout(function(){ charts.forEach(function(c){c.resize();}); },150); });
 }
