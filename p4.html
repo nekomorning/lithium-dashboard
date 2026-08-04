@@ -55,6 +55,12 @@ select:focus{outline:none; border-color:var(--accent);}
   font-size:13px; padding:6px 14px; border-radius:8px; cursor:pointer; transition:all .15s;}
 .ibtn:hover{border-color:#9aa4b2; background:#eef1f6;}
 .ibtn.active{background:#3a7ca5; border-color:#3a7ca5; color:#fff;}
+.ybtn{appearance:none; border:1px solid var(--border); background:#f6f8fb; color:var(--text);
+  font-size:13px; padding:6px 14px; border-radius:8px; cursor:pointer; transition:all .15s;
+  display:inline-flex; align-items:center; gap:6px;}
+.ybtn:hover{border-color:var(--accent); color:var(--accent); background:rgba(58,124,165,0.06);}
+.ybtn .dot{width:9px; height:9px; border-radius:50%; background:#8a93a3;}
+.ybtn.off{opacity:.4; filter:grayscale(.5);}
 .footer{margin-top:30px; color:var(--sub); font-size:12px; text-align:center;}
 @media (max-width:720px){ .chart{height:360px;} .wrap{padding:12px 10px 40px;} .filters{gap:12px;} }
 </style>
@@ -93,6 +99,11 @@ select:focus{outline:none; border-color:var(--accent);}
       <span class="zoomlabel">轴方向</span>
       <button class="ibtn" id="invL">左轴逆序</button>
       <button class="ibtn" id="invR">右轴逆序</button>
+    </div>
+    <div class="zoomrow">
+      <span class="zoomlabel">年份</span>
+      <button class="ybtn off" id="hide2023"><span class="dot"></span>2023年</button>
+      <span style="color:var(--sub);font-size:12px;">默认隐藏，点击显示</span>
     </div>
     <div class="zoomrow">
       <span class="zoomlabel">时间范围</span>
@@ -141,6 +152,7 @@ var sel={1:null,2:null};
 var meta={};
 var gMin=0, gMax=0;
 var invLeft=false, invRight=false;
+var hide2023=true;
 
 function fmtDate(ms){
   var d=new Date(ms);
@@ -202,11 +214,13 @@ function tooltipFn(ps){
 
 function render(){
   pick(1); pick(2);
+  var ts1 = hide2023 ? sel[1].ts.filter(function(p){ return new Date(p[0]).getUTCFullYear()!==2023; }) : sel[1].ts;
+  var ts2 = hide2023 ? sel[2].ts.filter(function(p){ return new Date(p[0]).getUTCFullYear()!==2023; }) : sel[2].ts;
   meta={}; meta[sel[1].title]={unit:sel[1].unit,dec:sel[1].dec};
   meta[sel[2].title]={unit:sel[2].unit,dec:sel[2].dec};
 
   document.getElementById("ctitle").textContent=sel[1].title+"  vs  "+sel[2].title;
-  var r1=sel[1].ts, r2=sel[2].ts;
+  var r1=ts1, r2=ts2;
   var d1a=r1.length?fmtDate(r1[0][0]):"—", d1b=r1.length?fmtDate(r1[r1.length-1][0]):"—";
   var d2a=r2.length?fmtDate(r2[0][0]):"—", d2b=r2.length?fmtDate(r2[r2.length-1][0]):"—";
   document.getElementById("meta").innerHTML=
@@ -238,10 +252,10 @@ function render(){
     ],
     series:[
       {name:sel[1].title, type:"line", yAxisIndex:0, showSymbol:false, smooth:false,
-        connectNulls:true, data:sel[1].ts, lineStyle:{width:2},
+        connectNulls:true, data:ts1, lineStyle:{width:2},
         markPoint:{symbolSize:0}},
       {name:sel[2].title, type:"line", yAxisIndex:1, showSymbol:false, smooth:false,
-        connectNulls:true, data:sel[2].ts, lineStyle:{width:2}}
+        connectNulls:true, data:ts2, lineStyle:{width:2}}
     ],
     dataZoom:[
       {type:"inside", throttle:50},
@@ -260,7 +274,7 @@ function render(){
 
   // 计算当前两条序列的时间范围，供缩放预设使用
   var allMs=[];
-  [sel[1].ts, sel[2].ts].forEach(function(arr){
+  [ts1, ts2].forEach(function(arr){
     arr.forEach(function(p){ if(p[0]!=null) allMs.push(p[0]); });
   });
   gMin = allMs.length ? Math.min.apply(null, allMs) : 0;
@@ -309,6 +323,11 @@ function init(){
   });
   document.getElementById("invL").addEventListener("click", function(){ toggleInv("L"); });
   document.getElementById("invR").addEventListener("click", function(){ toggleInv("R"); });
+  document.getElementById("hide2023").addEventListener("click", function(){
+    hide2023=!hide2023;
+    this.classList.toggle("off", hide2023);
+    render();
+  });
   window.addEventListener("resize", function(){ chart.resize(); });
 }
 </script>
