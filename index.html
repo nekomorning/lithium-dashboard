@@ -339,15 +339,20 @@ function buildSections(){
 function makeCard(ch,ticks,grid){
   var ind=D.indicators[ch.key], st=ind.stat;
   var card=document.createElement("div"); card.className="card";
-  var isW=!!st.weekly;
-  var dChg=isW?st.weekChg:st.chg, dPct=isW?st.weekPct:st.pct;
+  // 按数据频率(freq)选择环比口径：month=月环比，week=周环比，day=日环比
+  var _f=st.freq || (st.weekly?"week":"day");
+  var isW=(_f==="week");
+  var dChg, dPct, cyc;
+  if(_f==="month"){ dChg=st.chg; dPct=st.pct; cyc=" 月环比"; }
+  else if(_f==="week"){ dChg=st.weekChg; dPct=st.weekPct; cyc=" 周环比"; }
+  else { dChg=st.chg; dPct=st.pct; cyc=""; }
   var cls=chgCls(dChg);
   card.innerHTML=
     '<div class="ttl">'+ind.title+'</div>'+
     '<div class="meta">'+
       '<span class="val">'+fmt(st.latest,ind.dec)+'<span class="unit"> '+ind.unit+'</span></span>'+
       '<span class="chg '+cls+'">'+arrow(dChg)+' '+(dChg>0?"+":"")+fmt(dChg,ind.dec)+
-        '（'+(dPct===null?"—":(dPct>0?"+":"")+dPct.toFixed(2)+"%")+(isW?" 周环比":"")+'）</span>'+
+        '（'+(dPct===null||dPct===undefined?"—":(dPct>0?"+":"")+dPct.toFixed(2)+"%")+cyc+'）</span>'+
       '<span class="dt">'+(st.latestDate||"")+(isW?"（周）":"")+'</span>'+
     '</div>';
   var div=document.createElement("div"); div.className="chart"; card.appendChild(div);
