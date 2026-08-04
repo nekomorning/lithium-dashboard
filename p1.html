@@ -483,9 +483,9 @@ function makeCard(ch,ticks,grid){
     status.textContent="正在生成高清长图，请稍候…（图表较多，约需数秒）";
     try{
       var sheets=[
-        {title:"页面一 · 日度价格", file:"./data.json", mode:"day"},
-        {title:"页面二 · 产量开工利润", file:"./p2.json", mode:"week"},
-        {title:"页面三 · 产业链库存", file:"./p3.json", mode:"week"}
+        {title:"日度价格", file:"./data.json", mode:"day"},
+        {title:"产量开工利润", file:"./p2.json", mode:"week"},
+        {title:"产业链库存", file:"./p3.json", mode:"week"}
       ];
       var Ds=await Promise.all(sheets.map(function(s){ return fetch(s.file).then(function(r){ return r.json(); }); }));
       var host=document.getElementById("expHost");
