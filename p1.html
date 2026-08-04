@@ -58,13 +58,14 @@ tr.abn td{background:#fff7f0;}
 .section-title{font-size:18px; color:var(--accent); font-weight:700; margin:26px 0 4px;
   padding-left:10px; border-left:4px solid var(--accent);}
 .row-label{font-size:14px; color:var(--sub); margin:14px 0 8px; font-weight:600;}
-.grid{display:grid; gap:14px;}
-.grid.c1{grid-template-columns:repeat(2,1fr);}
-.grid.c2{grid-template-columns:repeat(2,1fr);}
-.grid.c3{grid-template-columns:repeat(3,1fr);}
-.grid.c4{grid-template-columns:repeat(4,1fr);}
-@media (max-width:1200px){ .grid.c4{grid-template-columns:repeat(2,1fr);} .grid.c3{grid-template-columns:repeat(2,1fr);} }
-@media (max-width:720px){ .grid.c1,.grid.c2,.grid.c3,.grid.c4{grid-template-columns:1fr;} .wrap{padding:12px 10px 40px;} }
+.grid{display:grid; gap:14px; justify-content:start;}
+.grid.c1{grid-template-columns:repeat(2,minmax(0,480px));}
+.grid.c2{grid-template-columns:repeat(2,minmax(0,480px));}
+.grid.c3{grid-template-columns:repeat(3,minmax(0,420px));}
+.grid.c4{grid-template-columns:repeat(4,minmax(0,300px));}
+.grid.c5{grid-template-columns:repeat(5,minmax(0,240px));}
+@media (max-width:1200px){ .grid.c5{grid-template-columns:repeat(3,minmax(0,260px));} .grid.c4{grid-template-columns:repeat(2,minmax(0,480px));} .grid.c3{grid-template-columns:repeat(2,minmax(0,480px));} .grid.c2{grid-template-columns:repeat(2,minmax(0,480px));} }
+@media (max-width:720px){ .grid.c1,.grid.c2,.grid.c3,.grid.c4,.grid.c5{grid-template-columns:1fr;} .wrap{padding:12px 10px 40px;} }
 
 /* 图表卡片 */
 .card{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px 6px; min-width:0;}
@@ -75,11 +76,8 @@ tr.abn td{background:#fff7f0;}
 .card .chg{font-size:13px; font-weight:600;}
 .card .chg.up{color:var(--up);} .card .chg.down{color:var(--down);} .card .chg.flat{color:var(--flat);}
 .card .dt{font-size:11px; color:var(--sub);}
-.chart{width:100%; height:150px;}
-/* 宽图（一行2/3个）更高一些，呈更舒展的长方形 */
-.grid.c2 .chart{height:170px;}
-.grid.c3 .chart{height:170px;}
-@media (max-width:720px){ .chart{height:140px;} }
+/* 图表采用与导出长图一致的宽高比（420:300≈1.4），呈更舒展的竖向长方形、左对齐 */
+.chart{width:100%; aspect-ratio:420 / 300; height:auto; min-width:0;}
 .footer{margin-top:30px; color:var(--sub); font-size:12px; text-align:center;}
 
 /* 导出按钮 & 弹窗 */
@@ -374,7 +372,7 @@ function makeCard(ch,ticks,grid){
   });
   c.setOption({
     animation:false,
-    grid:{left:8,right:14,top:26,bottom:4,containLabel:true},
+    grid:{left:10,right:16,top:26,bottom:8,containLabel:true},
     legend:{show:true, top:0, right:0, itemWidth:14, itemHeight:2, icon:"rect",
       textStyle:{fontSize:11,color:"#6b7686"}, data:legend},
     tooltip:{trigger:"axis", confine:true,
