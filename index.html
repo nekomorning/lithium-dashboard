@@ -423,9 +423,10 @@ function makeCard(ch,ticks,grid){
     return idx;
   }
   function metaEx(st,mode){
-    if(mode==="week") return {chg:st.weekChg, pct:st.weekPct, isW:true};
-    var isW=!!st.weekly;
-    return {chg:isW?st.weekChg:st.chg, pct:isW?st.weekPct:st.pct, isW:isW};
+    var freq=st.freq || (mode==="week" ? "week" : (st.weekly ? "week" : "day"));
+    if(freq==="month") return {chg:st.chg, pct:st.pct, label:"月环比"};
+    if(freq==="week")  return {chg:st.weekChg, pct:st.weekPct, label:"周环比"};
+    return {chg:st.chg, pct:st.pct, label:"日环比"};
   }
   function colsFor(sheet,n){
     if(sheet.mode==="day") return Math.min(n,4);
@@ -450,7 +451,7 @@ function makeCard(ch,ticks,grid){
     var chgTxt="";
     if(m.chg!==null && m.chg!==undefined){
       chgTxt=arrow(m.chg)+" "+(m.chg>0?"+":"")+fmt(m.chg,ind.dec)
-        +"（"+(m.pct===null?"—":(m.pct>0?"+":"")+m.pct.toFixed(2)+"%")+(m.isW?" 周环比":"")+"）";
+        +"（"+(m.pct===null?"—":(m.pct>0?"+":"")+m.pct.toFixed(2)+"%")+(m.label?(" "+m.label):"")+"）";
     }
     return {
       animation:false, backgroundColor:"#ffffff",
