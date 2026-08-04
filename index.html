@@ -456,23 +456,23 @@ function makeCard(ch,ticks,grid){
       animation:false, backgroundColor:"#ffffff",
       title:{ text:ind.title, subtext:valTxt+(chgTxt?"   "+chgTxt:""),
         left:10, top:8,
-        textStyle:{fontSize:16, fontWeight:700, color:"#2a3345"},
-        subtextStyle:{fontSize:13, color:(m.chg>0?"#d92626":(m.chg<0?"#0a9a5c":"#6b7686"))} },
+        textStyle:{fontSize:20, fontWeight:700, color:"#2a3345"},
+        subtextStyle:{fontSize:15, color:(m.chg>0?"#d92626":(m.chg<0?"#0a9a5c":"#6b7686"))} },
       grid:{left:10, right:16, top:58, bottom:8, containLabel:true},
       legend:{show:true, top:12, right:12, itemWidth:18, itemHeight:3, icon:"rect",
-        textStyle:{fontSize:12, color:"#6b7686"}, data:legend},
+        textStyle:{fontSize:14, color:"#6b7686"}, data:legend},
       xAxis:{type:"value", min:0, max:365, interval:1,
-        axisLabel:{fontSize:11, color:"#8a93a3", formatter:function(v){ return ticks[v]||""; }},
+        axisLabel:{fontSize:13, color:"#8a93a3", formatter:function(v){ return ticks[v]||""; }},
         axisTick:{show:false}, axisLine:{lineStyle:{color:"#dde3ec"}}, splitLine:{show:false}},
       yAxis:{type:"value", scale:true,
-        axisLabel:{fontSize:11, color:"#8a93a3",
+        axisLabel:{fontSize:13, color:"#8a93a3",
           formatter:function(v){ return Math.abs(v)>=10000?(v/10000)+"万":(Math.abs(v)>=1000?(v/1000)+"k":v); }},
         splitLine:{lineStyle:{color:"#eef1f6"}}},
       series:series
     };
   }
 
-  var TILE_W=520, TILE_H=300, SCALE=2, GAP=14, MARGIN=24, BANNER=60;
+  var TILE_W=420, TILE_H=240, SCALE=2, GAP=10, MARGIN=20, BANNER=50;
 
   async function exportLongImage(){
     var box=document.getElementById("expModal");
@@ -518,19 +518,19 @@ function makeCard(ch,ticks,grid){
       var contentW=maxCols*TILE_W+(maxCols-1)*GAP;
       var textOps=[], positions=[], curY=MARGIN+BANNER+18, tileIdx=0;
       Ds.forEach(function(D,si){
-        textOps.push({x:MARGIN, y:curY+16, text:sheets[si].title+"　数据截至："+D.latestDataDate, size:22, color:"#0f4c81", bold:true});
-        curY+=46;
+        textOps.push({x:MARGIN, y:curY+16, text:sheets[si].title+"　数据截至："+D.latestDataDate, size:28, color:"#0f4c81", bold:true});
+        curY+=52;
         D.layout.forEach(function(sec){
-          textOps.push({x:MARGIN, y:curY+16, text:"▍"+sec.section, size:18, color:"#0f4c81", bold:true});
-          curY+=40;
+          textOps.push({x:MARGIN, y:curY+18, text:"▍"+sec.section, size:24, color:"#0f4c81", bold:true});
+          curY+=44;
           sec.rows.forEach(function(row){
             if(row.label){
-              textOps.push({x:MARGIN, y:curY+14, text:row.label, size:14, color:"#6b7686", bold:false});
-              curY+=30;
+              textOps.push({x:MARGIN, y:curY+14, text:row.label, size:18, color:"#6b7686", bold:false});
+              curY+=32;
             }
             var cols=colsFor(sheets[si], row.charts.length);
             var rowW=cols*TILE_W+(cols-1)*GAP;
-            var x0=MARGIN+(contentW-rowW)/2, x=x0;
+            var x0=MARGIN, x=x0;
             for(var k=0;k<row.charts.length;k++){
               positions.push({url:tiles[tileIdx], x:x*SCALE, y:curY*SCALE, w:TILE_W*SCALE, h:TILE_H*SCALE});
               tileIdx++; x+=TILE_W+GAP;
@@ -546,8 +546,8 @@ function makeCard(ch,ticks,grid){
       ctx.fillStyle="#f4f6fa"; ctx.fillRect(0,0,W,H);
       ctx.fillStyle="#0f4c81"; ctx.fillRect(0,0,W,BANNER*SCALE);
       ctx.fillStyle="#ffffff"; ctx.textBaseline="middle";
-      ctx.font="bold "+(24*SCALE)+"px 'Microsoft YaHei','PingFang SC',sans-serif";
-      ctx.fillText("碳酸锂数据看板 · 价格 / 产量 / 库存 全景图（2023 年数据已隐藏）", MARGIN*SCALE, BANNER*SCALE/2);
+      ctx.font="bold "+(32*SCALE)+"px 'Microsoft YaHei','PingFang SC',sans-serif";
+      ctx.fillText("碳酸锂数据看板", MARGIN*SCALE, BANNER*SCALE/2);
       textOps.forEach(function(t){
         ctx.fillStyle=t.color; ctx.textBaseline="middle";
         ctx.font=(t.bold?"bold ":"")+(t.size*SCALE)+"px 'Microsoft YaHei','PingFang SC',sans-serif";
