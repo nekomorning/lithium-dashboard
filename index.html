@@ -405,6 +405,11 @@ function makeCard(ch,ticks,grid){
 <script>
 /* ===== 导出高清长图：页面一~三，仅图表，隐藏 2023 ===== */
 (function(){
+  function fmt(v,dec){
+    if(v===null||v===undefined||isNaN(v)) return "—";
+    return Number(v).toLocaleString("zh-CN",{minimumFractionDigits:dec,maximumFractionDigits:dec});
+  }
+  function arrow(c){ if(c===null||c===undefined||c===0) return "→"; return c>0?"▲":"▼"; }
   function yearColorEx(D,y){
     var ys=D.years, n=ys.length, idx=ys.indexOf(y);
     if(idx===n-1) return "#000000";
