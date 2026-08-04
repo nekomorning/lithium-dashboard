@@ -81,6 +81,27 @@ tr.abn td{background:#fff7f0;}
 .grid.c3 .chart{height:170px;}
 @media (max-width:720px){ .chart{height:140px;} }
 .footer{margin-top:30px; color:var(--sub); font-size:12px; text-align:center;}
+
+/* 导出按钮 & 弹窗 */
+.exp-fab{position:fixed; right:22px; bottom:22px; z-index:9000; padding:12px 22px; border:none;
+  border-radius:30px; background:var(--accent); color:#fff; font-size:15px; font-weight:600; cursor:pointer;
+  box-shadow:0 6px 18px rgba(15,76,129,.35);}
+.exp-fab:hover{background:#0c3e6b;}
+.modal{position:fixed; inset:0; background:rgba(15,23,35,.55); display:none; align-items:center;
+  justify-content:center; z-index:9999; padding:24px;}
+.modal-box{background:#fff; border-radius:12px; width:min(96vw,1080px); max-height:92vh;
+  display:flex; flex-direction:column; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.25);}
+.modal-head{display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--border);}
+.modal-head h3{font-size:16px; color:var(--accent);}
+.modal-close{border:none; background:#eef1f6; color:#44506a; width:30px; height:30px; border-radius:8px; font-size:18px; line-height:1; cursor:pointer;}
+.modal-close:hover{background:#dfe5ee;}
+.modal-body{overflow:auto; padding:14px; background:#f4f6fa; text-align:center;}
+.modal-body img{max-width:100%; height:auto; border:1px solid var(--border); border-radius:8px; background:#fff;}
+.modal-foot{display:flex; align-items:center; gap:10px; padding:12px 18px; border-top:1px solid var(--border);}
+.modal-foot .status{font-size:13px; color:var(--sub); flex:1; text-align:left;}
+.btn{padding:8px 18px; border-radius:8px; border:1px solid var(--border); background:#fff; color:#2a3345; font-size:14px; cursor:pointer;}
+.btn.primary{background:var(--accent); color:#fff; border-color:var(--accent);}
+.btn:disabled{opacity:.5; cursor:not-allowed;}
 </style>
 </head>
 <body>
@@ -115,6 +136,25 @@ tr.abn td{background:#fff7f0;}
 
   <div class="footer">碳酸锂数据看板 · 页面一（日度价格季节图）· 涨=红 跌=绿 · 最新年黑线、前一年红线</div>
 </div>
+
+<button class="exp-fab" id="expBtn">导出高清长图</button>
+<div class="modal" id="expModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>导出高清长图（页面一~三 · 仅图表 · 已隐藏 2023 年）</h3>
+      <button class="modal-close" id="expClose" title="关闭">×</button>
+    </div>
+    <div class="modal-body">
+      <img id="expImg" alt="导出预览">
+    </div>
+    <div class="modal-foot">
+      <span class="status" id="expStatus">准备就绪。</span>
+      <button class="btn" id="expDown">下载图片</button>
+      <button class="btn primary" id="expCopy" disabled>复制图片</button>
+    </div>
+  </div>
+</div>
+<div id="expHost" style="position:fixed;left:-100000px;top:0;width:0;height:0;overflow:hidden;"></div>
 
 
 <script>
@@ -360,6 +400,202 @@ function makeCard(ch,ticks,grid){
   });
   charts.push(c);
 }
+</script>
+
+<script>
+/* ===== 导出高清长图：页面一~三，仅图表，隐藏 2023 ===== */
+(function(){
+  function yearColorEx(D,y){
+    var ys=D.years, n=ys.length, idx=ys.indexOf(y);
+    if(idx===n-1) return "#000000";
+    if(idx===n-2) return "#E60000";
+    var P=["#1E6FFF","#F59A23","#8B5CF6","#0FB5AE","#D63FA6","#7A6A53"];
+    return P[idx % P.length];
+  }
+  function monthTicksEx(D){
+    var idx={};
+    D.xlabels.forEach(function(l,i){ if(l.slice(3)==="01") idx[i]=parseInt(l.slice(0,2),10)+"月"; });
+    return idx;
+  }
+  function metaEx(st,mode){
+    if(mode==="week") return {chg:st.weekChg, pct:st.weekPct, isW:true};
+    var isW=!!st.weekly;
+    return {chg:isW?st.weekChg:st.chg, pct:isW?st.weekPct:st.pct, isW:isW};
+  }
+  function colsFor(sheet,n){
+    if(sheet.mode==="day") return Math.min(n,4);
+    return n>=5?5:n;
+  }
+  function tileOption(D,ch,mode){
+    var ind=D.indicators[ch.key], st=ind.stat;
+    var m=metaEx(st,mode);
+    var series=[], legend=[];
+    D.years.forEach(function(y){
+      if(String(y)==="2023") return;
+      var pts=ind.series[String(y)];
+      if(!pts||!pts.length) return;
+      legend.push(String(y));
+      series.push({name:String(y), type:"line", showSymbol:false, connectNulls:true, data:pts,
+        lineStyle:{width: y===D.years[D.years.length-1]?2.6:1.6, color:yearColorEx(D,y)},
+        itemStyle:{color:yearColorEx(D,y)}, emphasis:{focus:"series"},
+        z: y===D.years[D.years.length-1]?10:5 });
+    });
+    var ticks=monthTicksEx(D);
+    var valTxt=fmt(st.latest,ind.dec)+" "+ind.unit;
+    var chgTxt="";
+    if(m.chg!==null && m.chg!==undefined){
+      chgTxt=arrow(m.chg)+" "+(m.chg>0?"+":"")+fmt(m.chg,ind.dec)
+        +"（"+(m.pct===null?"—":(m.pct>0?"+":"")+m.pct.toFixed(2)+"%")+(m.isW?" 周环比":"")+"）";
+    }
+    return {
+      animation:false, backgroundColor:"#ffffff",
+      title:{ text:ind.title, subtext:valTxt+(chgTxt?"   "+chgTxt:""),
+        left:10, top:8,
+        textStyle:{fontSize:16, fontWeight:700, color:"#2a3345"},
+        subtextStyle:{fontSize:13, color:(m.chg>0?"#d92626":(m.chg<0?"#0a9a5c":"#6b7686"))} },
+      grid:{left:10, right:16, top:58, bottom:8, containLabel:true},
+      legend:{show:true, top:12, right:12, itemWidth:18, itemHeight:3, icon:"rect",
+        textStyle:{fontSize:12, color:"#6b7686"}, data:legend},
+      xAxis:{type:"value", min:0, max:365, interval:1,
+        axisLabel:{fontSize:11, color:"#8a93a3", formatter:function(v){ return ticks[v]||""; }},
+        axisTick:{show:false}, axisLine:{lineStyle:{color:"#dde3ec"}}, splitLine:{show:false}},
+      yAxis:{type:"value", scale:true,
+        axisLabel:{fontSize:11, color:"#8a93a3",
+          formatter:function(v){ return Math.abs(v)>=10000?(v/10000)+"万":(Math.abs(v)>=1000?(v/1000)+"k":v); }},
+        splitLine:{lineStyle:{color:"#eef1f6"}}},
+      series:series
+    };
+  }
+
+  var TILE_W=520, TILE_H=300, SCALE=2, GAP=14, MARGIN=24, BANNER=60;
+
+  async function exportLongImage(){
+    var box=document.getElementById("expModal");
+    var img=document.getElementById("expImg");
+    var status=document.getElementById("expStatus");
+    var btn=document.getElementById("expCopy");
+    box.style.display="flex"; img.style.display="none"; btn.disabled=true;
+    status.textContent="正在生成高清长图，请稍候…（图表较多，约需数秒）";
+    try{
+      var sheets=[
+        {title:"页面一 · 日度价格", file:"./data.json", mode:"day"},
+        {title:"页面二 · 产量开工利润", file:"./p2.json", mode:"week"},
+        {title:"页面三 · 产业链库存", file:"./p3.json", mode:"week"}
+      ];
+      var Ds=await Promise.all(sheets.map(function(s){ return fetch(s.file).then(function(r){ return r.json(); }); }));
+      var host=document.getElementById("expHost");
+      var tiles=[];
+      Ds.forEach(function(D,si){
+        D.layout.forEach(function(sec){
+          sec.rows.forEach(function(row){
+            row.charts.forEach(function(ch){
+              var div=document.createElement("div");
+              div.style.width=TILE_W+"px"; div.style.height=TILE_H+"px";
+              host.appendChild(div);
+              var c=echarts.init(div, null, {width:TILE_W, height:TILE_H});
+              c.setOption(tileOption(D,ch,sheets[si].mode));
+              tiles.push(c.getDataURL({pixelRatio:SCALE, backgroundColor:"#ffffff"}));
+              c.dispose(); div.remove();
+            });
+          });
+        });
+      });
+      // 计算布局
+      var maxCols=1;
+      Ds.forEach(function(D,si){
+        D.layout.forEach(function(sec){
+          sec.rows.forEach(function(row){
+            var cols=colsFor(sheets[si], row.charts.length);
+            if(cols>maxCols) maxCols=cols;
+          });
+        });
+      });
+      var contentW=maxCols*TILE_W+(maxCols-1)*GAP;
+      var textOps=[], positions=[], curY=MARGIN+BANNER+18, tileIdx=0;
+      Ds.forEach(function(D,si){
+        textOps.push({x:MARGIN, y:curY+16, text:sheets[si].title+"　数据截至："+D.latestDataDate, size:22, color:"#0f4c81", bold:true});
+        curY+=46;
+        D.layout.forEach(function(sec){
+          textOps.push({x:MARGIN, y:curY+16, text:"▍"+sec.section, size:18, color:"#0f4c81", bold:true});
+          curY+=40;
+          sec.rows.forEach(function(row){
+            if(row.label){
+              textOps.push({x:MARGIN, y:curY+14, text:row.label, size:14, color:"#6b7686", bold:false});
+              curY+=30;
+            }
+            var cols=colsFor(sheets[si], row.charts.length);
+            var rowW=cols*TILE_W+(cols-1)*GAP;
+            var x0=MARGIN+(contentW-rowW)/2, x=x0;
+            for(var k=0;k<row.charts.length;k++){
+              positions.push({url:tiles[tileIdx], x:x*SCALE, y:curY*SCALE, w:TILE_W*SCALE, h:TILE_H*SCALE});
+              tileIdx++; x+=TILE_W+GAP;
+            }
+            curY+=TILE_H+GAP;
+          });
+        });
+      });
+      var W=(contentW+2*MARGIN)*SCALE, H=(curY+MARGIN)*SCALE;
+      var canvas=document.createElement("canvas");
+      canvas.width=W; canvas.height=H;
+      var ctx=canvas.getContext("2d");
+      ctx.fillStyle="#f4f6fa"; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle="#0f4c81"; ctx.fillRect(0,0,W,BANNER*SCALE);
+      ctx.fillStyle="#ffffff"; ctx.textBaseline="middle";
+      ctx.font="bold "+(24*SCALE)+"px 'Microsoft YaHei','PingFang SC',sans-serif";
+      ctx.fillText("碳酸锂数据看板 · 价格 / 产量 / 库存 全景图（2023 年数据已隐藏）", MARGIN*SCALE, BANNER*SCALE/2);
+      textOps.forEach(function(t){
+        ctx.fillStyle=t.color; ctx.textBaseline="middle";
+        ctx.font=(t.bold?"bold ":"")+(t.size*SCALE)+"px 'Microsoft YaHei','PingFang SC',sans-serif";
+        ctx.fillText(t.text, t.x*SCALE, t.y*SCALE);
+      });
+      await Promise.all(positions.map(function(p){
+        return new Promise(function(res){ var im=new Image(); im.onload=function(){ res(p); }; im.onerror=function(){ res(p); }; im.src=p.url; });
+      })).then(function(loaded){
+        loaded.forEach(function(p){
+          ctx.drawImage(p, p.x, p.y, p.w, p.h);
+          ctx.strokeStyle="#e5e9f0"; ctx.lineWidth=Math.max(1,SCALE);
+          ctx.strokeRect(p.x, p.y, p.w, p.h);
+        });
+        var url=canvas.toDataURL("image/png");
+        img.src=url; img.style.display="block";
+        status.textContent="生成完成：长图共 "+positions.length+" 张图表。点击「复制图片」即可粘贴到微信 / 文档。";
+        btn.disabled=false;
+        window.__expCanvas=canvas;
+      });
+    }catch(e){
+      status.textContent="生成失败："+(e&&e.message?e.message:e);
+      console.error(e);
+    }
+  }
+
+  function copyExpImage(){
+    var canvas=window.__expCanvas; if(!canvas) return;
+    var st=document.getElementById("expStatus");
+    if(!navigator.clipboard || !window.ClipboardItem){
+      st.textContent="当前浏览器不支持一键复制，请改用「下载图片」后手动插入。"; return;
+    }
+    canvas.toBlob(function(blob){
+      if(!blob){ st.textContent="复制失败：图片生成异常。"; return; }
+      navigator.clipboard.write([new ClipboardItem({'image/png':blob})]).then(function(){
+        st.textContent="✅ 已复制到剪贴板，可直接 Ctrl+V 粘贴到微信 / Word / PPT 等。";
+      }).catch(function(err){
+        st.textContent="复制被浏览器拦截（"+(err&&err.message?err.message:err)+"），请改用「下载图片」。";
+      });
+    },"image/png");
+  }
+  function downloadExpImage(){
+    var canvas=window.__expCanvas; if(!canvas) return;
+    var a=document.createElement("a");
+    a.download="碳酸锂数据看板_全景图.png";
+    a.href=canvas.toDataURL("image/png");
+    a.click();
+  }
+
+  document.getElementById("expBtn").addEventListener("click", exportLongImage);
+  document.getElementById("expCopy").addEventListener("click", copyExpImage);
+  document.getElementById("expDown").addEventListener("click", downloadExpImage);
+  document.getElementById("expClose").addEventListener("click", function(){ document.getElementById("expModal").style.display="none"; });
+})();
 </script>
 </body>
 </html>
