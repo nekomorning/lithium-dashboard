@@ -554,10 +554,10 @@ function makeCard(ch,ticks,grid){
         ctx.fillText(t.text, t.x*SCALE, t.y*SCALE);
       });
       await Promise.all(positions.map(function(p){
-        return new Promise(function(res){ var im=new Image(); im.onload=function(){ res(p); }; im.onerror=function(){ res(p); }; im.src=p.url; });
+        return new Promise(function(res){ var im=new Image(); im.onload=function(){ p._img=im; res(p); }; im.onerror=function(){ res(p); }; im.src=p.url; });
       })).then(function(loaded){
         loaded.forEach(function(p){
-          ctx.drawImage(p, p.x, p.y, p.w, p.h);
+          if(p._img) ctx.drawImage(p._img, p.x, p.y, p.w, p.h);
           ctx.strokeStyle="#e5e9f0"; ctx.lineWidth=Math.max(1,SCALE);
           ctx.strokeRect(p.x, p.y, p.w, p.h);
         });
