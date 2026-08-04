@@ -458,7 +458,7 @@ function makeCard(ch,ticks,grid){
         left:10, top:8,
         textStyle:{fontSize:20, fontWeight:700, color:"#2a3345"},
         subtextStyle:{fontSize:15, color:(m.chg>0?"#d92626":(m.chg<0?"#0a9a5c":"#6b7686"))} },
-      grid:{left:10, right:16, top:58, bottom:8, containLabel:true},
+      grid:{left:10, right:16, top:66, bottom:8, containLabel:true},
       legend:{show:true, top:12, right:12, itemWidth:18, itemHeight:3, icon:"rect",
         textStyle:{fontSize:14, color:"#6b7686"}, data:legend},
       xAxis:{type:"value", min:0, max:365, interval:1,
@@ -472,7 +472,7 @@ function makeCard(ch,ticks,grid){
     };
   }
 
-  var TILE_W=420, TILE_H=240, SCALE=2, GAP=10, MARGIN=20, BANNER=50;
+  var TILE_W=420, TILE_H=300, SCALE=2, GAP=10, MARGIN=20, BANNER=50;
 
   async function exportLongImage(){
     var box=document.getElementById("expModal");
