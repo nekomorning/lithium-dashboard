@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>碳酸锂数据看板 · 一页通</title>
+<style>
+:root{
+  --bg:#f4f6fa; --card:#ffffff; --border:#e5e9f0; --text:#1f2733; --sub:#6b7686;
+  --up:#d92626; --down:#0a9a5c; --flat:#8a93a3; --accent:#0f4c81;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{background:var(--bg); color:var(--text);
+  font-family:"Microsoft YaHei","PingFang SC","Helvetica Neue",Arial,sans-serif; font-size:14px;}
+.wrap{max-width:1080px; margin:0 auto; padding:18px 22px 60px;}
+
+.header{display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:14px;}
+.header h1{font-size:24px; color:var(--accent); letter-spacing:1px;}
+.header .date{color:var(--sub); font-size:13px;}
+.tabs{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;}
+.tab{padding:7px 20px; border-radius:8px 8px 0 0; border:1px solid var(--border); border-bottom:none;
+  background:#e9edf3; color:var(--sub); cursor:pointer; font-size:14px; text-decoration:none;}
+.tab:hover{background:#dfe5ee;}
+.tab.active{background:var(--accent); color:#fff; font-weight:600; cursor:default;}
+
+.ypt-note{color:var(--sub); font-size:12px; margin:0 0 14px; line-height:1.7;}
+
+/* 文档正文：严格保留钉钉原格式（蓝色小标题 / 黄绿红高亮均在正文内联 span 中） */
+.ypt-doc{background:var(--card); border:1px solid var(--border); border-radius:10px;
+  padding:24px 30px 30px; margin-bottom:18px; line-height:1.95; font-size:15px; color:var(--text);}
+.ypt-doc ul{list-style:disc; padding-left:24px; margin:8px 0;}
+.ypt-doc li{margin:5px 0;}
+.ypt-doc ul ul{list-style:circle; margin:4px 0;}
+.ypt-doc ul ul ul{list-style:square; margin:2px 0;}
+.ypt-doc > ul > li{margin:14px 0 6px;}
+.ypt-doc strong{font-weight:700;}
+
+.footer{margin-top:30px; color:var(--sub); font-size:12px; text-align:center;}
+
+@media (max-width:700px){
+  .wrap{padding:14px 12px 40px;}
+  .ypt-doc{padding:16px 14px 20px; font-size:14px; line-height:1.85;}
+  .ypt-doc ul{padding-left:18px;}
+  .tab{padding:6px 13px; font-size:13px;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1>碳酸锂数据看板</h1>
+    <div class="date">研究框架 · 一页通</div>
+  </div>
+  <div class="tabs">
+    <div class="tab active">一页通</div>
+    <a class="tab" href="p1.html">日度价格</a>
+    <a class="tab" href="p2.html">产量开工利润</a>
+    <a class="tab" href="p3.html">产业链库存</a>
+    <a class="tab" href="p4.html">数据对比</a>
+  </div>
+
+  <div class="ypt-note">内容同步自钉钉知识库《赵芸曦学习笔记 / 学习笔记 / 一页通 / 碳酸锂一页通》，文字与段落格式与原文档保持一致；钉钉更新后会同步到此页。</div>
+
+  <div class="ypt-doc">
+<ul>
+<li><span style="color: #4472C6;"><strong>一、</strong></span><span style="color: #4472C6;"><strong>产业链结构及分析框架</strong></span>
+<ul>
+<li><span style="color: ;"><strong>产业链：</strong></span><span style="color: #FE0300;"><strong>矿</strong></span><span style="color: ;">→</span><span style="color: #00B14D;"><strong>盐</strong></span><span style="color: ;">→正极→</span><span style="color: #FE0300;"><strong>电池</strong></span><span style="color: ;">→电车/储能；电池集中度最高，正极绑定电池；</span><span style="color: ; background-color: #FFF3CE;"><strong>锂盐最分散</strong></span><span style="color: ; background-color: #FFF3CE;">，对上下游均无话语权，非一体化只能赚加工费</span>
+<ul>
+<li><span style="color: ;"><strong>锂矿→锂盐：</strong></span><span style="color: ;">进口矿70%（澳矿/非矿 2:1），下跌周期</span><span style="color: #00B14D;"><strong>累积较多隐性库存</strong></span><span style="color: ;">，25 年中至今</span><span style="color: #FE0300;"><strong>在去隐性库存</strong></span><span style="color: ;"><strong>，当前15wt LCE 库存（25 天）</strong></span>
+</li>
+<li><span style="color: ;"><strong>锂盐→正极：</strong></span><span style="color: ;">进口矿 40%/进口盐 20%/自有 40%；需求 80%是</span><span style="color: #FE0300;"><strong>磷酸铁锂</strong></span><span style="color: ;">；25 年中至今去库，当前 16wt 库存（28 天）</span>
+</li>
+<li><span style="color: ;"><strong>正极→电池：</strong></span><span style="color: ;">长协/股权形式</span><span style="color: ;"><strong>高度绑定</strong></span><span style="color: ;">电池厂，话语权低，赚加工费，</span><span style="color: ;"><strong>按订单生产不需要太多库存</strong></span><span style="color: ;">（7 天），</span><span style="color: #FE0300;">在去隐形库存</span>
+</li>
+<li><span style="color: ;"><strong>电池→终端：</strong></span><span style="color: ;">动力 62%/储能 33%/消费 5%，</span><span style="color: #FE0300;"><strong>储能重要性提升</strong></span><span style="color: ;">（占比 20%↗ 33%）；</span><span style="color: ;"><strong>排产</strong></span><span style="color: ;">和产量环比历史上</span><span style="color: ;"><strong>大致拟合</strong></span><span style="color: ;">，可参考</span>
+<ul>
+<li><span style="color: ;"><strong>动力</strong></span><span style="color: ;">电池产量→出货→需求（国内装机+电池出口+跟车出口）；车增速放缓，</span><span style="color: #00B14D;"><strong>库存压力给到电池厂</strong></span><span style="color: ;">，折10wt LCE（20 天）</span>
+</li>
+<li><span style="color: ;"><strong>储能</strong></span><span style="color: ;">电池产量→出货→需求（国内装机+出口），装机需考虑系数； 25 年中至今去库，</span><span style="color: #FE0300;"><strong>库存比较紧</strong></span><span style="color: ;">，折 2wt LCE（4 天）</span>
+</li>
+<li><span style="color: ;"><strong>系数</strong></span><span style="color: ;">的规律：理论上装机增速高→系数高；22 年暴涨系数达到 3；未来增速逐年放缓，系数应该低于 2</span>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><span style="color: ;"><strong>平衡表调整的路标：</strong></span><span style="color: ;">①</span> <span style="color: #FE0300;"><strong>动力/储能判断</strong></span><span style="color: ;">→电池产量→正极产量→锂需求；②澳洲/智利发运→锂进口；③检修复产→锂产量</span>
+</li>
+<li><span style="color: ;"><strong>定价：</strong></span><span style="color: ;">①</span> <span style="color: ;"><strong>电池需求</strong></span><span style="color: ;">定价（</span><span style="color: #FE0300;">需求托底 14w+</span><span style="color: ;">、</span><span style="color: #00B14D;">负反馈 21w-</span><span style="color: ;">）；②</span> <span style="color: ;"><strong>矿端</strong></span><span style="color: ;">定价（边际看成本曲线右侧→外采、高成本矿复产 1500$矿→11.5w 锂价）</span>
+</li>
+</ul>
+</li>
+<li><span style="color: #4472C6;"><strong>二、历史变化、</strong></span><span style="color: #4472C6;"><strong>26 格局及 27 预期</strong></span>
+<ul>
+<li><span style="color: #4472C6;"><strong>供应：</strong></span>
+<ul>
+<li><strong>历史变化主线：</strong>上轮周期需求爆发→高价→供给高增（投产周期长），<span style="background-color: #FFF3CE;"><strong>外资老牌</strong></span><span style="color: #6E30A4; background-color: #FFF3CE;"><strong>稳健</strong></span><span style="background-color: #FFF3CE;"><strong>扩产</strong></span><span style="background-color: #FFF3CE;">（澳洲、智利），</span><span style="background-color: #FFF3CE;"><strong>中资买矿投产</strong></span><span style="color: #FE0300; background-color: #FFF3CE;"><strong>高增</strong></span><span style="background-color: #FFF3CE;">（中国、非洲）</span>
+</li>
+<li>26 变化：①<span style="color: ;">津巴2.28禁矿出口，4 月给配额→国内辉石 LCE 没减产，去了矿的隐性库存；② 枧下窝7 月复产（8kt）；③ 澳矿 Q4 复产（2kt）</span>
+</li>
+<li>27 预期：全球 261wt， +21%，+45wt（其中澳 7 南美 9 非洲 8 中国 20，中国再细分辉石 6 云母 10 盐湖 5）
+</li>
+</ul>
+</li>
+<li><span style="color: #4472C6;"><strong>需求：</strong></span>
+<ul>
+<li><strong>历史变化主线：</strong>21 年起新能源车需求爆发<span style="color: ; background-color: #FFF3CE;">动力主导</span> <span style="color: ; background-color: #FFF3CE;"><strong>→ 动储双驱动，</strong></span><span style="color: ; background-color: #FFF3CE;">储能高增速+占比迅速提升</span>
+</li>
+<li>26 格局：① 动力：车出口高增内需下滑，产量增速回落至 3%，带电量和渗透率新高；② 储能：<span style="color: #FE0300;"><strong>超预期</strong></span>；<span style="color: ;">地缘冲突→能源安全；经济性 IRR；③ 电池出口退税 9%→ 6%（26.4.1） →抢出口</span>
+</li>
+<li>27 预期：①<span style="color: ;">电池出口退税 6% → 0%，担心需求透支；② 欧盟对中国插混双反；③ 储能继续高增支撑锂需求</span>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+  </div>
+
+  <div class="footer">碳酸锂数据看板 · 一页通 · 涨=红 跌=绿</div>
+</div>
+</body>
+</html>
