@@ -28,6 +28,17 @@ body{background:var(--bg); color:var(--text);
 /* 文档正文：严格保留钉钉原格式（蓝色小标题 / 黄绿红高亮均在正文内联 span 中） */
 .ypt-doc{background:var(--card); border:1px solid var(--border); border-radius:10px;
   padding:24px 30px 30px; margin-bottom:18px; line-height:1.95; font-size:15px; color:var(--text);}
+
+/* 简化后的逻辑图：放在 ypt 顶部 */
+.ypt-diagram{background:var(--card); border:1px solid var(--border); border-radius:10px;
+  padding:14px 18px 10px; margin-bottom:18px;}
+.ypt-diagram h2{font-size:16px; color:var(--accent); margin-bottom:10px;}
+.ypt-diagram .img-wrap{background:#fff; border:1px solid var(--border); border-radius:8px;
+  padding:6px; overflow:auto; text-align:center;}
+.ypt-diagram img{display:block; max-width:100%; height:auto; image-rendering:auto;
+  width:100%; -ms-interpolation-mode:bicubic;}
+.ypt-diagram .cap{font-size:12px; color:var(--sub); margin-top:6px; text-align:center;}
+
 .ypt-doc ul{list-style:disc; padding-left:24px; margin:8px 0;}
 .ypt-doc li{margin:5px 0;}
 .ypt-doc ul ul{list-style:circle; margin:4px 0;}
@@ -61,6 +72,12 @@ body{background:var(--bg); color:var(--text);
   </div>
 
   <div class="ypt-note">内容同步自钉钉知识库《赵芸曦学习笔记 / 学习笔记 / 一页通 / 碳酸锂一页通》，文字与段落格式与原文档保持一致；钉钉更新后会同步到此页。</div>
+
+  <div class="ypt-diagram">
+    <h2>简化后的逻辑图</h2>
+    <div class="img-wrap"><img src="ypt_diagram.png" alt="锂供需核心逻辑图"></div>
+    <div class="cap">锂供需核心变量跟踪（每次研讨只调整核心变量，其他数据公式自动计算）</div>
+  </div>
 
   <div class="ypt-doc">
 <ul>
