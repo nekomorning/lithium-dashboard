@@ -205,22 +205,22 @@ function buildSummary(){
     var sec=D.sections.find(function(s){return s.id===secId;});
     if(!sec) return null;
     var st=secStat(secId, ent); if(!st) return null;
-    var cls=chgCls(st.yoy);
+    var cls=chgCls(st.ytdYoy);
     return "<b>"+fmt(st.latest,2)+"</b>"+sec.unit+" <span class='"+cls+"'>"+
-      (st.yoy>0?"同比+":"同比")+fmt(st.yoy,2)+"%</span>";
+      (st.ytdYoy>0?"累计同比+":"累计同比")+fmt(st.ytdYoy,2)+"%</span>";
   }
-  // 新能源同比涨跌居前
+  // 新能源累计同比涨跌居前
   var nevSec=D.sections.find(function(s){return s.id==="nev";});
   var nevRows=nevSec.order.map(function(ent){ return {ent:ent, st:nevSec.data[ent].stat}; })
-    .filter(function(r){return r.st.yoy!==null;});
-  var ups=nevRows.slice().sort(function(a,b){return b.st.yoy-a.st.yoy;}).slice(0,3);
-  var dns=nevRows.slice().sort(function(a,b){return a.st.yoy-b.st.yoy;}).slice(0,3);
-  function li(r){ return "<span class='"+(r.st.yoy>0?"up":"down")+"'>"+r.ent+"（"+(r.st.yoy>0?"+":"")+fmt(r.st.yoy,2)+"%）</span>"; }
+    .filter(function(r){return r.st.ytdYoy!==null;});
+  var ups=nevRows.slice().sort(function(a,b){return b.st.ytdYoy-a.st.ytdYoy;}).slice(0,3);
+  var dns=nevRows.slice().sort(function(a,b){return a.st.ytdYoy-b.st.ytdYoy;}).slice(0,3);
+  function li(r){ return "<span class='"+(r.st.ytdYoy>0?"up":"down")+"'>"+r.ent+"（"+(r.st.ytdYoy>0?"+":"")+fmt(r.st.ytdYoy,2)+"%）</span>"; }
 
   var html="<h2>核心变化速览</h2><div>";
   html+=dateTxt+"，全球新能源乘用车销量 "+line("nev","全球")+"、中国新能源乘用车 "+line("nev","中国")+"；";
   html+="全球乘用车总体 "+line("total","全球")+"；全球新能源渗透率 "+line("pen","全球")+"。";
-  html+="<br>新能源乘用车同比涨幅居前："+(ups.length?ups.map(li).join("、"):"无")+"；";
+  html+="<br>新能源乘用车累计同比涨幅居前："+(ups.length?ups.map(li).join("、"):"无")+"；";
   html+="跌幅居前："+(dns.length?dns.map(li).join("、"):"无")+"。";
   html+="</div>";
   document.getElementById("summary").innerHTML=html;
