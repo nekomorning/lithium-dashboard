@@ -68,14 +68,14 @@ td.up{color:var(--up); font-weight:600;} td.down{color:var(--down); font-weight:
 /* 图表卡片 */
 .card{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px 6px; min-width:0;}
 .card .ttl{font-size:14px; font-weight:700; color:#2a3345;}
-.card .meta{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin:5px 0 3px;}
-.card .val{font-size:21px; font-weight:700;}
-.card .val .unit{font-size:11px; color:var(--sub); font-weight:400; margin-left:2px;}
-.card .stat{display:flex; flex-direction:column; line-height:1.35;}
-.card .stat .k{font-size:10.5px; color:var(--sub);}
-.card .stat .v{font-size:13px; font-weight:600;}
+.card .meta{display:flex; align-items:baseline; gap:7px; flex-wrap:nowrap; margin:5px 0 4px; white-space:nowrap; overflow:hidden;}
+.card .val{font-size:19px; font-weight:700; flex-shrink:0;}
+.card .val .unit{font-size:10px; color:var(--sub); font-weight:400; margin-left:2px;}
+.card .stat{display:inline-flex; flex-direction:row; align-items:baseline; gap:3px; line-height:1.25; flex-shrink:1;}
+.card .stat .k{font-size:10px; color:var(--sub);}
+.card .stat .v{font-size:11px; font-weight:600;}
 .card .stat .v.up{color:var(--up);} .card .stat .v.down{color:var(--down);} .card .stat .v.flat{color:var(--flat);}
-.card .dt{font-size:11px; color:var(--sub); margin-left:auto;}
+.card .dt{font-size:10px; color:var(--sub); margin-left:auto; flex-shrink:0;}
 .chart{width:100%; aspect-ratio:16 / 9; height:auto; min-width:0;}
 .footer{margin-top:30px; color:var(--sub); font-size:12px; text-align:center;}
 </style>
@@ -169,7 +169,8 @@ function init(){
   D = window.__DATA__ || window.D;
   YEARS = Array.from(new Set(D.xlabels.map(function(l){return l.slice(0,4);}))).sort();
   document.getElementById("latestDate").textContent=D.latestDataDate;
-  YEARS.forEach(function(y){ yearVisible[y]=true; });
+  var hideYears=["2017","2018","2019","2020"];
+  YEARS.forEach(function(y){ yearVisible[y]=hideYears.indexOf(y)===-1; });
   buildFilter(); buildSummary(); buildTable(); buildSections();
   var t; window.addEventListener("resize",function(){ clearTimeout(t); t=setTimeout(function(){ charts.forEach(function(c){c.resize();}); },150); });
 }
