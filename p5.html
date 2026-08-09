@@ -61,8 +61,8 @@ td.up{color:var(--up); font-weight:600;} td.down{color:var(--down); font-weight:
 .section-title{font-size:18px; color:var(--accent); font-weight:700; margin:26px 0 4px;
   padding-left:10px; border-left:4px solid var(--accent);}
 .grid{display:grid; gap:14px; justify-content:start;}
-.grid.c4{grid-template-columns:repeat(4,minmax(0,300px));}
-@media (max-width:1200px){ .grid.c4{grid-template-columns:repeat(2,minmax(0,480px));} }
+.grid.c4{grid-template-columns:repeat(4,minmax(0,1fr));}
+@media (max-width:1200px){ .grid.c4{grid-template-columns:repeat(2,minmax(0,1fr));} }
 @media (max-width:720px){ .grid.c4{grid-template-columns:1fr;} .wrap{padding:12px 10px 40px;} }
 
 /* 图表卡片 */
