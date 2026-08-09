@@ -59,6 +59,8 @@ tr.abn td{background:#fff7f0;}
   padding-left:10px; border-left:4px solid var(--accent);}
 .row-label{font-size:14px; color:var(--sub); margin:14px 0 8px; font-weight:600;}
 .grid{display:grid; gap:14px; justify-content:start;}
+/* 4 列空白占位：透明、无边框，仅占据网格列位，保证跨行图表严格对齐 */
+.grid .grid-blank{min-width:0; background:transparent; border:0; padding:0; visibility:hidden;}
 .grid.c1{grid-template-columns:repeat(2,minmax(0,480px));}
 .grid.c2{grid-template-columns:repeat(2,minmax(0,480px));}
 .grid.c3{grid-template-columns:repeat(3,minmax(0,420px));}
@@ -329,9 +331,15 @@ function buildSections(){
       root.appendChild(lbl);
       var n=row.charts.length;
       var grid=document.createElement("div");
-      grid.className="grid c"+Math.min(n,4);
+      // 统一 4 列网格：所有图表宽高一致；当行内图表不足 4 个时，剩余列位自动留空
+      grid.className="grid c4";
       root.appendChild(grid);
       row.charts.forEach(function(ch){ makeCard(ch,ticks,grid); });
+      // 用空白占位 div 占据剩余列位，确保下方行严格按列对齐
+      for(var i=n; i<4; i++){
+        var ph=document.createElement("div"); ph.className="grid-blank";
+        grid.appendChild(ph);
+      }
     });
   });
 }
