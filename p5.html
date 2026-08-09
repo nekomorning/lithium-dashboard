@@ -102,7 +102,7 @@ td.up{color:var(--up); font-weight:600;} td.down{color:var(--down); font-weight:
   <div class="filterbar" id="filterbar"><span class="lbl">年份筛选（点击显隐，作用于全部图表）：</span></div>
 
   <div class="tablecard">
-    <h2>数据一览表 <span style="font-size:12px;color:var(--sub);font-weight:400">（最新月销量·万辆 / 渗透率·%；环比=较上月，同比=较去年同期，当年累计值=年初至今各月销量合计，累计同比=累计较去年同期；渗透率板块当年累计值不适用）</span></h2>
+    <h2>数据一览表 <span style="font-size:12px;color:var(--sub);font-weight:400">（最新月销量·万辆 / 渗透率·%；销量板块环比为环比%，同比/累计同比为%；渗透率板块环比/同比/累计同比均为±pp，当年累计值不适用）</span></h2>
     <table id="dataTable">
       <thead><tr>
         <th>指标</th><th>单位</th><th>最新日期</th><th>最新值</th><th>环比</th><th>同比</th><th>当年累计值</th><th>累计同比</th>
@@ -234,10 +234,13 @@ function buildTable(){
     sec.order.forEach(function(ent){
       var st=sec.data[ent].stat;
       var isPct=(sec.unit==="%");
-      var yoyCls=chgCls(st.yoy), cumCls=chgCls(st.ytdYoy), chgCls2=chgCls(st.chg);
-      var chgTxt = (st.chg===null)?"—":((st.chg>0?"+":"")+fmt(st.chg,2)+(isPct?"pp":sec.unit));
-      var yoyTxt = (st.yoy===null)?"—":((st.yoy>0?"+":"")+fmt(st.yoy,2)+"%");
-      var cumTxt = (st.ytdYoy===null)?"—":((st.ytdYoy>0?"+":"")+fmt(st.ytdYoy,2)+"%");
+      var chgVal = isPct ? st.chg : st.pct;
+      var yoyVal = isPct ? st.yoy_pp : st.yoy;
+      var cumVal = isPct ? st.ytdYoy_pp : st.ytdYoy;
+      var yoyCls=chgCls(yoyVal), cumCls=chgCls(cumVal), chgCls2=chgCls(chgVal);
+      var chgTxt = (chgVal===null)?"—":((chgVal>0?"+":"")+fmt(chgVal,2)+(isPct?"pp":"%"));
+      var yoyTxt = (yoyVal===null)?"—":((yoyVal>0?"+":"")+fmt(yoyVal,2)+(isPct?"pp":"%"));
+      var cumTxt = (cumVal===null)?"—":((cumVal>0?"+":"")+fmt(cumVal,2)+(isPct?"pp":"%"));
       var tr=document.createElement("tr");
       tr.innerHTML=
         "<td>"+ent+sec.metric+"</td>"+
