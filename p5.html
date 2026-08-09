@@ -144,9 +144,9 @@ function loadECharts(){
   tryNext();
 }
 
-var D = window.__DATA__ || window.D;
+var D = null;
 var charts=[];
-var YEARS = Array.from(new Set(D.xlabels.map(function(l){return l.slice(0,4);}))).sort();
+var YEARS = [];
 var yearVisible={};
 var PALETTE=["#1E6FFF","#F59A23","#8B5CF6","#0FB5AE","#D63FA6","#7A6A53","#3FA34D","#C0392B"];
 
@@ -165,6 +165,8 @@ function arrow(c){ if(c===null||c===undefined||c===0) return "→"; return c>0?"
 function sign(v){ return (v>0?"+":"")+v; }
 
 function init(){
+  D = window.__DATA__ || window.D;
+  YEARS = Array.from(new Set(D.xlabels.map(function(l){return l.slice(0,4);}))).sort();
   document.getElementById("latestDate").textContent=D.latestDataDate;
   YEARS.forEach(function(y){ yearVisible[y]=true; });
   buildFilter(); buildSummary(); buildTable(); buildSections();
@@ -195,12 +197,14 @@ function secStat(secId, ent){
 
 function buildSummary(){
   var ld=D.latestDataDate;
-  var m=ld.slice(5).split("-");
-  var dateTxt=parseInt(m[0],10)+"月"+parseInt(m[1],10)+"日";
+  var parts=ld.split("-");
+  var dateTxt=parts[0]+"年"+parseInt(parts[1],10)+"月"+(parts[2]?parseInt(parts[2],10)+"日":"");
   function line(secId, ent){
+    var sec=D.sections.find(function(s){return s.id===secId;});
+    if(!sec) return null;
     var st=secStat(secId, ent); if(!st) return null;
     var cls=chgCls(st.yoy);
-    return "<b>"+fmt(st.latest,2)+"</b>"+st.unit+" <span class='"+cls+"'>"+
+    return "<b>"+fmt(st.latest,2)+"</b>"+sec.unit+" <span class='"+cls+"'>"+
       (st.yoy>0?"同比+":"同比")+fmt(st.yoy,2)+"%</span>";
   }
   // 新能源同比涨跌居前
