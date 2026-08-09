@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>碳酸锂数据看板 · 全球乘用车</title>
+<style>
+:root{
+  --bg:#f4f6fa; --card:#ffffff; --border:#e5e9f0; --text:#1f2733; --sub:#6b7686;
+  --up:#d92626; --down:#0a9a5c; --flat:#8a93a3; --accent:#0f4c81;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{background:var(--bg); color:var(--text);
+  font-family:"Microsoft YaHei","PingFang SC","Helvetica Neue",Arial,sans-serif; font-size:14px;}
+.wrap{max-width:1560px; margin:0 auto; padding:18px 22px 60px;}
+
+/* 头部 */
+.header{display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:14px;}
+.header h1{font-size:24px; color:var(--accent); letter-spacing:1px;}
+.header .date{color:var(--sub); font-size:13px;}
+.tabs{display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
+.tab{padding:7px 20px; border-radius:8px 8px 0 0; border:1px solid var(--border); border-bottom:none;
+  background:#e9edf3; color:var(--sub); cursor:default; font-size:14px; text-decoration:none; display:inline-block;}
+.tab.active{background:var(--accent); color:#fff; font-weight:600;}
+.tab.disabled{opacity:.55;}
+
+/* 口径横幅 */
+.caliber{display:flex; align-items:center; gap:8px; margin-bottom:14px;
+  background:#fff8e6; border:1px solid #f1d79a; border-radius:10px; padding:9px 16px;
+  color:#8a6d1f; font-size:13px; font-weight:600;}
+.caliber .ico{font-size:15px;}
+
+/* 核心变化速览 */
+.summary{background:var(--card); border:1px solid var(--border); border-radius:10px;
+  padding:16px 20px; margin-bottom:16px; line-height:1.95;}
+.summary h2{font-size:16px; color:var(--accent); margin-bottom:6px;}
+.summary .up{color:var(--up); font-weight:600;}
+.summary .down{color:var(--down); font-weight:600;}
+.summary b{color:var(--text);}
+
+/* 年份筛选 */
+.filterbar{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px;
+  background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px 16px;}
+.filterbar .lbl{color:var(--sub); font-size:13px;}
+.ybtn{display:inline-flex; align-items:center; gap:6px; padding:5px 14px; border-radius:16px;
+  border:1px solid var(--border); background:#fff; cursor:pointer; font-size:13px; user-select:none; transition:all .15s;}
+.ybtn .dot{width:10px; height:10px; border-radius:50%;}
+.ybtn.off{opacity:.35; filter:grayscale(.6);}
+
+/* 数据表 */
+.tablecard{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:22px; overflow-x:auto;}
+.tablecard h2{font-size:16px; color:var(--accent); margin-bottom:10px;}
+table{width:100%; border-collapse:collapse; font-size:13px; min-width:920px;}
+th,td{padding:6px 10px; text-align:right; border-bottom:1px solid #eef1f6; white-space:nowrap;}
+th{background:#f0f4f9; color:#44506a; font-weight:600; position:sticky; top:0;}
+td:first-child, th:first-child{text-align:left;}
+tr.grp td{background:#f7f9fc; color:var(--accent); font-weight:700; text-align:left; font-size:13px;}
+td.up{color:var(--up); font-weight:600;} td.down{color:var(--down); font-weight:600;} td.flat{color:var(--flat);}
+
+/* 板块 */
+.section-title{font-size:18px; color:var(--accent); font-weight:700; margin:26px 0 4px;
+  padding-left:10px; border-left:4px solid var(--accent);}
+.grid{display:grid; gap:14px; justify-content:start;}
+.grid.c4{grid-template-columns:repeat(4,minmax(0,300px));}
+@media (max-width:1200px){ .grid.c4{grid-template-columns:repeat(2,minmax(0,480px));} }
+@media (max-width:720px){ .grid.c4{grid-template-columns:1fr;} .wrap{padding:12px 10px 40px;} }
+
+/* 图表卡片 */
+.card{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px 6px; min-width:0;}
+.card .ttl{font-size:14px; font-weight:700; color:#2a3345;}
+.card .meta{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin:5px 0 3px;}
+.card .val{font-size:21px; font-weight:700;}
+.card .val .unit{font-size:11px; color:var(--sub); font-weight:400; margin-left:2px;}
+.card .stat{display:flex; flex-direction:column; line-height:1.35;}
+.card .stat .k{font-size:10.5px; color:var(--sub);}
+.card .stat .v{font-size:13px; font-weight:600;}
+.card .stat .v.up{color:var(--up);} .card .stat .v.down{color:var(--down);} .card .stat .v.flat{color:var(--flat);}
+.card .dt{font-size:11px; color:var(--sub); margin-left:auto;}
+.chart{width:100%; aspect-ratio:16 / 9; height:auto; min-width:0;}
+.footer{margin-top:30px; color:var(--sub); font-size:12px; text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1>碳酸锂数据看板</h1>
+    <div class="date">数据截至：<b id="latestDate"></b>　|　数据源：云端在线表（自动同步）</div>
+  </div>
+  <div class="tabs">
+    <a class="tab" href="ypt.html">一页通</a>
+    <a class="tab" href="p1.html">日度价格</a>
+    <a class="tab" href="p2.html">产量开工利润</a>
+    <a class="tab" href="p3.html">产业链库存</a>
+    <a class="tab active">全球乘用车</a>
+    <a class="tab" href="p4.html">数据对比</a>
+  </div>
+
+  <div class="caliber"><span class="ico">ℹ</span><span>销量口径均为<b>批发销量（含出口）</b>；单位：万辆；渗透率单位：%</span></div>
+
+  <div class="summary" id="summary"></div>
+
+  <div class="filterbar" id="filterbar"><span class="lbl">年份筛选（点击显隐，作用于全部图表）：</span></div>
+
+  <div class="tablecard">
+    <h2>数据一览表 <span style="font-size:12px;color:var(--sub);font-weight:400">（最新月销量·万辆 / 渗透率·%；环比=较上月，同比=较去年同期，累计同比=年初至今累计较去年同期）</span></h2>
+    <table id="dataTable">
+      <thead><tr>
+        <th>板块</th><th>实体</th><th>单位</th><th>最新日期</th><th>最新值</th><th>环比</th><th>同比</th><th>累计同比</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div id="sections"></div>
+
+  <div class="footer">碳酸锂数据看板 · 全球乘用车 · 涨=红 跌=绿 · 最新年黑线、前一年红线 · 销量口径：批发销量（含出口）</div>
+</div>
+
+
+<script>
+(function(){
+  fetch('p5.json').then(function(r){return r.json();}).then(function(data){
+    window.__DATA__=data; window.D=data; loadECharts();
+  }).catch(function(){
+    document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
+  });
+})();
+
+function loadECharts(){
+  var urls=[
+    "https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js",
+    "https://cdn.bootcdn.net/ajax/libs/echarts/5.5.0/echarts.min.js",
+    "https://unpkg.com/echarts@5.5.0/dist/echarts.min.js"
+  ];
+  var i=0;
+  function tryNext(){
+    if(i>=urls.length){document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>ECharts 加载失败，请检查网络后刷新。</div>");return;}
+    var s=document.createElement("script");
+    s.src=urls[i++];
+    s.onload=init;
+    s.onerror=tryNext;
+    document.head.appendChild(s);
+  }
+  tryNext();
+}
+
+var D = window.__DATA__ || window.D;
+var charts=[];
+var YEARS = Array.from(new Set(D.xlabels.map(function(l){return l.slice(0,4);}))).sort();
+var yearVisible={};
+var PALETTE=["#1E6FFF","#F59A23","#8B5CF6","#0FB5AE","#D63FA6","#7A6A53","#3FA34D","#C0392B"];
+
+function yearColor(y){
+  var n=YEARS.length, idx=YEARS.indexOf(y);
+  if(idx===n-1) return "#000000";
+  if(idx===n-2) return "#E60000";
+  return PALETTE[idx % PALETTE.length];
+}
+function fmt(v,dec){
+  if(v===null||v===undefined||isNaN(v)) return "—";
+  return Number(v).toLocaleString("zh-CN",{minimumFractionDigits:dec,maximumFractionDigits:dec});
+}
+function chgCls(c){ if(c===null||c===undefined||c===0) return "flat"; return c>0?"up":"down"; }
+function arrow(c){ if(c===null||c===undefined||c===0) return "→"; return c>0?"▲":"▼"; }
+function sign(v){ return (v>0?"+":"")+v; }
+
+function init(){
+  document.getElementById("latestDate").textContent=D.latestDataDate;
+  YEARS.forEach(function(y){ yearVisible[y]=true; });
+  buildFilter(); buildSummary(); buildTable(); buildSections();
+  var t; window.addEventListener("resize",function(){ clearTimeout(t); t=setTimeout(function(){ charts.forEach(function(c){c.resize();}); },150); });
+}
+
+function buildFilter(){
+  var bar=document.getElementById("filterbar");
+  YEARS.forEach(function(y){
+    var b=document.createElement("span");
+    b.className="ybtn"+(yearVisible[y]?"":" off"); b.dataset.year=y;
+    b.innerHTML='<span class="dot" style="background:'+yearColor(y)+'"></span>'+y+"年";
+    b.onclick=function(){
+      yearVisible[y]=!yearVisible[y];
+      b.classList.toggle("off",!yearVisible[y]);
+      charts.forEach(function(c){ c.dispatchAction({type:"legendToggleSelect",name:String(y)}); });
+    };
+    bar.appendChild(b);
+  });
+}
+
+function secStat(secId, ent){
+  var sec=D.sections.find(function(s){return s.id===secId;});
+  if(!sec) return null;
+  var e=sec.data[ent];
+  return e?e.stat:null;
+}
+
+function buildSummary(){
+  var ld=D.latestDataDate;
+  var m=ld.slice(5).split("-");
+  var dateTxt=parseInt(m[0],10)+"月"+parseInt(m[1],10)+"日";
+  function line(secId, ent){
+    var st=secStat(secId, ent); if(!st) return null;
+    var cls=chgCls(st.yoy);
+    return "<b>"+fmt(st.latest,2)+"</b>"+st.unit+" <span class='"+cls+"'>"+
+      (st.yoy>0?"同比+":"同比")+fmt(st.yoy,2)+"%</span>";
+  }
+  // 新能源同比涨跌居前
+  var nevSec=D.sections.find(function(s){return s.id==="nev";});
+  var nevRows=nevSec.order.map(function(ent){ return {ent:ent, st:nevSec.data[ent].stat}; })
+    .filter(function(r){return r.st.yoy!==null;});
+  var ups=nevRows.slice().sort(function(a,b){return b.st.yoy-a.st.yoy;}).slice(0,3);
+  var dns=nevRows.slice().sort(function(a,b){return a.st.yoy-b.st.yoy;}).slice(0,3);
+  function li(r){ return "<span class='"+(r.st.yoy>0?"up":"down")+"'>"+r.ent+"（"+(r.st.yoy>0?"+":"")+fmt(r.st.yoy,2)+"%）</span>"; }
+
+  var html="<h2>核心变化速览</h2><div>";
+  html+=dateTxt+"，全球新能源乘用车销量 "+line("nev","全球")+"、中国新能源乘用车 "+line("nev","中国")+"；";
+  html+="全球乘用车总体 "+line("total","全球")+"；全球新能源渗透率 "+line("pen","全球")+"。";
+  html+="<br>新能源乘用车同比涨幅居前："+(ups.length?ups.map(li).join("、"):"无")+"；";
+  html+="跌幅居前："+(dns.length?dns.map(li).join("、"):"无")+"。";
+  html+="</div>";
+  document.getElementById("summary").innerHTML=html;
+}
+
+function buildTable(){
+  var tb=document.querySelector("#dataTable tbody");
+  D.sections.forEach(function(sec){
+    var trg=document.createElement("tr"); trg.className="grp";
+    trg.innerHTML="<td colspan='8'>"+sec.title+"（单位："+sec.unit+"）</td>"; tb.appendChild(trg);
+    sec.order.forEach(function(ent){
+      var st=sec.data[ent].stat;
+      var isPct=(sec.unit==="%");
+      var yoyCls=chgCls(st.yoy), cumCls=chgCls(st.ytdYoy), chgCls2=chgCls(st.chg);
+      var chgTxt = (st.chg===null)?"—":(sign(st.chg)+fmt(st.chg,2)+(isPct?"pp":sec.unit));
+      var yoyTxt = (st.yoy===null)?"—":(sign(st.yoy)+fmt(st.yoy,2)+"%");
+      var cumTxt = (st.ytdYoy===null)?"—":(sign(st.ytdYoy)+fmt(st.ytdYoy,2)+"%");
+      var tr=document.createElement("tr");
+      tr.innerHTML=
+        "<td>"+sec.metric+"</td>"+
+        "<td>"+ent+"</td>"+
+        "<td style='color:var(--sub)'>"+sec.unit+"</td>"+
+        "<td style='color:var(--sub)'>"+(st.latestDate||"—")+"</td>"+
+        "<td><b>"+fmt(st.latest,2)+"</b></td>"+
+        "<td class='"+chgCls2+"'>"+chgTxt+"</td>"+
+        "<td class='"+yoyCls+"'>"+yoyTxt+"</td>"+
+        "<td class='"+cumCls+"'>"+cumTxt+"</td>";
+      tb.appendChild(tr);
+    });
+  });
+}
+
+function monthTicks(){
+  var idx={};
+  D.xlabels.forEach(function(l,i){ if(l.slice(5)==="01") idx[i]=l.slice(0,4); });
+  return idx;
+}
+
+function buildSections(){
+  var root=document.getElementById("sections");
+  var ticks=monthTicks();
+  D.sections.forEach(function(sec){
+    var h=document.createElement("div");
+    h.className="section-title"; h.textContent=sec.title;
+    root.appendChild(h);
+    var grid=document.createElement("div"); grid.className="grid c4";
+    root.appendChild(grid);
+    sec.order.forEach(function(ent){ makeCard(sec, ent, ticks, grid); });
+  });
+}
+
+function makeCard(sec, ent, ticks, grid){
+  var st=sec.data[ent].stat;
+  var isPct=(sec.unit==="%");
+  var card=document.createElement("div"); card.className="card";
+  var yoyCls=chgCls(st.yoy), cumCls=chgCls(st.ytdYoy), chgCls2=chgCls(st.chg);
+  var chgTxt=(st.chg===null)?"—":(sign(st.chg)+fmt(st.chg,2)+(isPct?"pp":sec.unit));
+  var yoyTxt=(st.yoy===null)?"—":(sign(st.yoy)+fmt(st.yoy,2)+"%");
+  var cumTxt=(st.ytdYoy===null)?"—":(sign(st.ytdYoy)+fmt(st.ytdYoy,2)+"%");
+  card.innerHTML=
+    '<div class="ttl">'+ent+'</div>'+
+    '<div class="meta">'+
+      '<span class="val">'+fmt(st.latest,2)+'<span class="unit">'+(isPct?"%":sec.unit)+'</span></span>'+
+      '<span class="stat"><span class="k">环比</span><span class="v '+chgCls2+'">'+arrow(st.chg)+' '+chgTxt+'</span></span>'+
+      '<span class="stat"><span class="k">同比</span><span class="v '+yoyCls+'">'+yoyTxt+'</span></span>'+
+      '<span class="stat"><span class="k">累计同比</span><span class="v '+cumCls+'">'+cumTxt+'</span></span>'+
+      '<span class="dt">'+(st.latestDate||"")+'</span>'+
+    '</div>';
+  var div=document.createElement("div"); div.className="chart"; card.appendChild(div);
+  grid.appendChild(card);
+  var c=echarts.init(div);
+  var series=[], legend=[];
+  YEARS.forEach(function(y){
+    var pts=sec.data[ent].series[String(y)];
+    if(!pts||!pts.length) return;
+    legend.push(String(y));
+    series.push({
+      name:String(y), type:"line", showSymbol:false, connectNulls:true,
+      data:pts,
+      lineStyle:{width: y===YEARS[YEARS.length-1]?2.2:1.4, color:yearColor(y)},
+      itemStyle:{color:yearColor(y)},
+      emphasis:{focus:"series"},
+      z: y===YEARS[YEARS.length-1]?10:5
+    });
+  });
+  var opt={
+    animation:false,
+    grid:{left:8,right:14,top:26,bottom:8,containLabel:true},
+    legend:{show:true, top:0, right:0, itemWidth:14, itemHeight:2, icon:"rect",
+      textStyle:{fontSize:11,color:"#6b7686"}, data:legend},
+    tooltip:{trigger:"axis", confine:true,
+      formatter:function(ps){
+        if(!ps.length) return "";
+        var xi=ps[0].value[0];
+        var lab=D.xlabels[xi]||("x"+xi);
+        var s=lab.replace("-","年")+"月";
+        ps.sort(function(a,b){return Number(b.seriesName)-Number(a.seriesName);});
+        ps.forEach(function(p){
+          s+="<br>"+p.marker+p.seriesName+"年： <b>"+fmt(p.value[1],2)+(isPct?"%":"")+"</b>";
+        });
+        return s;
+      }},
+    xAxis:{type:"value", min:0, max:D.xlabels.length-1, interval:1,
+      axisLabel:{fontSize:10,color:"#8a93a3", formatter:function(v){ return ticks[v]||""; }},
+      axisTick:{show:false}, axisLine:{lineStyle:{color:"#dde3ec"}},
+      splitLine:{show:false}},
+    yAxis:{type:"value", scale:true,
+      axisLabel:{fontSize:10,color:"#8a93a3",
+        formatter:function(v){ return Math.abs(v)>=10000?(v/10000)+"万":(Math.abs(v)>=1000?(v/1000)+"k":v); }},
+      splitLine:{lineStyle:{color:"#eef1f6"}}},
+    series:series
+  };
+  c.setOption(opt);
+  YEARS.forEach(function(y){
+    if(!yearVisible[y]) c.dispatchAction({type:"legendToggleSelect",name:String(y)});
+  });
+  charts.push(c);
+}
+</script>
+</body>
+</html>
