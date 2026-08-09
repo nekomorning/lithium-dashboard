@@ -113,7 +113,7 @@ td.up{color:var(--up); font-weight:600;} td.down{color:var(--down); font-weight:
 
   <div id="sections"></div>
 
-  <div class="footer">碳酸锂数据看板 · 全球乘用车 · 涨=红 跌=绿 · 最新年黑线、前一年红线 · 销量口径：批发销量（含出口）</div>
+  <div class="footer">碳酸锂数据看板 · 全球乘用车 · 季节图：横轴=月份、纵轴=万辆（渗透率板块为%）、图例=年份 · 最新年黑线、前一年红线 · 销量口径：批发销量（含出口）</div>
 </div>
 
 
@@ -148,7 +148,9 @@ var D = null;
 var charts=[];
 var YEARS = [];
 var yearVisible={};
-var PALETTE=["#1E6FFF","#F59A23","#8B5CF6","#0FB5AE","#D63FA6","#7A6A53","#3FA34D","#C0392B"];
+var MONTHS=["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+// 配色方案与其他锂页面(p1/p3)完全一致：最新年黑线、前一年红线、其余 6 色循环
+var PALETTE=["#1E6FFF","#F59A23","#8B5CF6","#0FB5AE","#D63FA6","#7A6A53"];
 
 function yearColor(y){
   var n=YEARS.length, idx=YEARS.indexOf(y);
@@ -252,26 +254,19 @@ function buildTable(){
   });
 }
 
-function monthTicks(){
-  var idx={};
-  D.xlabels.forEach(function(l,i){ if(l.slice(5)==="01") idx[i]=l.slice(0,4); });
-  return idx;
-}
-
 function buildSections(){
   var root=document.getElementById("sections");
-  var ticks=monthTicks();
   D.sections.forEach(function(sec){
     var h=document.createElement("div");
     h.className="section-title"; h.textContent=sec.title;
     root.appendChild(h);
     var grid=document.createElement("div"); grid.className="grid c4";
     root.appendChild(grid);
-    sec.order.forEach(function(ent){ makeCard(sec, ent, ticks, grid); });
+    sec.order.forEach(function(ent){ makeCard(sec, ent, grid); });
   });
 }
 
-function makeCard(sec, ent, ticks, grid){
+function makeCard(sec, ent, grid){
   var st=sec.data[ent].stat;
   var isPct=(sec.unit==="%");
   var card=document.createElement("div"); card.className="card";
@@ -293,12 +288,12 @@ function makeCard(sec, ent, ticks, grid){
   var c=echarts.init(div);
   var series=[], legend=[];
   YEARS.forEach(function(y){
-    var pts=sec.data[ent].series[String(y)];
-    if(!pts||!pts.length) return;
+    var arr=sec.data[ent].series[String(y)];
+    if(!arr||!arr.length) return;
     legend.push(String(y));
     series.push({
-      name:String(y), type:"line", showSymbol:false, connectNulls:true,
-      data:pts,
+      name:String(y), type:"line", showSymbol:false, connectNulls:false,
+      data:arr,
       lineStyle:{width: y===YEARS[YEARS.length-1]?2.2:1.4, color:yearColor(y)},
       itemStyle:{color:yearColor(y)},
       emphasis:{focus:"series"},
@@ -313,17 +308,15 @@ function makeCard(sec, ent, ticks, grid){
     tooltip:{trigger:"axis", confine:true,
       formatter:function(ps){
         if(!ps.length) return "";
-        var xi=ps[0].value[0];
-        var lab=D.xlabels[xi]||("x"+xi);
-        var s=lab.replace("-","年")+"月";
+        var s=ps[0].name;
         ps.sort(function(a,b){return Number(b.seriesName)-Number(a.seriesName);});
         ps.forEach(function(p){
-          s+="<br>"+p.marker+p.seriesName+"年： <b>"+fmt(p.value[1],2)+(isPct?"%":"")+"</b>";
+          s+="<br>"+p.marker+p.seriesName+"年： <b>"+fmt(p.value,2)+(isPct?"%":"")+"</b>";
         });
         return s;
       }},
-    xAxis:{type:"value", min:0, max:D.xlabels.length-1, interval:1,
-      axisLabel:{fontSize:10,color:"#8a93a3", formatter:function(v){ return ticks[v]||""; }},
+    xAxis:{type:"category", data:MONTHS, boundaryGap:false,
+      axisLabel:{fontSize:10,color:"#8a93a3"},
       axisTick:{show:false}, axisLine:{lineStyle:{color:"#dde3ec"}},
       splitLine:{show:false}},
     yAxis:{type:"value", scale:true,
