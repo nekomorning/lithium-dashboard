@@ -102,10 +102,10 @@ td.up{color:var(--up); font-weight:600;} td.down{color:var(--down); font-weight:
   <div class="filterbar" id="filterbar"><span class="lbl">年份筛选（点击显隐，作用于全部图表）：</span></div>
 
   <div class="tablecard">
-    <h2>数据一览表 <span style="font-size:12px;color:var(--sub);font-weight:400">（最新月销量·万辆 / 渗透率·%；环比=较上月，同比=较去年同期，累计同比=年初至今累计较去年同期）</span></h2>
+    <h2>数据一览表 <span style="font-size:12px;color:var(--sub);font-weight:400">（最新月销量·万辆 / 渗透率·%；环比=较上月，同比=较去年同期，当年累计值=年初至今各月销量合计，累计同比=累计较去年同期；渗透率板块当年累计值不适用）</span></h2>
     <table id="dataTable">
       <thead><tr>
-        <th>板块</th><th>实体</th><th>单位</th><th>最新日期</th><th>最新值</th><th>环比</th><th>同比</th><th>累计同比</th>
+        <th>板块</th><th>实体</th><th>单位</th><th>最新日期</th><th>最新值</th><th>环比</th><th>同比</th><th>当年累计值</th><th>累计同比</th>
       </tr></thead>
       <tbody></tbody>
     </table>
@@ -228,7 +228,7 @@ function buildTable(){
   var tb=document.querySelector("#dataTable tbody");
   D.sections.forEach(function(sec){
     var trg=document.createElement("tr"); trg.className="grp";
-    trg.innerHTML="<td colspan='8'>"+sec.title+"（单位："+sec.unit+"）</td>"; tb.appendChild(trg);
+    trg.innerHTML="<td colspan='9'>"+sec.title+"（单位："+sec.unit+"）</td>"; tb.appendChild(trg);
     sec.order.forEach(function(ent){
       var st=sec.data[ent].stat;
       var isPct=(sec.unit==="%");
@@ -245,6 +245,7 @@ function buildTable(){
         "<td><b>"+fmt(st.latest,2)+"</b></td>"+
         "<td class='"+chgCls2+"'>"+chgTxt+"</td>"+
         "<td class='"+yoyCls+"'>"+yoyTxt+"</td>"+
+        "<td>"+(isPct||st.ytd===null?"—":"<b>"+fmt(st.ytd,2)+"</b>")+"</td>"+
         "<td class='"+cumCls+"'>"+cumTxt+"</td>";
       tb.appendChild(tr);
     });
@@ -327,7 +328,7 @@ function makeCard(sec, ent, ticks, grid){
       splitLine:{show:false}},
     yAxis:{type:"value", scale:true,
       axisLabel:{fontSize:10,color:"#8a93a3",
-        formatter:function(v){ return Math.abs(v)>=10000?(v/10000)+"万":(Math.abs(v)>=1000?(v/1000)+"k":v); }},
+        formatter:function(v){ var a=Math.abs(v); if(a>=10000) return (v/10000).toFixed(2)+"万"; if(a>=1000) return (v/1000).toFixed(2)+"k"; return v.toFixed(2); }},
       splitLine:{lineStyle:{color:"#eef1f6"}}},
     series:series
   };
