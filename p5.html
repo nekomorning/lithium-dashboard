@@ -102,10 +102,10 @@ td.up{color:var(--up); font-weight:600;} td.down{color:var(--down); font-weight:
   <div class="filterbar" id="filterbar"><span class="lbl">年份筛选（点击显隐，作用于全部图表）：</span></div>
 
   <div class="tablecard">
-    <h2>数据一览表 <span style="font-size:12px;color:var(--sub);font-weight:400">（最新月销量·万辆 / 渗透率·%；销量板块环比为环比%，同比/累计同比为%；渗透率板块环比/同比/累计同比均为±pp，当年累计值不适用）</span></h2>
+    <h2>数据一览表 <span style="font-size:12px;color:var(--sub);font-weight:400">（最新月销量·万辆 / 渗透率·%；销量板块：环比为环比%、同比/累计同比为%，当年累计值=年初至今累计销量，去年同期累计值=去年同月累计销量，累计增减量=两者差值（万辆）；渗透率板块：环比/同比/累计同比均为±pp，当年累计值=累计新能源销量/累计总销量（%），去年同期累计值=去年同期累计渗透率，累计增减量=两者差值（pp））</span></h2>
     <table id="dataTable">
       <thead><tr>
-        <th>指标</th><th>单位</th><th>最新日期</th><th>最新值</th><th>环比</th><th>同比</th><th>当年累计值</th><th>累计同比</th>
+        <th>指标</th><th>单位</th><th>最新日期</th><th>最新值</th><th>环比</th><th>同比</th><th>当年累计值</th><th>去年同期累计值</th><th>累计增减量</th><th>累计同比</th>
       </tr></thead>
       <tbody></tbody>
     </table>
@@ -205,9 +205,11 @@ function buildSummary(){
     var sec=D.sections.find(function(s){return s.id===secId;});
     if(!sec) return null;
     var st=secStat(secId, ent); if(!st) return null;
-    var cls=chgCls(st.ytdYoy);
+    var isP = sec.isPct;
+    var cum = isP ? st.ytdYoy_pp : st.ytdYoy;
+    var cls=chgCls(cum);
     return "<b>"+fmt(st.latest,2)+"</b>"+sec.unit+" <span class='"+cls+"'>"+
-      (st.ytdYoy>0?"累计同比+":"累计同比")+fmt(st.ytdYoy,2)+"%</span>";
+      "累计同比"+(cum>0?"+":"")+fmt(cum,2)+(isP?"pp":"%")+"</span>";
   }
   // 新能源累计同比涨跌居前
   var nevSec=D.sections.find(function(s){return s.id==="nev";});
@@ -230,17 +232,20 @@ function buildTable(){
   var tb=document.querySelector("#dataTable tbody");
   D.sections.forEach(function(sec){
     var trg=document.createElement("tr"); trg.className="grp";
-    trg.innerHTML="<td colspan='8'>"+sec.title+"（单位："+sec.unit+"）</td>"; tb.appendChild(trg);
+    trg.innerHTML="<td colspan='10'>"+sec.title+"（单位："+sec.unit+"）</td>"; tb.appendChild(trg);
     sec.order.forEach(function(ent){
       var st=sec.data[ent].stat;
       var isPct=(sec.unit==="%");
       var chgVal = isPct ? st.chg : st.pct;
       var yoyVal = isPct ? st.yoy_pp : st.yoy;
       var cumVal = isPct ? st.ytdYoy_pp : st.ytdYoy;
-      var yoyCls=chgCls(yoyVal), cumCls=chgCls(cumVal), chgCls2=chgCls(chgVal);
+      var yoyCls=chgCls(yoyVal), cumCls=chgCls(cumVal), chgCls2=chgCls(chgVal), chgCls3=chgCls(st.ytdChg);
       var chgTxt = (chgVal===null)?"—":((chgVal>0?"+":"")+fmt(chgVal,2)+(isPct?"pp":"%"));
       var yoyTxt = (yoyVal===null)?"—":((yoyVal>0?"+":"")+fmt(yoyVal,2)+(isPct?"pp":"%"));
       var cumTxt = (cumVal===null)?"—":((cumVal>0?"+":"")+fmt(cumVal,2)+(isPct?"pp":"%"));
+      var ytdTxt   = (st.ytd===null)    ?"—":("<b>"+fmt(st.ytd,2)+(isPct?"%":"")+"</b>");
+      var ytdPrevTxt=(st.ytdPrev===null)?"—":(fmt(st.ytdPrev,2)+(isPct?"%":""));
+      var ytdChgTxt=(st.ytdChg===null)  ?"—":((st.ytdChg>0?"+":"")+fmt(st.ytdChg,2)+(isPct?"pp":"万辆"));
       var tr=document.createElement("tr");
       tr.innerHTML=
         "<td>"+ent+sec.metric+"</td>"+
@@ -249,7 +254,9 @@ function buildTable(){
         "<td><b>"+fmt(st.latest,2)+"</b></td>"+
         "<td class='"+chgCls2+"'>"+chgTxt+"</td>"+
         "<td class='"+yoyCls+"'>"+yoyTxt+"</td>"+
-        "<td>"+(isPct||st.ytd===null?"—":"<b>"+fmt(st.ytd,2)+"</b>")+"</td>"+
+        "<td>"+ytdTxt+"</td>"+
+        "<td style='color:var(--sub)'>"+ytdPrevTxt+"</td>"+
+        "<td class='"+chgCls3+"'>"+ytdChgTxt+"</td>"+
         "<td class='"+cumCls+"'>"+cumTxt+"</td>";
       tb.appendChild(tr);
     });
@@ -272,10 +279,11 @@ function makeCard(sec, ent, grid){
   var st=sec.data[ent].stat;
   var isPct=(sec.unit==="%");
   var card=document.createElement("div"); card.className="card";
-  var yoyCls=chgCls(st.yoy), cumCls=chgCls(st.ytdYoy), chgCls2=chgCls(st.chg);
+  var cumVal = isPct ? st.ytdYoy_pp : st.ytdYoy;
+  var yoyCls=chgCls(st.yoy), cumCls=chgCls(cumVal), chgCls2=chgCls(st.chg);
   var chgTxt=(st.chg===null)?"—":((st.chg>0?"+":"")+fmt(st.chg,2)+(isPct?"pp":sec.unit));
   var yoyTxt=(st.yoy===null)?"—":((st.yoy>0?"+":"")+fmt(st.yoy,2)+"%");
-  var cumTxt=(st.ytdYoy===null)?"—":((st.ytdYoy>0?"+":"")+fmt(st.ytdYoy,2)+"%");
+  var cumTxt=(cumVal===null)?"—":((cumVal>0?"+":"")+fmt(cumVal,2)+(isPct?"pp":"%"));
   card.innerHTML=
     '<div class="ttl">'+ent+'</div>'+
     '<div class="meta">'+
