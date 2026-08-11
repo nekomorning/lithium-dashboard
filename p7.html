@@ -47,6 +47,10 @@ table.data thead th.date-col{background:var(--accent); z-index:4;}
 table.data thead tr:nth-child(2) th.date-col{top:0; z-index:5;}
 .val-null{color:var(--flat);}
 td .pos{color:var(--up);} td .neg{color:var(--down);}
+.fold-btn{display:inline-block; min-width:14px; height:14px; line-height:13px; margin-right:4px;
+  border-radius:3px; background:rgba(255,255,255,.88); color:#0f4c81; font-weight:700;
+  font-size:11px; text-align:center; cursor:pointer; user-select:none; vertical-align:middle;}
+.fold-btn:hover{background:#fff;}
 
 .filter-bar{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px; padding:10px 12px;
   background:var(--card); border:1px solid var(--border); border-radius:8px;}
@@ -145,10 +149,43 @@ function loadECharts(){
   }
 
   /* ---------- 列定义（月度表 / 区间筛选 / 年度汇总 共用） ---------- */
+  /* 组合列折叠配置：合计列 -> 子列（点击列头 + 展开 / 折叠，体现总分结构） */
+  var FOLD = {
+    "prod": ["lepid", "zmine"],
+    "sp_supply": ["sp_prod", "sp_imp"],
+    "sp_imp": ["sp_aus", "sp_zw", "sp_mali", "sp_nig", "sp_bra", "sp_can"],
+    "sp_demand": ["sp_carb", "sp_hyd", "sp_chl"],
+    "zm_demand": ["zm_carb", "zm_hyd"]
+  };
+  var foldState = {};
+  Object.keys(FOLD).forEach(function(k){ foldState[k] = false; });   // 默认折叠：只显示合计列
+  var COL_MAP = {};
+  D.cols.forEach(function(c){ COL_MAP[c.key] = c; });
+  function isFoldKey(k){ return Object.prototype.hasOwnProperty.call(FOLD, k); }
+  function isAnyChild(k){
+    // 该列是某个折叠父列的子列 -> 由父列展开时负责加入，遍历时直接跳过（避免重复）
+    var keys = Object.keys(FOLD);
+    for(var i=0;i<keys.length;i++){
+      if(FOLD[keys[i]].indexOf(k) >= 0) return true;
+    }
+    return false;
+  }
+  function expandKey(k, out){
+    out.push(k);
+    if(isFoldKey(k) && foldState[k]) FOLD[k].forEach(function(c){ expandKey(c, out); });
+  }
   function getCols(){
-    var groups=D.groups.map(function(g){ return {label:g.label, span:g.keys.length, color:g.color}; });
-    var cols=D.cols;
-    return {cols:cols, groups:groups};
+    var cols = [], groups = [];
+    D.groups.forEach(function(g){
+      var keys = [];
+      g.keys.forEach(function(k){
+        if(isAnyChild(k)) return;   // 子列由父列展开时加入
+        expandKey(k, keys);
+      });
+      groups.push({label: g.label, span: keys.length, color: g.color});
+      keys.forEach(function(k){ cols.push(COL_MAP[k]); });
+    });
+    return {cols: cols, groups: groups};
   }
   function headCells(G){
     var h="<tr><th class='date-col' rowspan='2'>"+(G.firstCol||"月份")+"</th>";
@@ -156,7 +193,12 @@ function loadECharts(){
       h+="<th colspan='"+g.span+"' style='background:"+g.color+";color:#fff;'>"+g.label+"</th>";
     });
     h+="</tr><tr>";
-    G.cols.forEach(function(col){ h+="<th style='background:"+(col.color||"#0f4c81")+";color:#fff;'>"+col.label+"</th>"; });
+    G.cols.forEach(function(col){
+      var fb = isFoldKey(col.key)
+        ? "<span class='fold-btn' data-k='"+col.key+"' title='展开/折叠分项'>"+(foldState[col.key]?"−":"+")+"</span>"
+        : "";
+      h+="<th style='background:"+(col.color||"#0f4c81")+";color:#fff;'>"+fb+col.label+"</th>";
+    });
     return h+"</tr>";
   }
 
@@ -247,14 +289,32 @@ function loadECharts(){
       if(diff[idx]===null||lst[idx]===null||lst[idx]===0) return null;
       return diff[idx]/lst[idx]*100;
     });
+    // 锂矿进口依赖度：用区间内 锂矿进口累计 ÷ 锂矿总供给累计 ×100；同比增减值显示 ±pp，不显示同比增减%
+    G.cols.forEach(function(col, idx){
+      if(col.key === "impdep"){
+        var ai = aggRange(sy,sm,ey,em,COL_MAP["imp"]), as = aggRange(sy,sm,ey,em,COL_MAP["supply"]);
+        var li = aggRange(sy-1,sm,ey-1,em,COL_MAP["imp"]), ls = aggRange(sy-1,sm,ey-1,em,COL_MAP["supply"]);
+        sel[idx] = (ai!=null && as) ? ai/as*100 : null;
+        lst[idx] = (li!=null && ls) ? li/ls*100 : null;
+        diff[idx] = (sel[idx]!=null && lst[idx]!=null) ? sel[idx]-lst[idx] : null;
+        pct[idx] = null;
+      }
+    });
     var head="<thead>"+headCells(G)+"</thead>";
-    function row(name,arr,mode,colorFn){
+    function row(name,arr,mode,colorFn,impdepMode){
       // mode: 'wan'=万吨LCE整数（吨÷10000） | 'pct'=同比%保留1位小数
+      // impdepMode: 'pct'=累计值显示整数% | 'pp'=同比增减值显示±pp | 'none'=同比%行留空
       var r="<tr><td class='date-col'>"+name+"</td>";
       arr.forEach(function(v,idx){
+        var isImpDep = G.cols[idx].key === "impdep";
         var s="";
         if(v!==null&&v!==undefined){
-          s = (mode==="pct") ? Number(v).toFixed(1)+"%" : String(Math.round(v/10000));
+          if(mode==="pct"){ s = isImpDep ? "" : Number(v).toFixed(1)+"%"; }
+          else if(isImpDep){
+            s = (impdepMode==="pp")
+              ? ((v>0?"+":"") + Math.round(v) + "pp")
+              : Math.round(v) + "%";
+          } else { s = String(Math.round(v/10000)); }
         }
         var sty=(colorFn&&s!=="")?colorFn(v,idx):"";
         r+="<td"+sty+">"+s+"</td>";
@@ -262,14 +322,16 @@ function loadECharts(){
       return r+"</tr>";
     }
     var body="<tbody>";
-    body+=row("上年同期区间累计值（万吨LCE）", lst, "wan", null);
-    body+=row("所选周期区间累计值（万吨LCE）", sel, "wan", null);
-    body+=row("同比增减值（万吨LCE）", diff, "wan", function(v){ return signStyle(v); });
-    body+=row("同比增减%", pct, "pct", function(v){ return signStyle(v); });
+    body+=row("上年同期区间累计值（万吨LCE）", lst, "wan", null, "pct");
+    body+=row("所选周期区间累计值（万吨LCE）", sel, "wan", null, "pct");
+    body+=row("同比增减值（万吨LCE）", diff, "wan", function(v){ return signStyle(v); }, "pp");
+    body+=row("同比增减%", pct, "pct", function(v){ return signStyle(v); }, "none");
     body+="</tbody>";
     document.getElementById("filterWrap").innerHTML="<table class='data'>"+head+body+"</table>";
     document.getElementById("filterNote").textContent=
-      "区间 "+sy+"年"+sm+"月 至 "+ey+"年"+em+"月 · 累计值/同比增减值单位：万吨 LCE（吨÷10000，四舍五入取整）；同比增减% 保留 1 位小数；占比/天数列不参与区间累计";
+      "区间 "+sy+"年"+sm+"月 至 "+ey+"年"+em+"月 · 累计值/同比增减值单位：万吨 LCE（吨÷10000，四舍五入取整）；"+
+      "锂矿进口依赖度按区间内 进口累计÷总供给累计 计算（同比增减值 ±pp，无需同比增减%）；"+
+      "天数列不参与区间累计；同比增减% 保留 1 位小数";
   }
 
   /* ---------- 年度数据汇总 ---------- */
@@ -335,6 +397,19 @@ function loadECharts(){
     });
   }
 
+  /* ---------- 折叠列点击事件（表头 +/- 切换） ---------- */
+  document.addEventListener('click', function(e){
+    var t = e.target;
+    var b = (t && t.closest) ? t.closest('.fold-btn') : null;
+    if(!b) return;
+    var k = b.getAttribute('data-k');
+    if(!isFoldKey(k)) return;
+    foldState[k] = !foldState[k];
+    renderMonthly();
+    renderFilterBar();
+    renderAnnual();
+  });
+
   /* ---------- orchestration ---------- */
   document.getElementById("pageTitle").textContent=D.pageTitle||"中国产业链平衡";
   document.getElementById("pageSub").textContent=(D.pageSub||"")+" · 数据截至 "+D.latestDate;
@@ -343,7 +418,7 @@ function loadECharts(){
   renderFilterBar();
   renderAnnual();
   document.getElementById("monthlySub").textContent=
-    "只显示原始数据（不含环比/同比） · 数值保留整数（吨 LCE） · 默认滚动到最新月份，向上滚动查看更早年份；横向滚动查看全部指标";
+    "只显示原始数据（不含环比/同比） · 数值保留整数（吨 LCE） · 点击列头「+」可展开/折叠分项列 · 默认滚动到最新月份，向上滚动查看更早年份；横向滚动查看全部指标";
   document.getElementById("filterSub").textContent="同比对照 · 累计值/同比增减值单位：万吨 LCE · 列结构与月度表一致";
   try{ renderSeasonal(); }catch(e){ console.error("seasonal error",e); }
   document.getElementById("seasonalSub").textContent=
