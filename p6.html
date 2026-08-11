@@ -58,6 +58,12 @@ th.hl{background:#d4e3f5 !important; color:#0b3a63 !important;}
 /* 汇总表行：与明细表一致的白底，增量红涨绿跌 */
 tr.grp td{background:#fff; color:var(--text); font-weight:600;}
 tr.grp.global td{background:#fff; color:var(--text); font-weight:700;}
+tr.grp td.up{color:var(--up); font-weight:700;}
+tr.grp td.down{color:var(--down); font-weight:700;}
+tr.grp td.flat{color:var(--flat);}
+tr.grp.global td.up{color:var(--up); font-weight:800;}
+tr.grp.global td.down{color:var(--down); font-weight:800;}
+tr.grp.global td.flat{color:var(--flat);}
 td.grp-name{border-bottom:1px dashed #c5d2e2;}
 td.proj{border-bottom:1px dashed #c5d2e2; cursor:help;}
 td.proj:hover{color:var(--accent);}
