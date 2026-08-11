@@ -59,10 +59,11 @@ td .pos{color:var(--up);} td .neg{color:var(--down);}
 .filter-bar .arrow{color:var(--sub); font-weight:700;}
 .filter-note{font-size:12px; color:var(--sub); margin-top:6px;}
 
-/* 季节图板块：参考页面一排版 —— 蓝色竖条标题 + 卡片网格，不足 4 个补空位 */
+/* 季节图板块：参考页面一排版 —— 蓝色竖条标题 + 卡片网格，不足列数补空位 */
 .grid.c4{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-top:8px;}
-@media (max-width:1200px){ .grid.c4{grid-template-columns:repeat(2,minmax(0,1fr));} }
-@media (max-width:720px){ .grid.c4{grid-template-columns:1fr;} }
+.grid.c3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:8px;}
+@media (max-width:1200px){ .grid.c4{grid-template-columns:repeat(2,minmax(0,1fr));} .grid.c3{grid-template-columns:repeat(2,minmax(0,1fr));} }
+@media (max-width:720px){ .grid.c4,.grid.c3{grid-template-columns:1fr;} }
 .grid .grid-blank{min-width:0; background:transparent; border:0; padding:0; visibility:hidden;}
 .chart-cell{border:1px solid var(--border); border-radius:10px; padding:8px 10px; background:var(--card);}
 .chart-cell .cap{font-size:12.5px; font-weight:700; color:var(--accent); margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
@@ -377,7 +378,8 @@ function loadECharts(){
   /* ---------- 季节图（全部指标，按一级列标题分板块，参考页面一排版：标题 + 卡片网格） ---------- */
   var seasonalCharts=[];
   function padGrid(g, n){
-    var rem = (4 - (n % 4)) % 4;
+    var cols = D.gridCols || 4;
+    var rem = (cols - (n % cols)) % cols;
     for(var k=0;k<rem;k++){ var ph=document.createElement("div"); ph.className="grid-blank"; g.appendChild(ph); }
   }
   function renderSeasonal(){
@@ -386,15 +388,16 @@ function loadECharts(){
     var wrap=document.getElementById("seasonalWrap");
     wrap.innerHTML="";
     var curGroup=null, gridEl=null, cntInGroup=0;
+    var gridCls = "grid c" + (D.gridCols || 4);
     D.seasonalCols.forEach(function(sc){
       if(sc.group !== curGroup){
-        // 上一组补足 4 列空位
+        // 上一组补足列空位
         if(gridEl) padGrid(gridEl, cntInGroup);
         curGroup = sc.group; cntInGroup = 0;
         var h=document.createElement("div");
         h.className="section-title"; h.textContent=sc.group;
         wrap.appendChild(h);
-        gridEl=document.createElement("div"); gridEl.className="grid c4";
+        gridEl=document.createElement("div"); gridEl.className=gridCls;
         wrap.appendChild(gridEl);
       }
       var ser=D.seasonal[sc.key]||{};
