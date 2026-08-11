@@ -421,8 +421,9 @@ function cnStat(key, isPct){
     if(ser[pk]!==null && ser[pk]!==undefined){ prevCum+=ser[pk]; hasP=true; }
   }
   var ytdYoy = (!isPct && hasC && hasP && prevCum!==0) ? ((curCum/prevCum-1)*100) : null;
-  return {latest:v, chg:chg, yoy:yoy, ytdYoy:ytdYoy, lm:lm};
+  return {latest:v, chg:chg, yoy:yoy, ytdYoy:ytdYoy, lm:lm, cum: (hasC?curCum:null)};
 }
+function isInvKey(k){ return k.indexOf('_inv')>=0; }   // 库存变化类：只显示最新值与当年累计
 function cnFmt(v){ if(v===null||v===undefined||isNaN(v)) return "—"; return Number(v).toFixed(1); }
 function cnChgTxt(v, isPct){
   if(v===null||v===undefined||isNaN(v)) return "—";
@@ -503,12 +504,17 @@ function renderCnSeasonal(){
 }
 function cnCard(k, grid){
   var isPct = CN.penKeys.indexOf(k.key)>=0;
+  var isInv = isInvKey(k.key);   // 库存变化类：只显示最新值与当年累计
   var st = cnStat(k.key, isPct);
   var card=document.createElement("div"); card.className="card";
   var html='<div class="ttl">'+k.label+'</div><div class="cn-meta">';
   if(st){
-    html+='<b>'+cnFmt(st.latest)+'</b>'+(isPct?"%":CN.unit)+' · 环比 <span class="'+chgCls(st.chg)+'">'+cnChgTxt(st.chg,isPct)+'</span> · 同比 <span class="'+chgCls(st.yoy)+'">'+cnChgTxt(st.yoy,isPct)+'</span>';
-    if(!isPct) html+=' · 累计同比 <span class="'+chgCls(st.ytdYoy)+'">'+cnChgTxt(st.ytdYoy,false)+'</span>';
+    if(isInv){
+      html+='<b>'+cnFmt(st.latest)+'</b>'+CN.unit+' · 当年累计 <b>'+cnFmt(st.cum)+'</b>'+CN.unit;
+    } else {
+      html+='<b>'+cnFmt(st.latest)+'</b>'+(isPct?"%":CN.unit)+' · 环比 <span class="'+chgCls(st.chg)+'">'+cnChgTxt(st.chg,isPct)+'</span> · 同比 <span class="'+chgCls(st.yoy)+'">'+cnChgTxt(st.yoy,isPct)+'</span>';
+      if(!isPct) html+=' · 累计同比 <span class="'+chgCls(st.ytdYoy)+'">'+cnChgTxt(st.ytdYoy,false)+'</span>';
+    }
   }
   html+='</div><div class="chart"></div>';
   card.innerHTML=html;
