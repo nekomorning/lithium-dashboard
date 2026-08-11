@@ -65,6 +65,9 @@ tr.detail:hover td{background:#fafcff;}
 tr.grp:hover td{background:#fafcff;}
 tr.detail-summary td{background:#f0f6ff; font-weight:700; color:var(--accent);}
 tr.detail-summary td.hl{background:#d9e8fc !important;}
+tr.detail-pct td{background:#fbfdff; font-weight:600; color:var(--sub);}
+tr.detail-pct td.hl{background:#eef5fc !important;}
+td.pct-name{border-bottom:1px dashed #cdd9e8;}
 
 /* 明细表筛选与排序 */
 .detail-filter{align-items:center; gap:8px 12px;}
@@ -212,18 +215,29 @@ function loadECharts(){
   function hasActiveFilter(){
     return filterState.search || filterState.region.length || filterState.country.length || filterState.rtype.length;
   }
-  function detailSummaryRow(rows){
-    var vals = sumVals(rows);
-    var ic = groupInc(vals);
+  function detailSummaryRow(summaryVals, count){
+    var ic = groupInc(summaryVals);
     var t = '';
     t += '<td>—</td>';
     t += '<td>—</td>';
     t += '<td>—</td>';
-    t += '<td class="summary-name">汇总（筛选，'+rows.length+' 个项目）</td>';
-    YEARS.forEach(function(y,i){ t += '<td'+(y===2026||y===2027?' class="hl"':'')+'>'+fmt(vals[i])+'</td>'; });
+    t += '<td class="summary-name">汇总（筛选，'+count+' 个项目）</td>';
+    YEARS.forEach(function(y,i){ t += '<td'+(y===2026||y===2027?' class="hl"':'')+'>'+fmt(summaryVals[i])+'</td>'; });
     t += '<td class="'+incClass(ic[0])+'">'+inc(ic[0])+'</td>';
     t += '<td class="'+incClass(ic[1])+'">'+inc(ic[1])+'</td>';
     return '<tr class="detail-summary">'+t+'</tr>';
+  }
+  function detailPctRow(summaryVals, globalVals){
+    function pct(v, g){ return (v==null || g==null) ? '—' : (v / g * 100).toFixed(1) + '%'; }
+    var t = '';
+    t += '<td>—</td>';
+    t += '<td>—</td>';
+    t += '<td>—</td>';
+    t += '<td class="pct-name">占全球合计</td>';
+    YEARS.forEach(function(y,i){ t += '<td'+(y===2026||y===2027?' class="hl"':'')+'>'+pct(summaryVals[i], globalVals[i])+'</td>'; });
+    t += '<td>—</td>';
+    t += '<td>—</td>';
+    return '<tr class="detail-pct">'+t+'</tr>';
   }
 
   // ---------- 表头 ----------
@@ -335,7 +349,10 @@ function loadECharts(){
     var sorted = sortRows(filtered);
     var html = '';
     if(hasActiveFilter() && filtered.length > 0){
-      html += detailSummaryRow(filtered);
+      var summaryVals = sumVals(filtered);
+      var globalVals = sumVals(ROWS);
+      html += detailSummaryRow(summaryVals, filtered.length);
+      html += detailPctRow(summaryVals, globalVals);
     }
     sorted.forEach(function(r){ html += detailRow(r); });
     document.getElementById('detailBody').innerHTML = html;
