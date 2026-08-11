@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>碳酸锂数据看板 · 中国产业链平衡</title>
+<title>碳酸锂数据看板 · 中国锂产业链平衡</title>
 <style>
 :root{
   --bg:#f4f6fa; --card:#ffffff; --border:#e5e9f0; --text:#1f2733; --sub:#6b7686;
@@ -72,7 +72,7 @@ td .pos{color:var(--up);} td .neg{color:var(--down);}
 <body>
 <div class="wrap">
   <div class="header">
-    <h1 id="pageTitle">中国产业链平衡</h1>
+    <h1 id="pageTitle">中国锂产业链平衡</h1>
     <div class="date" id="pageSub"></div>
   </div>
 
@@ -83,7 +83,7 @@ td .pos{color:var(--up);} td .neg{color:var(--down);}
     <a class="tab" href="p3.html">产业链库存</a>
     <a class="tab" href="p5.html">全球乘用车</a>
     <a class="tab" href="p6.html">全球锂资源</a>
-    <div class="tab active">中国产业链平衡</div>
+    <div class="tab active">中国锂产业链平衡</div>
     <a class="tab" href="p4.html">数据对比</a>
   </div>
 
@@ -103,7 +103,7 @@ td .pos{color:var(--up);} td .neg{color:var(--down);}
   <div class="section-title">季节图<span class="sub-inline" id="seasonalSub"></span></div>
   <div class="grid-3" id="seasonalWrap"></div>
 
-  <div class="footer">碳酸锂数据看板 · 中国产业链平衡 · 数据来源：SMM / 海关（底稿《碳酸锂产业链平衡表.xlsx》） · 单位：吨 LCE</div>
+  <div class="footer">碳酸锂数据看板 · 中国锂产业链平衡 · 数据来源：SMM / 海关（底稿《碳酸锂产业链平衡表.xlsx》） · 单位：吨 LCE</div>
 </div>
 
 
@@ -411,7 +411,7 @@ function loadECharts(){
   });
 
   /* ---------- orchestration ---------- */
-  document.getElementById("pageTitle").textContent=D.pageTitle||"中国产业链平衡";
+  document.getElementById("pageTitle").textContent=D.pageTitle||"中国锂产业链平衡";
   document.getElementById("pageSub").textContent=(D.pageSub||"")+" · 数据截至 "+D.latestDate;
   buildBalanceTabs();
   renderMonthly();
