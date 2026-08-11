@@ -83,9 +83,23 @@ td.up{color:var(--up); font-weight:600;} td.down{color:var(--down); font-weight:
 .cn-ov .oc .v .u{font-size:10px; color:var(--sub); font-weight:400; margin-left:2px;}
 .cn-ov .oc .s{font-size:11px; line-height:1.6;}
 .cn-ov .oc .s .up{color:var(--up);} .cn-ov .oc .s .down{color:var(--down);} .cn-ov .oc .s .flat{color:var(--flat);}
-.cn-meta{font-size:10.5px; color:var(--sub); margin-bottom:3px; line-height:1.55; word-break:break-all;}
+.cn-meta{font-size:10.5px; color:var(--sub); margin-bottom:3px; line-height:1.6; word-break:break-all;}
 .cn-meta b{color:var(--text);}
 .cn-meta .up{color:var(--up);} .cn-meta .down{color:var(--down);} .cn-meta .flat{color:var(--flat);}
+/* 中国汽车图表卡片：第一行 标题+最新值（右上角），第二行 环比/同比/累计同比 */
+.cn-head{display:flex; align-items:baseline; justify-content:space-between; gap:6px; margin-bottom:2px;}
+.cn-head .ttl{font-size:13.5px; font-weight:700; color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.cn-head .latest{font-size:16px; font-weight:700; color:var(--text); white-space:nowrap; flex-shrink:0;}
+.cn-head .latest i{font-size:10px; color:var(--sub); font-weight:400; font-style:normal; margin-left:2px;}
+
+/* 中国汽车：核心变化速览（文字描述+段落分析） */
+.cn-sum{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px 22px; margin:8px 0 18px; line-height:1.85;}
+.cn-sum h3{font-size:17px; color:var(--accent); margin-bottom:12px; font-weight:700;}
+.cn-sum p{margin:9px 0; color:var(--text); font-size:13.5px;}
+.cn-sum p b{color:var(--accent); font-weight:600;}
+.cn-sum p .up{color:var(--up); font-weight:600;}
+.cn-sum p .down{color:var(--down); font-weight:600;}
+.cn-sum p .flat{color:var(--flat);}
 
 /* 图表卡片 */
 .card{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px 6px; min-width:0;}
@@ -456,20 +470,61 @@ function cnSerByYear(key){
 }
 function renderCnOverview(){
   var w=document.getElementById("cnSummary"); w.innerHTML="";
-  CN.overview.forEach(function(o){
-    var isPct = CN.penKeys.indexOf(o.key)>=0;
-    var st = cnStat(o.key, isPct);
-    var oc=document.createElement("div"); oc.className="oc";
-    var html='<div class="t">'+o.label+'</div>';
-    if(st){
-      html+='<div class="v">'+cnFmt(st.latest)+'<span class="u">'+(isPct?"%":CN.unit)+'</span></div>';
-      html+='<div class="s">环比 <b class="'+chgCls(st.chg)+'">'+cnChgTxt(st.chg,isPct)+'</b>　同比 <b class="'+chgCls(st.yoy)+'">'+cnChgTxt(st.yoy,isPct)+'</b>';
-      if(!isPct) html+='　累计同比 <b class="'+chgCls(st.ytdYoy)+'">'+cnChgTxt(st.ytdYoy,false)+'</b>';
-      html+='</div>';
-    } else html+='<div class="s">无数据</div>';
-    oc.innerHTML=html;
-    w.appendChild(oc);
+  if(!CN || !CN.series) return;
+  function g(key, isPct){ return cnStat(key, !!isPct); }
+  function num(v, d){ return (v==null||isNaN(v))?"—":Number(v).toFixed(d||1); }
+  function pct(v){ return v==null?"—":(v>0?"+":"")+num(v); }
+  function pp(v){ return v==null?"—":(v>0?"+":"")+Math.round(v); }
+  function dir(v, upText, downText, flatText){ if(v==null) return "持平"; return v>0?upText:(v<0?downText:flatText); }
+
+  var latestM = CN.months[CN.months.length-1];
+  var ly = +latestM.slice(0,4), lm = +latestM.slice(5,7);
+
+  var auto = g('auto_sales'), autoProd = g('auto_prod'), autoExp = g('auto_exp');
+  var pv = g('pv_sales'), pvProd = g('pv_prod'), pvExp = g('pv_exp');
+  var cv = g('cv_sales');
+  var nev = g('nev_sales'), nevExp = g('nev_exp');
+  var pen_auto = g('pen_auto', true), pen_pv_ws = g('pen_pv_ws', true), pen_pv_rt = g('pen_pv_rt', true), pen_cv = g('pen_cv', true);
+
+  // 历史同月平均排名（季节性）
+  var histMs = CN.months.filter(function(m){ return +m.slice(0,4) < ly; });
+  var sum = {1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0,10:0,11:0,12:0}, cnt={};
+  histMs.forEach(function(m){
+    var mo=+m.slice(5,7), v=CN.series['auto_sales'][m];
+    if(v!=null){ sum[mo]+=v; cnt[mo]=(cnt[mo]||0)+1; }
   });
+  var avgMo={}; Object.keys(sum).forEach(function(k){ avgMo[+k] = cnt[k]? sum[+k]/cnt[k] : 0; });
+  var sortedMo = Object.keys(avgMo).map(function(k){return {mo:+k, avg:avgMo[+k]};}).sort(function(a,b){return a.avg-b.avg;});
+  var rank = sortedMo.findIndex(function(s){return s.mo===lm;});
+  var seasonLabel = rank>=8 ? "传统旺季" : (rank<=3 ? "传统淡季" : "过渡月份");
+
+  var html = '<div class="cn-sum">';
+  html += '<h3>'+ly+'年'+lm+'月中国汽车数据整体总结</h3>';
+
+  // ① 汽车整体
+  var yoyDir = dir(auto.yoy, "延续增长", "明显承压", "基本持平");
+  html += '<p>① <b>汽车产销总体</b>：当月销量 <b>'+num(auto.latest)+' 万辆</b>，同比<span class="'+chgCls(auto.yoy)+'">'+pct(auto.yoy)+'%</span>、环比<span class="'+chgCls(auto.chg)+'">'+pct(auto.chg)+'%</span>；产量 '+num(autoProd.latest)+' 万辆（同比<span class="'+chgCls(autoProd.yoy)+'">'+pct(autoProd.yoy)+'%</span>）；出口 <b>'+num(autoExp.latest)+' 万辆</b>（同比<span class="'+chgCls(autoExp.yoy)+'">'+pct(autoExp.yoy)+'%</span>）。1-'+lm+'月累计销量 '+num(auto.cum)+' 万辆，累计同比<span class="'+chgCls(auto.ytdYoy)+'">'+pct(auto.ytdYoy)+'%</span>。整体反映国内汽车市场 '+yoyDir+'，出口持续'+(autoExp.yoy>20?"强劲":(autoExp.yoy>0?"改善":"走弱"))+'。</p>';
+
+  // ② 乘用车
+  var pvNote = pv.yoy<-10? "内需走弱，新能源替代加速" : (pv.yoy>10? "需求修复，新能源与出口共同拉动" : "需求基本平稳");
+  html += '<p>② <b>乘用车</b>：销量 <b>'+num(pv.latest)+' 万辆</b>，同比<span class="'+chgCls(pv.yoy)+'">'+pct(pv.yoy)+'%</span>、环比<span class="'+chgCls(pv.chg)+'">'+pct(pv.chg)+'%</span>；产量 '+num(pvProd.latest)+' 万辆；出口 '+num(pvExp.latest)+' 万辆，同比<span class="'+chgCls(pvExp.yoy)+'">'+pct(pvExp.yoy)+'%</span>。'+pvNote+'。</p>';
+
+  // ③ 商用车
+  html += '<p>③ <b>商用车</b>：销量 '+num(cv.latest)+' 万辆，同比<span class="'+chgCls(cv.yoy)+'">'+pct(cv.yoy)+'%</span>、环比<span class="'+chgCls(cv.chg)+'">'+pct(cv.chg)+'%</span>；'+ (cv.yoy<0? "商用车持续承压，与物流、地产投资需求疲软一致" : "商用车景气改善") +'。</p>';
+
+  // ④ 新能源
+  var nevNote = nev.latest > nev.yoyPrev ? "新能源车销量首次低于去年同期，渗透率快速提升后进入'高基数稳态'阶段" : "新能源车同比仍增长，电动化进程持续推进";
+  html += '<p>④ <b>新能源车</b>：销量 <b>'+num(nev.latest)+' 万辆</b>，同比<span class="'+chgCls(nev.yoy)+'">'+pct(nev.yoy)+'%</span>、环比<span class="'+chgCls(nev.chg)+'">'+pct(nev.chg)+'%</span>；出口 '+num(nevExp.latest)+' 万辆，同比<span class="'+chgCls(nevExp.yoy)+'">'+pct(nevExp.yoy)+'%</span>。乘用车批发渗透率 <b>'+Math.round(pen_pv_ws.latest)+'%</b>（同比<span class="'+chgCls(pen_pv_ws.yoy)+'">'+pp(pen_pv_ws.yoy)+'pp</span>），乘用车零售渗透率 '+Math.round(pen_pv_rt.latest)+'%。'+nevNote+'。</p>';
+
+  // ⑤ 渗透率
+  var penNote = pen_auto.yoy>3? "新能源渗透率仍维持高位且持续向上，电动化趋势明确" : (pen_auto.yoy<0? "渗透率同比首次出现回落，新能源对燃油车的替代效应进入瓶颈期" : "渗透率高位震荡，新能源进入稳态替代阶段");
+  html += '<p>⑤ <b>渗透率</b>：汽车整体渗透率 '+Math.round(pen_auto.latest)+'%，同比<span class="'+chgCls(pen_auto.yoy)+'">'+pp(pen_auto.yoy)+'pp</span>；商用车渗透率 '+Math.round(pen_cv.latest)+'%（同比<span class="'+chgCls(pen_cv.yoy)+'">'+pp(pen_cv.yoy)+'pp</span>）。'+penNote+'。</p>';
+
+  // ⑥ 季节性
+  html += '<p>⑥ <b>季节性</b>：历年'+lm+'月汽车销量平均约 '+num(avgMo[lm])+' 万辆，排名全年第 '+(rank+1)+' 位（淡→旺），属<strong>'+seasonLabel+'</strong>。历史上 1-2 月受春节扰动为淡季、Q2 平稳、9-12 月金九银十为传统旺季。'+ (lm>=9||lm<=2? "当前时点临近关键销售窗口，" : "") +'后续走势需结合经销商库存、政策预期与新能源出口节奏持续跟踪。</p>';
+
+  html += '</div>';
+  w.innerHTML = html;
 }
 function renderCnTable(){
   var tb=document.querySelector("#cnTable tbody"); tb.innerHTML="";
@@ -536,12 +591,14 @@ function cnCard(k, grid){
   var isInv = isInvKey(k.key);   // 库存变化类：只显示最新值与当年累计
   var st = cnStat(k.key, isPct);
   var card=document.createElement("div"); card.className="card";
-  var html='<div class="ttl">'+k.label+'</div><div class="cn-meta">';
+  var html='<div class="cn-head"><span class="ttl">'+k.label+'</span>';
+  if(st) html+='<span class="latest">'+cnFmt(st.latest)+'<i>'+(isPct?"%":CN.unit)+'</i></span>';
+  html+='</div><div class="cn-meta">';
   if(st){
     if(isInv){
-      html+='<b>'+cnFmt(st.latest)+'</b>'+CN.unit+' · 当年累计 <b>'+cnFmt(st.cum)+'</b>'+CN.unit;
+      html+='当年累计 <b>'+cnFmt(st.cum)+'</b>'+CN.unit;
     } else {
-      html+='<b>'+cnFmt(st.latest)+'</b>'+(isPct?"%":CN.unit)+' · 环比 <span class="'+chgCls(st.chg)+'">'+cnChgTxt(st.chg,isPct)+'</span> · 同比 <span class="'+chgCls(st.yoy)+'">'+cnChgTxt(st.yoy,isPct)+'</span>';
+      html+='环比 <span class="'+chgCls(st.chg)+'">'+cnChgTxt(st.chg,isPct)+'</span> · 同比 <span class="'+chgCls(st.yoy)+'">'+cnChgTxt(st.yoy,isPct)+'</span>';
       if(!isPct) html+=' · 累计同比 <span class="'+chgCls(st.ytdYoy)+'">'+cnChgTxt(st.ytdYoy,false)+'</span>';
     }
   }
