@@ -59,13 +59,11 @@ td .pos{color:var(--up);} td .neg{color:var(--down);}
 .filter-bar .arrow{color:var(--sub); font-weight:700;}
 .filter-note{font-size:12px; color:var(--sub); margin-top:6px;}
 
-.seasonal-sec{margin-bottom:18px;}
-.seasonal-sec .sec-title{display:inline-block; margin:0 0 8px; padding:5px 14px; border-radius:6px;
-  color:#fff; font-size:13px; font-weight:700;}
-.grid-4{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:8px;}
-@media (max-width:1500px){ .grid-4{grid-template-columns:repeat(3,1fr);} }
-@media (max-width:1100px){ .grid-4{grid-template-columns:repeat(2,1fr);} }
-@media (max-width:700px){ .grid-4{grid-template-columns:1fr;} }
+/* 季节图板块：参考页面一排版 —— 蓝色竖条标题 + 卡片网格，不足 4 个补空位 */
+.grid.c4{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-top:8px;}
+@media (max-width:1200px){ .grid.c4{grid-template-columns:repeat(2,minmax(0,1fr));} }
+@media (max-width:720px){ .grid.c4{grid-template-columns:1fr;} }
+.grid .grid-blank{min-width:0; background:transparent; border:0; padding:0; visibility:hidden;}
 .chart-cell{border:1px solid var(--border); border-radius:10px; padding:8px 10px; background:var(--card);}
 .chart-cell .cap{font-size:12.5px; font-weight:700; color:var(--accent); margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .chart-cell .ech{width:100%; height:200px;}
@@ -365,29 +363,35 @@ function loadECharts(){
       "列结构与月度表一致 · 单位：万吨 LCE（吨÷10000，四舍五入取整）· 占比/天数列保持原口径 · 最新年份 "+ys[ys.length-1]+" 含预测值，为不完整年（已公布 1–"+lastM+"月）";
   }
 
-  /* ---------- 季节图（全部指标，按一级列标题分板块，一行 4 个） ---------- */
+  /* ---------- 季节图（全部指标，按一级列标题分板块，参考页面一排版：标题 + 卡片网格） ---------- */
   var seasonalCharts=[];
+  function padGrid(g, n){
+    var rem = (4 - (n % 4)) % 4;
+    for(var k=0;k<rem;k++){ var ph=document.createElement("div"); ph.className="grid-blank"; g.appendChild(ph); }
+  }
   function renderSeasonal(){
     seasonalCharts.forEach(function(c){ try{c.dispose();}catch(e){} });
     seasonalCharts=[];
     var wrap=document.getElementById("seasonalWrap");
     wrap.innerHTML="";
-    var curGroup=null, gridEl=null;
+    var curGroup=null, gridEl=null, cntInGroup=0;
     D.seasonalCols.forEach(function(sc){
       if(sc.group !== curGroup){
-        curGroup = sc.group;
-        var sec=document.createElement("div"); sec.className="seasonal-sec";
-        var t=document.createElement("div"); t.className="sec-title";
-        t.style.background = sc.gcolor || "#0f4c81";
-        t.textContent = sc.group;
-        gridEl=document.createElement("div"); gridEl.className="grid-4";
-        sec.appendChild(t); sec.appendChild(gridEl); wrap.appendChild(sec);
+        // 上一组补足 4 列空位
+        if(gridEl) padGrid(gridEl, cntInGroup);
+        curGroup = sc.group; cntInGroup = 0;
+        var h=document.createElement("div");
+        h.className="section-title"; h.textContent=sc.group;
+        wrap.appendChild(h);
+        gridEl=document.createElement("div"); gridEl.className="grid c4";
+        wrap.appendChild(gridEl);
       }
       var ser=D.seasonal[sc.key]||{};
       var cell=document.createElement("div"); cell.className="chart-cell";
       var cap=document.createElement("div"); cap.className="cap"; cap.textContent=sc.label;
       var ech=document.createElement("div"); ech.className="ech";
       cell.appendChild(cap); cell.appendChild(ech); gridEl.appendChild(cell);
+      cntInGroup++;
       var hasAny=false;
       Object.keys(ser).forEach(function(y){ ser[y].forEach(function(v){ if(v!==null&&v!==undefined) hasAny=true; }); });
       if(!hasAny){
@@ -411,6 +415,7 @@ function loadECharts(){
         series:series
       });
     });
+    if(gridEl) padGrid(gridEl, cntInGroup);
   }
 
   /* ---------- 折叠列点击事件（表头 +/- 切换） ---------- */
