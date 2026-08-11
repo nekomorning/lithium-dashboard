@@ -64,6 +64,14 @@ td.proj:hover{color:var(--accent);}
 tr.detail:hover td{background:#fafcff;}
 tr.grp:hover td{background:#fafcff;}
 
+/* 明细表筛选与排序 */
+.detail-filter{align-items:center; gap:8px 12px;}
+.search-input{padding:5px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px; width:180px;}
+.search-input:focus{outline:none; border-color:var(--accent);}
+th.sortable{cursor:pointer; user-select:none;}
+th.sortable:hover{background:#e4ebf3;}
+th .sort-arrow{margin-left:4px; font-size:11px; color:var(--accent);}
+
 /* 股权浮层 */
 #tip{position:fixed; display:none; z-index:60; max-width:380px;
   background:#1f2733; color:#fff; border-radius:8px; padding:9px 12px; font-size:12.5px; line-height:1.5;
@@ -107,6 +115,14 @@ tr.grp:hover td{background:#fafcff;}
 
   <div class="tablecard">
     <h2>明细表（各锂矿项目）<span class="note">共 <span id="projCount"></span> 个项目；将鼠标悬停于「项目名称」可查看公司股权</span></h2>
+    <div class="filterbar detail-filter" id="detailFilter">
+      <span class="lbl">搜索：</span>
+      <input type="text" class="search-input" id="searchInput" placeholder="项目名称 / 股权">
+      <span class="lbl">地区：</span><span id="regionFilter"></span>
+      <span class="lbl">国家：</span><span id="countryFilter"></span>
+      <span class="lbl">资源类型：</span><span id="rtypeFilter"></span>
+      <span class="ybtn off" id="clearFilters">清空</span>
+    </div>
     <table class="t18" id="detailTable">
       <thead id="detailHead"></thead>
       <tbody id="detailBody"></tbody>
@@ -161,18 +177,56 @@ function loadECharts(){
     return [i1,i2];
   }
 
+  // ---------- 明细表筛选 / 排序状态 ----------
+  var filterState = { search:'', region:[], country:[], rtype:[] };
+  var sortState = { year:null, dir:'desc' };
+  function uniqueValues(key){
+    var s = {}; ROWS.forEach(function(r){ s[r[key]] = 1; });
+    return Object.keys(s).sort(function(a,b){ return a.localeCompare(b,'zh-CN'); });
+  }
+  function rowMatches(r){
+    if(filterState.search){
+      var s = filterState.search.toLowerCase();
+      var hit = (r.project||'').toLowerCase().indexOf(s) >= 0 || (r.equity||'').toLowerCase().indexOf(s) >= 0;
+      if(!hit) return false;
+    }
+    if(filterState.region.length && filterState.region.indexOf(r.region) < 0) return false;
+    if(filterState.country.length && filterState.country.indexOf(r.country) < 0) return false;
+    if(filterState.rtype.length && filterState.rtype.indexOf(r.rtype) < 0) return false;
+    return true;
+  }
+  function sortRows(rows){
+    if(sortState.year == null) return rows.slice();
+    var yi = YEARS.indexOf(sortState.year);
+    return rows.slice().sort(function(a,b){
+      var av = a.vals[yi], bv = b.vals[yi];
+      if(av==null && bv==null) return 0;
+      if(av==null) return 1;
+      if(bv==null) return -1;
+      var d = av - bv;
+      return sortState.dir === 'asc' ? d : -d;
+    });
+  }
+
   // ---------- 表头 ----------
   var HEAD = ['地区','国家或地区','资源类型','项目名称']
     .concat(YEARS.map(function(y){ return String(y); }))
     .concat(['2026vs2025','2027vs2026']);
-  function renderHead(thead){
-    var cls = YEARS.map(function(){ return 'col-y'; }).concat(['col-inc','col-inc']);
+  function renderHead(thead, sortable){
     var html = '<tr>';
     HEAD.forEach(function(h,i){
       var hl = (h==='2026'||h==='2027') ? ' hl' : '';
       var base = i>=4 ? (i>=YEARS.length+4 ? 'col-inc' : 'col-y') : '';
       var c = (base + hl).trim();
-      html += '<th'+(c?' class="'+c+'"':'')+'>'+esc(h)+'</th>';
+      if(sortable && i>=4 && i<YEARS.length+4){
+        var arrow = '';
+        if(sortState.year === parseInt(h,10)){
+          arrow = sortState.dir === 'desc' ? '▼' : '▲';
+        }
+        html += '<th class="'+c+' sortable" data-year="'+h+'">'+esc(h)+'<span class="sort-arrow">'+arrow+'</span></th>';
+      } else {
+        html += '<th'+(c?' class="'+c+'"':'')+'>'+esc(h)+'</th>';
+      }
     });
     html += '</tr>';
     thead.innerHTML = html;
@@ -259,10 +313,25 @@ function loadECharts(){
 
   // ---------- 明细 ----------
   function renderDetail(){
+    var filtered = ROWS.filter(rowMatches);
+    var sorted = sortRows(filtered);
     var html = '';
-    ROWS.forEach(function(r){ html += detailRow(r); });
+    sorted.forEach(function(r){ html += detailRow(r); });
     document.getElementById('detailBody').innerHTML = html;
-    document.getElementById('projCount').textContent = ROWS.length;
+    document.getElementById('projCount').textContent = sorted.length + (sorted.length !== ROWS.length ? ' / ' + ROWS.length : '');
+  }
+  function renderFilterTags(containerId, key, selectedArr){
+    var values = uniqueValues(key);
+    var container = document.getElementById(containerId);
+    container.innerHTML = values.map(function(v){
+      var on = selectedArr.indexOf(v) >= 0;
+      return '<span class="ybtn '+(on?'on':'off')+'" data-filter="'+escAttr(key)+'" data-v="'+escAttr(v)+'">'+esc(v)+'</span>';
+    }).join('');
+  }
+  function refreshDetailFilters(){
+    renderFilterTags('regionFilter','region',filterState.region);
+    renderFilterTags('countryFilter','country',filterState.country);
+    renderFilterTags('rtypeFilter','rtype',filterState.rtype);
   }
 
   // ---------- 股权浮层 ----------
@@ -281,13 +350,50 @@ function loadECharts(){
   dt.addEventListener('mousemove', function(e){ if(tip.style.display==='block') moveTip(e); });
   dt.addEventListener('mouseout', function(e){ var c=e.target.closest('.proj'); if(c) tip.style.display='none'; });
 
+  // ---------- 明细表交互事件 ----------
+  document.getElementById('searchInput').addEventListener('input', function(e){
+    filterState.search = e.target.value.trim();
+    renderDetail();
+  });
+  document.getElementById('detailFilter').addEventListener('click', function(e){
+    var b = e.target.closest('.ybtn[data-filter]'); if(!b) return;
+    var key = b.getAttribute('data-filter');
+    var v = b.getAttribute('data-v');
+    var arr = filterState[key];
+    var i = arr.indexOf(v);
+    if(i>=0) arr.splice(i,1); else arr.push(v);
+    refreshDetailFilters();
+    renderDetail();
+  });
+  document.getElementById('clearFilters').addEventListener('click', function(e){
+    filterState = { search:'', region:[], country:[], rtype:[] };
+    document.getElementById('searchInput').value = '';
+    sortState = { year:null, dir:'desc' };
+    refreshDetailFilters();
+    renderHead(document.getElementById('detailHead'), true);
+    renderDetail();
+  });
+  document.getElementById('detailHead').addEventListener('click', function(e){
+    var th = e.target.closest('th.sortable'); if(!th) return;
+    var y = parseInt(th.getAttribute('data-year'),10);
+    if(sortState.year === y){
+      if(sortState.dir === 'desc') sortState.dir = 'asc';
+      else { sortState.year = null; sortState.dir = 'desc'; }
+    } else {
+      sortState.year = y; sortState.dir = 'desc';
+    }
+    renderHead(document.getElementById('detailHead'), true);
+    renderDetail();
+  });
+
   // ---------- 初始化 ----------
   document.getElementById('updDate').textContent = '底稿更新：' + (D.updated||'—');
   document.getElementById('caliberTxt').textContent = D.caliber || '';
-  renderHead(document.getElementById('sumHead'));
-  renderHead(document.getElementById('detailHead'));
+  renderHead(document.getElementById('sumHead'), false);
+  renderHead(document.getElementById('detailHead'), true);
   renderTags();
   renderSummary();
+  refreshDetailFilters();
   renderDetail();
 }
 </script>
