@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>碳酸锂数据看板 · 中国产业链平衡</title>
+<style>
+:root{
+  --bg:#f4f6fa; --card:#ffffff; --border:#e5e9f0; --text:#1f2733; --sub:#6b7686;
+  --up:#d92626; --down:#0a9a5c; --flat:#8a93a3; --accent:#0f4c81;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{background:var(--bg); color:var(--text);
+  font-family:"Microsoft YaHei","PingFang SC","Helvetica Neue",Arial,sans-serif; font-size:14px;}
+.wrap{max-width:1560px; margin:0 auto; padding:18px 22px 60px;}
+
+.header{display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:14px;}
+.header h1{font-size:24px; color:var(--accent); letter-spacing:1px;}
+.header .date{color:var(--sub); font-size:13px;}
+.tabs{display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
+.tab{padding:7px 20px; border-radius:8px 8px 0 0; border:1px solid var(--border); border-bottom:none;
+  background:#e9edf3; color:var(--sub); cursor:default; font-size:14px; text-decoration:none; display:inline-block;}
+.tab.active{background:var(--accent); color:#fff; font-weight:600;}
+.tab.disabled{opacity:.55;}
+a.tab:hover{background:var(--accent); color:#fff;}
+
+/* 平衡表切换标签 */
+.btabs{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;}
+.btab{padding:6px 18px; border-radius:16px; border:1px solid var(--border); background:#fff;
+  color:var(--sub); font-size:13px; cursor:pointer; user-select:none;}
+.btab.active{background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600;}
+.btab.disabled{opacity:.5; cursor:not-allowed;}
+
+.section-title{font-size:18px; color:var(--accent); font-weight:700; margin:26px 0 4px;
+  padding-left:10px; border-left:4px solid var(--accent);}
+.sub-inline{font-size:12px; color:var(--sub); font-weight:400; margin-left:8px;}
+
+.tbl-scroll{overflow:auto; max-height:560px; border:1px solid var(--border); border-radius:8px; margin-top:8px;}
+table.data{border-collapse:collapse; width:100%; font-size:12px; background:var(--card);}
+table.data th, table.data td{border:1px solid var(--border); padding:4px 6px; text-align:center; white-space:nowrap;}
+table.data thead th{position:sticky; top:0; background:var(--accent); color:#fff; z-index:2; font-weight:600;}
+table.data thead tr:nth-child(2) th{top:26px;}
+table.data tbody tr:nth-child(even){background:#fafbfd;}
+table.data td.date-col, table.data th.date-col{position:sticky; left:0; background:#eef2f7; font-weight:600; text-align:left; z-index:1;}
+table.data thead th.date-col{background:var(--accent); z-index:4;}
+table.data thead tr:nth-child(2) th.date-col{top:0; z-index:5;}
+.val-null{color:var(--flat);}
+td .pos{color:var(--up);} td .neg{color:var(--down);}
+
+.filter-bar{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px; padding:10px 12px;
+  background:var(--card); border:1px solid var(--border); border-radius:8px;}
+.filter-bar label{color:var(--sub); font-size:13px;}
+.filter-bar select{padding:4px 8px; border:1px solid var(--border); border-radius:6px; font-size:13px; background:#fff;}
+.filter-bar .arrow{color:var(--sub); font-weight:700;}
+.filter-note{font-size:12px; color:var(--sub); margin-top:6px;}
+
+.grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:8px;}
+@media (max-width:1200px){ .grid-3{grid-template-columns:repeat(2,1fr);} }
+@media (max-width:760px){ .grid-3{grid-template-columns:1fr;} }
+.chart-cell{border:1px solid var(--border); border-radius:10px; padding:8px 10px; background:var(--card);}
+.chart-cell .cap{font-size:13px; font-weight:700; color:var(--accent); margin-bottom:4px;}
+.chart-cell .ech{width:100%; height:240px;}
+.footer{margin-top:30px; color:var(--sub); font-size:12px; text-align:center;}
+.note{color:var(--sub); font-size:13px; padding:10px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1 id="pageTitle">中国产业链平衡</h1>
+    <div class="date" id="pageSub"></div>
+  </div>
+
+  <div class="tabs">
+    <a class="tab" href="ypt.html">一页通</a>
+    <a class="tab" href="p1.html">日度价格</a>
+    <a class="tab" href="p2.html">产量开工利润</a>
+    <a class="tab" href="p3.html">产业链库存</a>
+    <a class="tab" href="p5.html">全球乘用车</a>
+    <a class="tab" href="p6.html">全球锂资源</a>
+    <div class="tab active">中国产业链平衡</div>
+    <a class="tab" href="p4.html">数据对比</a>
+  </div>
+
+  <div class="btabs" id="btabs"></div>
+
+  <div class="section-title">月度数据<span class="sub-inline" id="monthlySub"></span></div>
+  <div class="tbl-scroll" id="monthlyScroll"><table class="data" id="monthlyTable"></table></div>
+
+  <div class="section-title">区间筛选（同比对照）<span class="sub-inline" id="filterSub"></span></div>
+  <div class="filter-bar" id="filterBar"></div>
+  <div class="tbl-scroll" style="max-height:none;" id="filterWrap"></div>
+  <div class="filter-note" id="filterNote"></div>
+
+  <div class="section-title">年度数据汇总<span class="sub-inline" id="annualNote"></span></div>
+  <div class="tbl-scroll" style="max-height:none;" id="annualWrap"></div>
+
+  <div class="section-title">季节图<span class="sub-inline" id="seasonalSub"></span></div>
+  <div class="grid-3" id="seasonalWrap"></div>
+
+  <div class="footer">碳酸锂数据看板 · 中国产业链平衡 · 数据来源：SMM / 海关（底稿《碳酸锂产业链平衡表.xlsx》） · 单位：吨 LCE</div>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script>
+(function(){
+  fetch('p7.json').then(function(r){return r.json();}).then(function(data){
+    window.__DATA__=data; window.D=data; loadECharts();
+  }).catch(function(){
+    document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
+  });
+})();
+
+function loadECharts(){
+  var D = window.D;
+  if(!D || !D.months){ document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据未加载</div>"); return; }
+  var YEAR_COLORS = D.yearColors || {};
+
+  /* 红涨绿跌：正值红、负值绿 */
+  function signColor(v){
+    if(v===null || v===undefined || (typeof v==="number" && isNaN(v))) return "";
+    if(v>0) return "#d8392b";
+    if(v<0) return "#1a8a4a";
+    return "";
+  }
+  function signStyle(v){ var c=signColor(v); return c ? (" style='color:"+c+"'") : ""; }
+
+  function fmt(v, type){
+    if(v===null || v===undefined || (typeof v==="number" && isNaN(v))) return "";
+    if(type==="pct") return Number(v).toFixed(1)+"%";
+    return Number(v).toLocaleString("zh-CN",{maximumFractionDigits:1});
+  }
+
+  /* ---------- 平衡表切换标签（本次仅实现 锂矿） ---------- */
+  function buildBalanceTabs(){
+    var bar=document.getElementById("btabs");
+    bar.innerHTML = D.tabs.map(function(t){
+      var active = (t===D.activeTab);
+      var cls = "btab"+(active?" active":" disabled");
+      var title = active ? "" : ' title="该平衡表待开发"';
+      return '<span class="'+cls+'"'+title+'>'+t+'</span>';
+    }).join('');
+  }
+
+  /* ---------- 列定义（月度表 / 区间筛选 / 年度汇总 共用） ---------- */
+  function getCols(){
+    var groups=D.groups.map(function(g){ return {label:g.label, span:g.keys.length, color:g.color}; });
+    var cols=D.cols;
+    return {cols:cols, groups:groups};
+  }
+  function headCells(G){
+    var h="<tr><th class='date-col' rowspan='2'>"+(G.firstCol||"月份")+"</th>";
+    G.groups.forEach(function(g){
+      h+="<th colspan='"+g.span+"' style='background:"+g.color+";color:#fff;'>"+g.label+"</th>";
+    });
+    h+="</tr><tr>";
+    G.cols.forEach(function(col){ h+="<th style='background:"+col.color+";color:#fff;'>"+col.label+"</th>"; });
+    return h+"</tr>";
+  }
+
+  /* ---------- 月度数据表（只显示数据） ---------- */
+  function renderMonthly(){
+    var G=getCols(); G.firstCol="月份";
+    var head="<thead>"+headCells(G)+"</thead>";
+    var body="<tbody>";
+    D.months.forEach(function(mo){
+      body+="<tr><td class='date-col'>"+mo+"</td>";
+      G.cols.forEach(function(col){
+        var v=D.series[col.key][mo];
+        var sty=(col.sign)?signStyle(v):"";
+        body+="<td"+sty+">"+fmt(v,col.type)+"</td>";
+      });
+      body+="</tr>";
+    });
+    body+="</tbody>";
+    document.getElementById("monthlyTable").innerHTML=head+body;
+    var sc=document.getElementById("monthlyScroll");
+    sc.scrollTop=sc.scrollHeight;
+  }
+
+  /* ---------- 区间筛选（同比对照） ---------- */
+  function yearRange(){
+    var ys=D.months.map(function(m){ return parseInt(m.slice(0,4),10); });
+    return [Math.min.apply(null,ys), Math.max.apply(null,ys)];
+  }
+  function monthOpts(){ var s=""; for(var m=1;m<=12;m++){ s+="<option value='"+m+"'>"+m+"月</option>"; } return s; }
+  function inRange(y,m,sy,sm,ey,em){
+    if(y<sy||y>ey) return false;
+    if(y===sy&&m<sm) return false;
+    if(y===ey&&m>em) return false;
+    return true;
+  }
+  function currentRange(){
+    var fY=document.getElementById("fY");
+    if(!fY) return null;
+    return {sy:+fY.value, sm:+document.getElementById("fM").value,
+            ey:+document.getElementById("tY").value, em:+document.getElementById("tM").value};
+  }
+  function applyRange(r){
+    document.getElementById("fY").value=r.sy; document.getElementById("fM").value=r.sm;
+    document.getElementById("tY").value=r.ey; document.getElementById("tM").value=r.em;
+  }
+  function renderFilterBar(){
+    var prev=currentRange();
+    var box=document.getElementById("filterBar");
+    var yr=yearRange();
+    box.innerHTML=
+      "<label>从</label>"+
+      "<select id='fY'></select><select id='fM'>"+monthOpts()+"</select>"+
+      "<span class='arrow'>→</span><label>到</label>"+
+      "<select id='tY'></select><select id='tM'>"+monthOpts()+"</select>";
+    var fY=document.getElementById("fY"), tY=document.getElementById("tY");
+    for(var y=yr[0]; y<=yr[1]; y++){ fY.add(new Option(y,y)); tY.add(new Option(y,y)); }
+    if(prev){ applyRange(prev); }
+    else {
+      var latest=D.latestDate.split("-"); var ey=+latest[0], em=+latest[1];
+      fY.value=ey; tY.value=ey;
+      document.getElementById("fM").value=1;
+      document.getElementById("tM").value=em;
+    }
+    [fY,tY,document.getElementById("fM"),document.getElementById("tM")].forEach(function(s){ s.onchange=renderFilterTable; });
+    renderFilterTable();
+  }
+  function aggRange(sy,sm,ey,em,col){
+    var vals=[];
+    D.months.forEach(function(mo){
+      var y=+mo.slice(0,4), m=+mo.slice(5,7);
+      if(inRange(y,m,sy,sm,ey,em)){ var v=D.series[col.key][mo]; if(v!==null&&v!==undefined) vals.push(v); }
+    });
+    if(!vals.length) return null;
+    var s=0; vals.forEach(function(v){ s+=v; }); return s;
+  }
+  function renderFilterTable(){
+    var G=getCols(); G.firstCol="指标";
+    var sy=+document.getElementById("fY").value, sm=+document.getElementById("fM").value;
+    var ey=+document.getElementById("tY").value, em=+document.getElementById("tM").value;
+    if(sy>ey || (sy===ey&&sm>em)){ document.getElementById("filterWrap").innerHTML="<div class='note'>起始时间不能晚于结束时间</div>"; return; }
+    var sel=G.cols.map(function(col){ return aggRange(sy,sm,ey,em,col); });
+    var lst=G.cols.map(function(col){ return aggRange(sy-1,sm,ey-1,em,col); });
+    var diff=G.cols.map(function(col,idx){ return (sel[idx]===null||lst[idx]===null)?null:sel[idx]-lst[idx]; });
+    var pct=G.cols.map(function(col,idx){
+      if(diff[idx]===null||lst[idx]===null||lst[idx]===0) return null;
+      return diff[idx]/lst[idx]*100;
+    });
+    var head="<thead>"+headCells(G)+"</thead>";
+    function row(name,arr,isPct,colorFn){
+      var r="<tr><td class='date-col'>"+name+"</td>";
+      arr.forEach(function(v,idx){
+        var s = (v===null||v===undefined) ? "" : (isPct? v.toFixed(1)+"%" : fmt(v,G.cols[idx].type));
+        var sty=(colorFn&&s!=="")?colorFn(v,idx):"";
+        r+="<td"+sty+">"+s+"</td>";
+      });
+      return r+"</tr>";
+    }
+    var body="<tbody>";
+    body+=row("上年同期区间累计值", lst, false, function(v,idx){ return signStyle(v); });
+    body+=row("所选周期区间累计值", sel, false, function(v,idx){ return signStyle(v); });
+    body+=row("同比增减值", diff, false, function(v,idx){ return signStyle(v); });
+    body+=row("同比增减%", pct, true, function(v,idx){ return signStyle(v); });
+    body+="</tbody>";
+    document.getElementById("filterWrap").innerHTML="<table class='data'>"+head+body+"</table>";
+    document.getElementById("filterNote").textContent=
+      "区间 "+sy+"年"+sm+"月 至 "+ey+"年"+em+"月 · 区间累计（月相加）；同比对照为去年同期同区间累计；列结构与月度表一致";
+  }
+
+  /* ---------- 年度数据汇总 ---------- */
+  function renderAnnual(){
+    var G=getCols(); G.firstCol="年份";
+    var ys=D.annualYears;
+    var head="<thead>"+headCells(G)+"</thead>";
+    var body="<tbody>";
+    ys.forEach(function(y){
+      body+="<tr><td class='date-col'>"+y+"</td>";
+      G.cols.forEach(function(col){
+        var v=(D.annual[y]||{})[col.key];
+        var sty=(col.sign)?signStyle(v):"";
+        body+="<td"+sty+">"+fmt(v,col.type)+"</td>";
+      });
+      body+="</tr>";
+    });
+    body+="</tbody>";
+    document.getElementById("annualWrap").innerHTML="<table class='data'>"+head+body+"</table>";
+    var lastM=+D.latestDate.split("-")[1];
+    document.getElementById("annualNote").textContent=
+      "列结构与月度表一致 · 最新年份 "+ys[ys.length-1]+" 含预测值，为不完整年（已公布 1–"+lastM+"月）";
+  }
+
+  /* ---------- 季节图（6 个核心指标，横轴 1–12 月） ---------- */
+  var seasonalCharts=[];
+  function renderSeasonal(){
+    seasonalCharts.forEach(function(c){ try{c.dispose();}catch(e){} });
+    seasonalCharts=[];
+    var wrap=document.getElementById("seasonalWrap");
+    wrap.innerHTML="";
+    D.seasonalCols.forEach(function(sc){
+      var ser=D.seasonal[sc.key]||{};
+      var cell=document.createElement("div"); cell.className="chart-cell";
+      var cap=document.createElement("div"); cap.className="cap"; cap.textContent=sc.label;
+      var ech=document.createElement("div"); ech.className="ech";
+      cell.appendChild(cap); cell.appendChild(ech); wrap.appendChild(cell);
+      var hasAny=false;
+      Object.keys(ser).forEach(function(y){ ser[y].forEach(function(v){ if(v!==null&&v!==undefined) hasAny=true; }); });
+      if(!hasAny){
+        ech.innerHTML="<div style='padding:70px 10px;text-align:center;color:#8a93a3'>无数据</div>";
+        return;
+      }
+      var chart=echarts.init(ech); seasonalCharts.push(chart);
+      var years=Object.keys(ser).sort();
+      var series=years.map(function(y){
+        return {name:y, type:"line", data:ser[y], showSymbol:false,
+          lineStyle:{width:1.6}, itemStyle:{color:YEAR_COLORS[y]||"#888888"}};
+      });
+      chart.setOption({
+        color: years.map(function(y){ return YEAR_COLORS[y]||"#888888"; }),
+        tooltip:{trigger:"axis"},
+        legend:{data:years, type:"scroll", top:0, textStyle:{fontSize:9}},
+        grid:{left:46, right:10, top:26, bottom:22},
+        xAxis:{type:"category", data:["1","2","3","4","5","6","7","8","9","10","11","12"],
+          axisLabel:{fontSize:9}},
+        yAxis:{type:"value", axisLabel:{fontSize:9}, scale:true},
+        series:series
+      });
+    });
+  }
+
+  /* ---------- orchestration ---------- */
+  document.getElementById("pageTitle").textContent=D.pageTitle||"中国产业链平衡";
+  document.getElementById("pageSub").textContent=(D.pageSub||"")+" · 数据截至 "+D.latestDate;
+  buildBalanceTabs();
+  renderMonthly();
+  renderFilterBar();
+  renderAnnual();
+  document.getElementById("monthlySub").textContent=
+    "只显示原始数据（不含环比/同比） · 默认滚动到最新月份，向上滚动查看更早年份；横向滚动查看全部指标";
+  document.getElementById("filterSub").textContent="同比对照 · 列结构与月度表一致";
+  try{ renderSeasonal(); }catch(e){ console.error("seasonal error",e); }
+  document.getElementById("seasonalSub").textContent=
+    "6 个核心指标（锂矿产量 / 进口 / 总供给 / 总需求 / 供需差 / 总库存） · 横轴 1–12 月 · 图例 "+(D.annualYears||[]).join("、");
+}
+</script>
+</body>
+</html>
