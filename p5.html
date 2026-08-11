@@ -145,11 +145,11 @@ td.up{color:var(--up); font-weight:600;} td.down{color:var(--down); font-weight:
     <div class="section-title">核心变化速览</div>
     <div class="cn-ov" id="cnSummary"></div>
 
-    <div class="section-title">数据一览表<span style="font-size:12px;color:var(--sub);font-weight:400;margin-left:8px">（最新月份 · 单位：万辆（渗透率 %）；销量：环比/同比/累计同比均为 %；渗透率：环比/同比为 ±pp）</span></div>
+    <div class="section-title">数据一览表<span style="font-size:12px;color:var(--sub);font-weight:400;margin-left:8px">（单位：万辆（渗透率 %）；环比/同比/累计同比：销量为 %、渗透率为 ±pp、库存变化类不显示百分比；累计同比增减值单位：万辆（渗透率 —））</span></div>
     <div class="tablecard" id="cnTableWrap">
       <table id="cnTable">
         <thead><tr>
-          <th>指标</th><th>单位</th><th>最新月份</th><th>最新值</th><th>环比</th><th>同比</th><th>累计同比</th>
+          <th>指标</th><th>单位</th><th>最新月份</th><th>最新值</th><th>上月值</th><th>去年同期值</th><th>环比%</th><th>同比%</th><th>年初至今累计值</th><th>去年同期累计值</th><th>累计同比增减值</th><th>累计同比%</th>
         </tr></thead>
         <tbody></tbody>
       </table>
@@ -421,7 +421,11 @@ function cnStat(key, isPct){
     if(ser[pk]!==null && ser[pk]!==undefined){ prevCum+=ser[pk]; hasP=true; }
   }
   var ytdYoy = (!isPct && hasC && hasP && prevCum!==0) ? ((curCum/prevCum-1)*100) : null;
-  return {latest:v, chg:chg, yoy:yoy, ytdYoy:ytdYoy, lm:lm, cum: (hasC?curCum:null)};
+  return {latest:v, prev:(prev&&ser[prev]!==null&&ser[prev]!==undefined)?ser[prev]:null,
+    yoyPrev:(ser[pym]!==null&&ser[pym]!==undefined)?ser[pym]:null,
+    chg:chg, yoy:yoy, ytdYoy:ytdYoy, lm:lm,
+    cum:(hasC?curCum:null), prevCum:(hasP?prevCum:null),
+    ytdChg:(hasC&&hasP)?(curCum-prevCum):null};
 }
 function isInvKey(k){ return k.indexOf('_inv')>=0; }   // 库存变化类：只显示最新值与当年累计
 function cnFmt(v){ if(v===null||v===undefined||isNaN(v)) return "—"; return Number(v).toFixed(1); }
@@ -474,20 +478,45 @@ function renderCnTable(){
     if(c.group!==curGrp){
       curGrp=c.group;
       var trg=document.createElement("tr"); trg.className="grp";
-      trg.innerHTML="<td colspan='7'>"+c.group+"（单位："+c.unit+"）</td>";
+      trg.innerHTML="<td colspan='12'>"+c.group+"（单位："+c.unit+"）</td>";
       tb.appendChild(trg);
     }
     var isPct=(c.type==="pct");
+    var isInv=isInvKey(c.key);   // 库存变化类：不显示任何百分比
     var st=cnStat(c.key, isPct);
+    if(!st){
+      var tr0=document.createElement("tr");
+      tr0.innerHTML="<td>"+c.label+"</td><td style='color:var(--sub)'>"+c.unit+"</td><td colspan='10' style='color:var(--sub)'>—</td>";
+      tb.appendChild(tr0); return;
+    }
+    var f=cnFmt;
+    var latestTxt="<b>"+f(st.latest)+"</b>";
+    var prevTxt=st.prev!=null?f(st.prev):"—";
+    var yoyPrevTxt=st.yoyPrev!=null?f(st.yoyPrev):"—";
+    var chgTxt, yoyTxt, ytdYoyTxt;
+    if(isInv){ chgTxt="—"; yoyTxt="—"; ytdYoyTxt="—"; }
+    else { chgTxt=cnChgTxt(st.chg,isPct); yoyTxt=cnChgTxt(st.yoy,isPct); ytdYoyTxt=(isPct||st.ytdYoy==null)?"—":cnChgTxt(st.ytdYoy,false); }
+    var ytdTxt, ytdPrevTxt, ytdChgTxt;
+    if(isPct){ ytdTxt="—"; ytdPrevTxt="—"; ytdChgTxt="—"; }
+    else {
+      ytdTxt=st.cum!=null?f(st.cum):"—";
+      ytdPrevTxt=st.prevCum!=null?f(st.prevCum):"—";
+      ytdChgTxt=(st.ytdChg!=null)?((st.ytdChg>0?"+":"")+f(st.ytdChg)):"—";
+    }
     var tr=document.createElement("tr");
     tr.innerHTML=
       "<td>"+c.label+"</td>"+
       "<td style='color:var(--sub)'>"+c.unit+"</td>"+
-      "<td style='color:var(--sub)'>"+(st?st.lm:"—")+"</td>"+
-      "<td><b>"+(st?cnFmt(st.latest):"—")+"</b></td>"+
-      "<td class='"+chgCls(st?st.chg:null)+"'>"+(st?cnChgTxt(st.chg,isPct):"—")+"</td>"+
-      "<td class='"+chgCls(st?st.yoy:null)+"'>"+(st?cnChgTxt(st.yoy,isPct):"—")+"</td>"+
-      "<td class='"+chgCls(st?st.ytdYoy:null)+"'>"+(st?(isPct?"—":cnChgTxt(st.ytdYoy,false)):"—")+"</td>";
+      "<td style='color:var(--sub)'>"+st.lm+"</td>"+
+      "<td>"+latestTxt+"</td>"+
+      "<td>"+prevTxt+"</td>"+
+      "<td>"+yoyPrevTxt+"</td>"+
+      "<td class='"+chgCls(isInv?null:st.chg)+"'>"+chgTxt+"</td>"+
+      "<td class='"+chgCls(isInv?null:st.yoy)+"'>"+yoyTxt+"</td>"+
+      "<td>"+ytdTxt+"</td>"+
+      "<td style='color:var(--sub)'>"+ytdPrevTxt+"</td>"+
+      "<td class='"+chgCls(st.ytdChg)+"'>"+ytdChgTxt+"</td>"+
+      "<td class='"+chgCls(isInv?null:st.ytdYoy)+"'>"+ytdYoyTxt+"</td>";
     tb.appendChild(tr);
   });
 }
