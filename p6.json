@@ -1,5 +1,5 @@
 {
- "updated": "2026-08-09",
+ "updated": "2026-08-10",
  "years": [
   2019,
   2020,
@@ -14,7 +14,7 @@
   2029,
   2030
  ],
- "caliber": "产量单位：万吨 LCE（2023–2030 为预测值 E）；同比增量 = 相邻两年产量之差（万吨 LCE）",
+ "caliber": "产量单位：万吨 LCE（2026–2030 为预测值 E）；同比增量 = 相邻两年产量之差（万吨 LCE）",
  "rows": [
   {
    "region": "北美",
@@ -103,7 +103,7 @@
   {
    "region": "北美",
    "country": "美国",
-   "rtype": "辉石",
+   "rtype": "锂辉石",
    "project": "Thacker Pass",
    "equity": "Lithium Americans 62%/ GM通用汽车 38%",
    "vals": [
