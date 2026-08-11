@@ -41,6 +41,7 @@ table.data th, table.data td{border:1px solid var(--border); padding:4px 6px; te
 table.data thead th{position:sticky; top:0; background:var(--accent); color:#fff; z-index:2; font-weight:600;}
 table.data thead tr:nth-child(2) th{top:26px;}
 table.data tbody tr:nth-child(even){background:#fafbfd;}
+table.data tr.year-end td{border-bottom:2px solid #000;}   /* 每年12月行：黑色实线分隔不同年份 */
 table.data td.date-col, table.data th.date-col{position:sticky; left:0; background:#eef2f7; font-weight:600; text-align:left; z-index:1;}
 table.data thead th.date-col{background:var(--accent); z-index:4;}
 table.data thead tr:nth-child(2) th.date-col{top:0; z-index:5;}
@@ -155,7 +156,7 @@ function loadECharts(){
       h+="<th colspan='"+g.span+"' style='background:"+g.color+";color:#fff;'>"+g.label+"</th>";
     });
     h+="</tr><tr>";
-    G.cols.forEach(function(col){ h+="<th style='background:"+col.color+";color:#fff;'>"+col.label+"</th>"; });
+    G.cols.forEach(function(col){ h+="<th style='background:"+(col.color||"#0f4c81")+";color:#fff;'>"+col.label+"</th>"; });
     return h+"</tr>";
   }
 
@@ -165,7 +166,8 @@ function loadECharts(){
     var head="<thead>"+headCells(G)+"</thead>";
     var body="<tbody>";
     D.months.forEach(function(mo){
-      body+="<tr><td class='date-col'>"+mo+"</td>";
+      var end = mo.slice(5,7)==="12" ? " class='year-end'" : "";
+      body+="<tr"+end+"><td class='date-col'>"+mo+"</td>";
       G.cols.forEach(function(col){
         var v=D.series[col.key][mo];
         var sty=(col.sign)?signStyle(v):"";
@@ -281,7 +283,10 @@ function loadECharts(){
       G.cols.forEach(function(col){
         var v=(D.annual[y]||{})[col.key];
         var sty=(col.sign)?signStyle(v):"";
-        body+="<td"+sty+">"+fmt(v,col.type)+"</td>";
+        // 年度表单位：万吨 LCE（吨÷10000，整数）；占比/天数列保持原口径
+        var txt = (v===null||v===undefined) ? "" :
+          (col.type==="num" ? String(Math.round(v/10000)) : fmt(v,col.type));
+        body+="<td"+sty+">"+txt+"</td>";
       });
       body+="</tr>";
     });
@@ -289,7 +294,7 @@ function loadECharts(){
     document.getElementById("annualWrap").innerHTML="<table class='data'>"+head+body+"</table>";
     var lastM=+D.latestDate.split("-")[1];
     document.getElementById("annualNote").textContent=
-      "列结构与月度表一致 · 数值保留整数（吨 LCE） · 最新年份 "+ys[ys.length-1]+" 含预测值，为不完整年（已公布 1–"+lastM+"月）";
+      "列结构与月度表一致 · 单位：万吨 LCE（吨÷10000，四舍五入取整）· 占比/天数列保持原口径 · 最新年份 "+ys[ys.length-1]+" 含预测值，为不完整年（已公布 1–"+lastM+"月）";
   }
 
   /* ---------- 季节图（6 个核心指标，横轴 1–12 月） ---------- */
