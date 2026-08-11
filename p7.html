@@ -122,8 +122,9 @@ td .pos{color:var(--up);} td .neg{color:var(--down);}
 })();
 
 function loadECharts(){
-  var D = window.D;
-  if(!D || !D.months){ document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据未加载</div>"); return; }
+  var ALL = window.D;
+  if(!ALL || !ALL.sheets){ document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据未加载</div>"); return; }
+  var D = ALL.sheets[ALL.activeTab] || {};
   var YEAR_COLORS = D.yearColors || {};
 
   /* 红涨绿跌：正值红、负值绿 */
@@ -141,32 +142,40 @@ function loadECharts(){
     return String(Math.round(v));   // 整数显示，去掉千分位
   }
 
-  /* ---------- 平衡表切换标签（本次仅实现 锂矿） ---------- */
+  /* ---------- 平衡表切换标签（锂矿/碳酸锂 已实现，其余待开发） ---------- */
   function buildBalanceTabs(){
     var bar=document.getElementById("btabs");
-    bar.innerHTML = D.tabs.map(function(t){
-      var active = (t===D.activeTab);
-      var cls = "btab"+(active?" active":" disabled");
-      var title = active ? "" : ' title="该平衡表待开发"';
-      return '<span class="'+cls+'"'+title+'>'+t+'</span>';
+    bar.innerHTML = ALL.tabs.map(function(t){
+      var active = (t===ALL.activeTab);
+      var has = !!ALL.sheets[t];
+      var cls = "btab"+(active?" active":(has?"":" disabled"));
+      var title = active ? "" : (has ? ' title="切换到 '+t+'"' : ' title="该平衡表待开发"');
+      return '<span class="'+cls+'" data-t="'+t+'"'+title+'>'+t+'</span>';
     }).join('');
   }
+  document.getElementById("btabs").addEventListener('click', function(e){
+    var b = e.target.closest('.btab'); if(!b) return;
+    var t = b.getAttribute('data-t');
+    if(t===ALL.activeTab || !ALL.sheets[t]) return;
+    ALL.activeTab = t;
+    D = ALL.sheets[t];
+    YEAR_COLORS = D.yearColors || {};
+    resetFold();
+    renderAll();
+  });
 
   /* ---------- 列定义（月度表 / 区间筛选 / 年度汇总 共用） ---------- */
-  /* 组合列折叠配置：合计列 -> 子列（点击列头 + 展开 / 折叠，体现总分结构） */
-  var FOLD = {
-    "prod": ["lepid", "zmine"],
-    "tdemand": ["carb_sp", "carb_zm", "hyd", "chl"],
-    "tinv": ["inv_mine", "inv_salt", "inv_trader", "inv_port", "days"],
-    "sp_supply": ["sp_prod", "sp_imp"],
-    "sp_imp": ["sp_aus", "sp_zw", "sp_mali", "sp_nig", "sp_bra", "sp_can"],
-    "sp_demand": ["sp_carb", "sp_hyd", "sp_chl"],
-    "zm_demand": ["zm_carb", "zm_hyd"]
-  };
+  /* 组合列折叠配置随当前平衡表（合计列 -> 子列，点击列头 + 展开 / 折叠，体现总分结构） */
+  var FOLD = {};
   var foldState = {};
-  Object.keys(FOLD).forEach(function(k){ foldState[k] = false; });   // 默认折叠：只显示合计列
   var COL_MAP = {};
-  D.cols.forEach(function(c){ COL_MAP[c.key] = c; });
+  function resetFold(){
+    FOLD = D.fold || {};
+    foldState = {};
+    Object.keys(FOLD).forEach(function(k){ foldState[k] = false; });   // 默认折叠：只显示合计列
+    COL_MAP = {};
+    D.cols.forEach(function(c){ COL_MAP[c.key] = c; });
+  }
   function isFoldKey(k){ return Object.prototype.hasOwnProperty.call(FOLD, k); }
   function isAnyChild(k){
     // 该列是某个折叠父列的子列 -> 由父列展开时负责加入，遍历时直接跳过（避免重复）
@@ -462,18 +471,22 @@ function loadECharts(){
   });
 
   /* ---------- orchestration ---------- */
-  document.getElementById("pageTitle").textContent=D.pageTitle||"中国锂产业链平衡";
-  document.getElementById("pageSub").textContent=(D.pageSub||"")+" · 数据截至 "+D.latestDate;
-  buildBalanceTabs();
-  renderMonthly();
-  renderFilterBar();
-  renderAnnual();
-  document.getElementById("monthlySub").textContent=
-    "只显示原始数据（不含环比/同比） · 数值保留整数（吨 LCE） · 点击列头「+」可展开/折叠分项列 · 默认滚动到最新月份，向上滚动查看更早年份；横向滚动查看全部指标";
-  document.getElementById("filterSub").textContent="同比对照 · 累计值/同比增减值单位：万吨 LCE · 列结构与月度表一致";
-  try{ renderSeasonal(); }catch(e){ console.error("seasonal error",e); }
-  document.getElementById("seasonalSub").textContent=
-    "月度数据表全部指标（共 "+(D.seasonalCols||[]).length+" 个）· 按一级列标题分 "+(D.groups||[]).length+" 个板块 · 每板块一行 4 个 · 横轴 1–12 月 · 图例 "+(D.annualYears||[]).join("、");
+  function renderAll(){
+    document.getElementById("pageTitle").textContent = ALL.pageTitle || "中国锂产业链平衡";
+    document.getElementById("pageSub").textContent = (D.pageSub||"") + " · 数据截至 " + (D.latestDate||"");
+    buildBalanceTabs();
+    renderMonthly();
+    renderFilterBar();
+    renderAnnual();
+    document.getElementById("monthlySub").textContent=
+      "只显示原始数据（不含环比/同比） · 数值保留整数（吨 LCE） · 点击列头「+」可展开/折叠分项列 · 默认滚动到最新月份，向上滚动查看更早年份；横向滚动查看全部指标";
+    document.getElementById("filterSub").textContent="同比对照 · 累计值/同比增减值单位：万吨 LCE · 列结构与月度表一致";
+    try{ renderSeasonal(); }catch(e){ console.error("seasonal error",e); }
+    document.getElementById("seasonalSub").textContent=
+      "月度数据表全部指标（共 "+(D.seasonalCols||[]).length+" 个）· 按一级列标题分 "+(D.groups||[]).length+" 个板块 · 每板块一行 4 个 · 横轴 1–12 月 · 图例 "+(D.annualYears||[]).join("、");
+  }
+  resetFold();
+  renderAll();
 }
 </script>
 <!-- 红色激光笔：点击右下角按钮开/关，鼠标变为红色激光点；光点 pointer-events:none，不影响原有悬停/浮层效果 -->
