@@ -83,7 +83,7 @@ td.up{color:var(--up); font-weight:600;} td.down{color:var(--down); font-weight:
 .cn-ov .oc .v .u{font-size:10px; color:var(--sub); font-weight:400; margin-left:2px;}
 .cn-ov .oc .s{font-size:11px; line-height:1.6;}
 .cn-ov .oc .s .up{color:var(--up);} .cn-ov .oc .s .down{color:var(--down);} .cn-ov .oc .s .flat{color:var(--flat);}
-.cn-meta{font-size:10.5px; color:var(--sub); margin-bottom:3px; line-height:1.55; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.cn-meta{font-size:10.5px; color:var(--sub); margin-bottom:3px; line-height:1.55; word-break:break-all;}
 .cn-meta b{color:var(--text);}
 .cn-meta .up{color:var(--up);} .cn-meta .down{color:var(--down);} .cn-meta .flat{color:var(--flat);}
 
@@ -521,7 +521,8 @@ function cnCard(k, grid){
   grid.appendChild(card);
   var div=card.querySelector(".chart");
   var ser=cnSerByYear(k.key);
-  var years=cnYears.filter(function(y){ return ser[y].some(function(v){ return v!==null&&v!==undefined; }); });
+  var hideYears=["2019","2020"];
+  var years=cnYears.filter(function(y){ return hideYears.indexOf(String(y))===-1 && ser[y].some(function(v){ return v!==null&&v!==undefined; }); });
   var series=[], legend=[];
   years.forEach(function(y){
     legend.push(String(y));
@@ -534,7 +535,8 @@ function cnCard(k, grid){
     animation:false,
     grid:{left:8,right:14,top:40,bottom:8,containLabel:true},
     legend:{show:true, top:2, right:0, itemWidth:11, itemHeight:2, icon:"rect", type:"scroll",
-      textStyle:{fontSize:9,color:"#6b7686"}, data:legend},
+      itemGap:4,
+      textStyle:{fontSize:8,color:"#6b7686"}, data:legend},
     tooltip:{trigger:"axis", confine:true},
     xAxis:{type:"category", data:MONTHS, boundaryGap:false, axisLabel:{fontSize:9,color:"#8a93a3"},
       axisTick:{show:false}, axisLine:{lineStyle:{color:"#dde3ec"}}, splitLine:{show:false}},
