@@ -390,7 +390,7 @@ function loadECharts(){
       }
       var ser=D.seasonal[sc.key]||{};
       var cell=document.createElement("div"); cell.className="chart-cell";
-      var cap=document.createElement("div"); cap.className="cap"; cap.textContent=sc.label;
+      var cap=document.createElement("div"); cap.className="cap"; cap.textContent=sc.title || sc.label;
       var meta=document.createElement("div"); meta.className="meta";
       var ech=document.createElement("div"); ech.className="ech";
       cell.appendChild(cap); cell.appendChild(meta); cell.appendChild(ech); gridEl.appendChild(cell);
