@@ -59,6 +59,9 @@ td .pos{color:var(--up);} td .neg{color:var(--down);}
 .filter-bar .arrow{color:var(--sub); font-weight:700;}
 .filter-note{font-size:12px; color:var(--sub); margin-top:6px;}
 
+.seasonal-sec{margin-bottom:18px;}
+.seasonal-sec .sec-title{display:inline-block; margin:0 0 8px; padding:5px 14px; border-radius:6px;
+  color:#fff; font-size:13px; font-weight:700;}
 .grid-4{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:8px;}
 @media (max-width:1500px){ .grid-4{grid-template-columns:repeat(3,1fr);} }
 @media (max-width:1100px){ .grid-4{grid-template-columns:repeat(2,1fr);} }
@@ -362,19 +365,29 @@ function loadECharts(){
       "列结构与月度表一致 · 单位：万吨 LCE（吨÷10000，四舍五入取整）· 占比/天数列保持原口径 · 最新年份 "+ys[ys.length-1]+" 含预测值，为不完整年（已公布 1–"+lastM+"月）";
   }
 
-  /* ---------- 季节图（6 个核心指标，横轴 1–12 月） ---------- */
+  /* ---------- 季节图（全部指标，按一级列标题分板块，一行 4 个） ---------- */
   var seasonalCharts=[];
   function renderSeasonal(){
     seasonalCharts.forEach(function(c){ try{c.dispose();}catch(e){} });
     seasonalCharts=[];
     var wrap=document.getElementById("seasonalWrap");
     wrap.innerHTML="";
+    var curGroup=null, gridEl=null;
     D.seasonalCols.forEach(function(sc){
+      if(sc.group !== curGroup){
+        curGroup = sc.group;
+        var sec=document.createElement("div"); sec.className="seasonal-sec";
+        var t=document.createElement("div"); t.className="sec-title";
+        t.style.background = sc.gcolor || "#0f4c81";
+        t.textContent = sc.group;
+        gridEl=document.createElement("div"); gridEl.className="grid-4";
+        sec.appendChild(t); sec.appendChild(gridEl); wrap.appendChild(sec);
+      }
       var ser=D.seasonal[sc.key]||{};
       var cell=document.createElement("div"); cell.className="chart-cell";
       var cap=document.createElement("div"); cap.className="cap"; cap.textContent=sc.label;
       var ech=document.createElement("div"); ech.className="ech";
-      cell.appendChild(cap); cell.appendChild(ech); wrap.appendChild(cell);
+      cell.appendChild(cap); cell.appendChild(ech); gridEl.appendChild(cell);
       var hasAny=false;
       Object.keys(ser).forEach(function(y){ ser[y].forEach(function(v){ if(v!==null&&v!==undefined) hasAny=true; }); });
       if(!hasAny){
@@ -425,7 +438,7 @@ function loadECharts(){
   document.getElementById("filterSub").textContent="同比对照 · 累计值/同比增减值单位：万吨 LCE · 列结构与月度表一致";
   try{ renderSeasonal(); }catch(e){ console.error("seasonal error",e); }
   document.getElementById("seasonalSub").textContent=
-    "月度数据表全部指标（共 "+(D.seasonalCols||[]).length+" 个） · 一行 4 个 · 横轴 1–12 月 · 图例 "+(D.annualYears||[]).join("、");
+    "月度数据表全部指标（共 "+(D.seasonalCols||[]).length+" 个）· 按一级列标题分 "+(D.groups||[]).length+" 个板块 · 每板块一行 4 个 · 横轴 1–12 月 · 图例 "+(D.annualYears||[]).join("、");
 }
 </script>
 <!-- 红色激光笔：点击右下角按钮开/关，鼠标变为红色激光点；光点 pointer-events:none，不影响原有悬停/浮层效果 -->
