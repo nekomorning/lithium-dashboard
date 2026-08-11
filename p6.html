@@ -63,6 +63,8 @@ td.proj{border-bottom:1px dashed #c5d2e2; cursor:help;}
 td.proj:hover{color:var(--accent);}
 tr.detail:hover td{background:#fafcff;}
 tr.grp:hover td{background:#fafcff;}
+tr.detail-summary td{background:#f0f6ff; font-weight:700; color:var(--accent);}
+tr.detail-summary td.hl{background:#d9e8fc !important;}
 
 /* 明细表筛选与排序 */
 .detail-filter{align-items:center; gap:8px 12px;}
@@ -207,6 +209,22 @@ function loadECharts(){
       return sortState.dir === 'asc' ? d : -d;
     });
   }
+  function hasActiveFilter(){
+    return filterState.search || filterState.region.length || filterState.country.length || filterState.rtype.length;
+  }
+  function detailSummaryRow(rows){
+    var vals = sumVals(rows);
+    var ic = groupInc(vals);
+    var t = '';
+    t += '<td>—</td>';
+    t += '<td>—</td>';
+    t += '<td>—</td>';
+    t += '<td class="summary-name">汇总（筛选，'+rows.length+' 个项目）</td>';
+    YEARS.forEach(function(y,i){ t += '<td'+(y===2026||y===2027?' class="hl"':'')+'>'+fmt(vals[i])+'</td>'; });
+    t += '<td class="'+incClass(ic[0])+'">'+inc(ic[0])+'</td>';
+    t += '<td class="'+incClass(ic[1])+'">'+inc(ic[1])+'</td>';
+    return '<tr class="detail-summary">'+t+'</tr>';
+  }
 
   // ---------- 表头 ----------
   var HEAD = ['地区','国家或地区','资源类型','项目名称']
@@ -316,6 +334,9 @@ function loadECharts(){
     var filtered = ROWS.filter(rowMatches);
     var sorted = sortRows(filtered);
     var html = '';
+    if(hasActiveFilter() && filtered.length > 0){
+      html += detailSummaryRow(filtered);
+    }
     sorted.forEach(function(r){ html += detailRow(r); });
     document.getElementById('detailBody').innerHTML = html;
     document.getElementById('projCount').textContent = sorted.length + (sorted.length !== ROWS.length ? ' / ' + ROWS.length : '');
