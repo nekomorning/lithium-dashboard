@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>碳酸锂数据看板 · 全球乘用车</title>
+<title>碳酸锂数据看板 · 全球汽车</title>
 <style>
 :root{
   --bg:#f4f6fa; --card:#ffffff; --border:#e5e9f0; --text:#1f2733; --sub:#6b7686;
@@ -62,8 +62,30 @@ td.up{color:var(--up); font-weight:600;} td.down{color:var(--down); font-weight:
   padding-left:10px; border-left:4px solid var(--accent);}
 .grid{display:grid; gap:14px; justify-content:start;}
 .grid.c4{grid-template-columns:repeat(4,minmax(0,1fr));}
-@media (max-width:1200px){ .grid.c4{grid-template-columns:repeat(2,minmax(0,1fr));} }
-@media (max-width:720px){ .grid.c4{grid-template-columns:1fr;} .wrap{padding:12px 10px 40px;} }
+.grid.c5{grid-template-columns:repeat(5,minmax(0,1fr));}
+@media (max-width:1200px){ .grid.c4{grid-template-columns:repeat(2,minmax(0,1fr));} .grid.c5{grid-template-columns:repeat(3,minmax(0,1fr));} }
+@media (max-width:760px){ .grid.c5{grid-template-columns:repeat(2,minmax(0,1fr));} }
+@media (max-width:720px){ .grid.c4,.grid.c5{grid-template-columns:1fr;} .wrap{padding:12px 10px 40px;} }
+
+/* 页面内标签（全球乘用车 / 中国汽车） */
+.btabs{display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
+.btab{padding:6px 18px; border-radius:16px; border:1px solid var(--border); background:#fff;
+  color:var(--sub); font-size:13px; cursor:pointer; user-select:none;}
+.btab.active{background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600;}
+
+/* 中国汽车：核心变化速览 */
+.cn-ov{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:8px 0 18px;}
+@media (max-width:1200px){ .cn-ov{grid-template-columns:repeat(2,minmax(0,1fr));} }
+@media (max-width:720px){ .cn-ov{grid-template-columns:1fr;} }
+.cn-ov .oc{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px 12px;}
+.cn-ov .oc .t{font-size:12.5px; font-weight:700; color:var(--accent); margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.cn-ov .oc .v{font-size:18px; font-weight:700;}
+.cn-ov .oc .v .u{font-size:10px; color:var(--sub); font-weight:400; margin-left:2px;}
+.cn-ov .oc .s{font-size:11px; line-height:1.6;}
+.cn-ov .oc .s .up{color:var(--up);} .cn-ov .oc .s .down{color:var(--down);} .cn-ov .oc .s .flat{color:var(--flat);}
+.cn-meta{font-size:10.5px; color:var(--sub); margin-bottom:3px; line-height:1.55; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.cn-meta b{color:var(--text);}
+.cn-meta .up{color:var(--up);} .cn-meta .down{color:var(--down);} .cn-meta .flat{color:var(--flat);}
 
 /* 图表卡片 */
 .card{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px 6px; min-width:0;}
@@ -91,31 +113,53 @@ td.up{color:var(--up); font-weight:600;} td.down{color:var(--down); font-weight:
     <a class="tab" href="p1.html">日度价格</a>
     <a class="tab" href="p2.html">产量开工利润</a>
     <a class="tab" href="p3.html">产业链库存</a>
-    <a class="tab active">全球乘用车</a>
+    <div class="tab active">全球汽车</div>
     <a class="tab" href="p6.html">全球锂资源</a>
     <a class="tab" href="p7.html">中国锂产业链平衡</a>
     <a class="tab" href="p4.html">数据对比</a>
   </div>
 
-  <div class="caliber"><span class="ico">ℹ</span><span>销量口径均为<b>批发销量（含出口）</b>；单位：万辆；渗透率单位：%</span></div>
+  <div class="btabs" id="btabs"></div>
 
-  <div class="summary" id="summary"></div>
+  <div id="sheetGlobal">
+    <div class="caliber"><span class="ico">ℹ</span><span>销量口径均为<b>批发销量（含出口）</b>；单位：万辆；渗透率单位：%</span></div>
 
-  <div class="filterbar" id="filterbar"><span class="lbl">年份筛选（点击显隐，作用于全部图表）：</span></div>
+    <div class="summary" id="summary"></div>
 
-  <div class="tablecard">
-    <h2>数据一览表 <span style="font-size:12px;color:var(--sub);font-weight:400">（最新月销量·万辆 / 渗透率·%；销量板块：环比为环比%、同比/累计同比为%，当年累计值=年初至今累计销量，去年同期累计值=去年同月累计销量，累计增减量=两者差值（万辆）；渗透率板块：环比/同比/累计同比均为±pp，当年累计值=累计新能源销量/累计总销量（%），去年同期累计值=去年同期累计渗透率，累计增减量=两者差值（pp））</span></h2>
-    <table id="dataTable">
-      <thead><tr>
-        <th>指标</th><th>单位</th><th>最新日期</th><th>最新值</th><th>环比</th><th>同比</th><th>当年累计值</th><th>去年同期累计值</th><th>累计增减量</th><th>累计同比</th>
-      </tr></thead>
-      <tbody></tbody>
-    </table>
+    <div class="filterbar" id="filterbar"><span class="lbl">年份筛选（点击显隐，作用于全部图表）：</span></div>
+
+    <div class="tablecard">
+      <h2>数据一览表 <span style="font-size:12px;color:var(--sub);font-weight:400">（最新月销量·万辆 / 渗透率·%；销量板块：环比为环比%、同比/累计同比为%，当年累计值=年初至今累计销量，去年同期累计值=去年同月累计销量，累计增减量=两者差值（万辆）；渗透率板块：环比/同比/累计同比均为±pp，当年累计值=累计新能源销量/累计总销量（%），去年同期累计值=去年同期累计渗透率，累计增减量=两者差值（pp））</span></h2>
+      <table id="dataTable">
+        <thead><tr>
+          <th>指标</th><th>单位</th><th>最新日期</th><th>最新值</th><th>环比</th><th>同比</th><th>当年累计值</th><th>去年同期累计值</th><th>累计增减量</th><th>累计同比</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div id="sections"></div>
   </div>
 
-  <div id="sections"></div>
+  <div id="sheetCn" style="display:none;">
+    <div class="section-title">核心变化速览</div>
+    <div class="cn-ov" id="cnSummary"></div>
 
-  <div class="footer">碳酸锂数据看板 · 全球乘用车 · 季节图：横轴=月份、纵轴=万辆（渗透率板块为%）、图例=年份 · 最新年黑线、前一年红线 · 销量口径：批发销量（含出口）</div>
+    <div class="section-title">数据一览表<span style="font-size:12px;color:var(--sub);font-weight:400;margin-left:8px">（最新月份 · 单位：万辆（渗透率 %）；销量：环比/同比/累计同比均为 %；渗透率：环比/同比为 ±pp）</span></div>
+    <div class="tablecard" id="cnTableWrap">
+      <table id="cnTable">
+        <thead><tr>
+          <th>指标</th><th>单位</th><th>最新月份</th><th>最新值</th><th>环比</th><th>同比</th><th>累计同比</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="section-title">季节图<span style="font-size:12px;color:var(--sub);font-weight:400;margin-left:8px">（横轴 1–12 月；销量板块每图下方显示 最新值/环比%/同比%/累计同比%；渗透率显示 最新值/环比±pp/同比±pp）</span></div>
+    <div id="cnSections"></div>
+  </div>
+
+  <div class="footer">碳酸锂数据看板 · 全球汽车 · 全球乘用车（批发销量含出口）· 中国汽车（中汽协/乘联会/渗透率）· 单位：万辆 · 最新年黑线、前一年红线</div>
 </div>
 
 
@@ -169,12 +213,15 @@ function arrow(c){ if(c===null||c===undefined||c===0) return "→"; return c>0?"
 
 function init(){
   D = window.__DATA__ || window.D;
+  CN = (D && D.cn) || {};
   YEARS = Array.from(new Set(D.xlabels.map(function(l){return l.slice(0,4);}))).sort();
   document.getElementById("latestDate").textContent=D.latestDataDate;
   var hideYears=["2017","2018","2019","2020"];
   YEARS.forEach(function(y){ yearVisible[y]=hideYears.indexOf(y)===-1; });
   buildFilter(); buildSummary(); buildTable(); buildSections();
-  var t; window.addEventListener("resize",function(){ clearTimeout(t); t=setTimeout(function(){ charts.forEach(function(c){c.resize();}); },150); });
+  buildCnTabs();
+  if(CN && CN.series) renderCn();
+  var t; window.addEventListener("resize",function(){ clearTimeout(t); t=setTimeout(function(){ charts.forEach(function(c){c.resize();}); cnCharts.forEach(function(c){c.resize();}); },150); });
 }
 
 function buildFilter(){
@@ -342,6 +389,161 @@ function makeCard(sec, ent, grid){
     if(!yearVisible[y]) c.dispatchAction({type:"legendToggleSelect",name:String(y)});
   });
   charts.push(c);
+}
+
+/* ================= 中国汽车（中汽协/乘联会/渗透率） ================= */
+var CN = {};
+var cnYears = [];
+var cnCharts = [];
+function cnPad(m){ return (m<10?"0":"")+m; }
+function cnYearColor(y){ var n=cnYears.length, idx=cnYears.indexOf(y); if(idx===n-1) return "#000000"; if(idx===n-2) return "#E60000"; return PALETTE[idx % PALETTE.length]; }
+function cnStat(key, isPct){
+  var ser = CN.series[key]; if(!ser) return null;
+  var ms = Object.keys(ser).filter(function(m){ return ser[m]!==null && ser[m]!==undefined; }).sort();
+  if(!ms.length) return null;
+  var lm = ms[ms.length-1];
+  var i = ms.indexOf(lm);
+  var prev = i>0 ? ms[i-1] : null;
+  var y = +lm.slice(0,4), m = +lm.slice(5,7), ly = y-1;
+  var pym = ly+"-"+cnPad(m);
+  var v = ser[lm];
+  var chg=null, yoy=null;
+  if(prev && ser[prev]!==null && ser[prev]!==undefined){
+    chg = isPct ? (v - ser[prev]) : ((ser[prev]!==0) ? ((v/ser[prev]-1)*100) : null);
+  }
+  if(ser[pym]!==null && ser[pym]!==undefined){
+    yoy = isPct ? (v - ser[pym]) : ((ser[pym]!==0) ? ((v/ser[pym]-1)*100) : null);
+  }
+  var curCum=0, prevCum=0, hasC=false, hasP=false;
+  for(var mi=1; mi<=m; mi++){
+    var mk=y+"-"+cnPad(mi), pk=ly+"-"+cnPad(mi);
+    if(ser[mk]!==null && ser[mk]!==undefined){ curCum+=ser[mk]; hasC=true; }
+    if(ser[pk]!==null && ser[pk]!==undefined){ prevCum+=ser[pk]; hasP=true; }
+  }
+  var ytdYoy = (!isPct && hasC && hasP && prevCum!==0) ? ((curCum/prevCum-1)*100) : null;
+  return {latest:v, chg:chg, yoy:yoy, ytdYoy:ytdYoy, lm:lm};
+}
+function cnFmt(v){ if(v===null||v===undefined||isNaN(v)) return "—"; return Number(v).toFixed(1); }
+function cnChgTxt(v, isPct){
+  if(v===null||v===undefined||isNaN(v)) return "—";
+  return (v>0?"+":"")+cnFmt(v)+(isPct?"pp":"%");
+}
+function buildCnTabs(){
+  var bar=document.getElementById("btabs");
+  bar.innerHTML='<span class="btab active" data-t="g">全球乘用车</span><span class="btab" data-t="c">中国汽车</span>';
+  Array.prototype.forEach.call(bar.children, function(sp){
+    sp.onclick=function(){
+      var t=sp.getAttribute("data-t");
+      document.getElementById("sheetGlobal").style.display = (t==="g") ? "" : "none";
+      document.getElementById("sheetCn").style.display = (t==="c") ? "" : "none";
+      Array.prototype.forEach.call(bar.children, function(x){ x.classList.toggle("active", x===sp); });
+      if(t==="c") setTimeout(function(){ cnCharts.forEach(function(c){ try{c.resize();}catch(e){} }); },80);
+    };
+  });
+}
+function cnSerByYear(key){
+  var o={};
+  cnYears.forEach(function(y){
+    o[y]=CN.months.filter(function(m){ return m.slice(0,4)===String(y); })
+      .map(function(m){ return CN.series[key][m]; });
+  });
+  return o;
+}
+function renderCnOverview(){
+  var w=document.getElementById("cnSummary"); w.innerHTML="";
+  CN.overview.forEach(function(o){
+    var isPct = CN.penKeys.indexOf(o.key)>=0;
+    var st = cnStat(o.key, isPct);
+    var oc=document.createElement("div"); oc.className="oc";
+    var html='<div class="t">'+o.label+'</div>';
+    if(st){
+      html+='<div class="v">'+cnFmt(st.latest)+'<span class="u">'+(isPct?"%":CN.unit)+'</span></div>';
+      html+='<div class="s">环比 <b class="'+chgCls(st.chg)+'">'+cnChgTxt(st.chg,isPct)+'</b>　同比 <b class="'+chgCls(st.yoy)+'">'+cnChgTxt(st.yoy,isPct)+'</b>';
+      if(!isPct) html+='　累计同比 <b class="'+chgCls(st.ytdYoy)+'">'+cnChgTxt(st.ytdYoy,false)+'</b>';
+      html+='</div>';
+    } else html+='<div class="s">无数据</div>';
+    oc.innerHTML=html;
+    w.appendChild(oc);
+  });
+}
+function renderCnTable(){
+  var tb=document.querySelector("#cnTable tbody"); tb.innerHTML="";
+  var curGrp=null;
+  CN.cols.forEach(function(c){
+    if(c.group!==curGrp){
+      curGrp=c.group;
+      var trg=document.createElement("tr"); trg.className="grp";
+      trg.innerHTML="<td colspan='7'>"+c.group+"（单位："+c.unit+"）</td>";
+      tb.appendChild(trg);
+    }
+    var isPct=(c.type==="pct");
+    var st=cnStat(c.key, isPct);
+    var tr=document.createElement("tr");
+    tr.innerHTML=
+      "<td>"+c.label+"</td>"+
+      "<td style='color:var(--sub)'>"+c.unit+"</td>"+
+      "<td style='color:var(--sub)'>"+(st?st.lm:"—")+"</td>"+
+      "<td><b>"+(st?cnFmt(st.latest):"—")+"</b></td>"+
+      "<td class='"+chgCls(st?st.chg:null)+"'>"+(st?cnChgTxt(st.chg,isPct):"—")+"</td>"+
+      "<td class='"+chgCls(st?st.yoy:null)+"'>"+(st?cnChgTxt(st.yoy,isPct):"—")+"</td>"+
+      "<td class='"+chgCls(st?st.ytdYoy:null)+"'>"+(st?(isPct?"—":cnChgTxt(st.ytdYoy,false)):"—")+"</td>";
+    tb.appendChild(tr);
+  });
+}
+function renderCnSeasonal(){
+  var root=document.getElementById("cnSections"); root.innerHTML="";
+  cnCharts.forEach(function(c){ try{c.dispose();}catch(e){} }); cnCharts=[];
+  CN.rows.forEach(function(r){
+    var h=document.createElement("div"); h.className="section-title"; h.textContent=r.group;
+    root.appendChild(h);
+    var grid=document.createElement("div"); grid.className="grid c5";
+    root.appendChild(grid);
+    r.keys.forEach(function(k){ cnCard(k, grid); });
+  });
+}
+function cnCard(k, grid){
+  var isPct = CN.penKeys.indexOf(k.key)>=0;
+  var st = cnStat(k.key, isPct);
+  var card=document.createElement("div"); card.className="card";
+  var html='<div class="ttl">'+k.label+'</div><div class="cn-meta">';
+  if(st){
+    html+='<b>'+cnFmt(st.latest)+'</b>'+(isPct?"%":CN.unit)+' · 环比 <span class="'+chgCls(st.chg)+'">'+cnChgTxt(st.chg,isPct)+'</span> · 同比 <span class="'+chgCls(st.yoy)+'">'+cnChgTxt(st.yoy,isPct)+'</span>';
+    if(!isPct) html+=' · 累计同比 <span class="'+chgCls(st.ytdYoy)+'">'+cnChgTxt(st.ytdYoy,false)+'</span>';
+  }
+  html+='</div><div class="chart"></div>';
+  card.innerHTML=html;
+  grid.appendChild(card);
+  var div=card.querySelector(".chart");
+  var ser=cnSerByYear(k.key);
+  var years=cnYears.filter(function(y){ return ser[y].some(function(v){ return v!==null&&v!==undefined; }); });
+  var series=[], legend=[];
+  years.forEach(function(y){
+    legend.push(String(y));
+    series.push({name:String(y), type:"line", showSymbol:false, data:ser[y],
+      lineStyle:{width:(y===cnYears[cnYears.length-1]?2.2:1.4), color:cnYearColor(y)},
+      itemStyle:{color:cnYearColor(y)}, z:(y===cnYears[cnYears.length-1]?10:5)});
+  });
+  var c=echarts.init(div);
+  c.setOption({
+    animation:false,
+    grid:{left:8,right:14,top:40,bottom:8,containLabel:true},
+    legend:{show:true, top:2, right:0, itemWidth:11, itemHeight:2, icon:"rect", type:"scroll",
+      textStyle:{fontSize:9,color:"#6b7686"}, data:legend},
+    tooltip:{trigger:"axis", confine:true},
+    xAxis:{type:"category", data:MONTHS, boundaryGap:false, axisLabel:{fontSize:9,color:"#8a93a3"},
+      axisTick:{show:false}, axisLine:{lineStyle:{color:"#dde3ec"}}, splitLine:{show:false}},
+    yAxis:{type:"value", scale:true, axisLabel:{fontSize:9,color:"#8a93a3",
+      formatter:function(v){ var a=Math.abs(v); if(a>=10000) return (v/10000).toFixed(1)+"万"; if(a>=1000) return (v/1000).toFixed(1)+"k"; return v.toFixed(1); }},
+      splitLine:{lineStyle:{color:"#eef1f6"}}},
+    series:series
+  });
+  cnCharts.push(c);
+}
+function renderCn(){
+  cnYears = Array.from(new Set(CN.months.map(function(m){ return +m.slice(0,4); }))).sort();
+  renderCnOverview();
+  renderCnTable();
+  renderCnSeasonal();
 }
 </script>
 <!-- 红色激光笔：点击右下角按钮开/关，鼠标变为红色激光点；光点 pointer-events:none，不影响原有悬停/浮层效果 -->
