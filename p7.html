@@ -65,8 +65,10 @@ td .pos{color:var(--up);} td .neg{color:var(--down);}
 @media (max-width:720px){ .grid.c4{grid-template-columns:1fr;} }
 .grid .grid-blank{min-width:0; background:transparent; border:0; padding:0; visibility:hidden;}
 .chart-cell{border:1px solid var(--border); border-radius:10px; padding:8px 10px; background:var(--card);}
-.chart-cell .cap{font-size:12.5px; font-weight:700; color:var(--accent); margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-.chart-cell .ech{width:100%; height:200px;}
+.chart-cell .cap{font-size:12.5px; font-weight:700; color:var(--accent); margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.chart-cell .meta{font-size:11px; color:var(--sub); margin-bottom:3px; line-height:1.5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.chart-cell .meta b{color:var(--text);}
+.chart-cell .ech{width:100%; height:190px;}
 .footer{margin-top:30px; color:var(--sub); font-size:12px; text-align:center;}
 .note{color:var(--sub); font-size:13px; padding:10px;}
 </style>
@@ -389,9 +391,38 @@ function loadECharts(){
       var ser=D.seasonal[sc.key]||{};
       var cell=document.createElement("div"); cell.className="chart-cell";
       var cap=document.createElement("div"); cap.className="cap"; cap.textContent=sc.label;
+      var meta=document.createElement("div"); meta.className="meta";
       var ech=document.createElement("div"); ech.className="ech";
-      cell.appendChild(cap); cell.appendChild(ech); gridEl.appendChild(cell);
+      cell.appendChild(cap); cell.appendChild(meta); cell.appendChild(ech); gridEl.appendChild(cell);
       cntInGroup++;
+      /* 标题下方：当年累计值 + 累计同比增减量 + 累计同比% */
+      var years=Object.keys(ser).sort();
+      var yN = years.length ? +years[years.length-1] : 0;
+      var arrN = ser[yN]||[], arrP = ser[yN-1]||[];
+      function chgColor(v){ return (v>0)?'#d8392b':((v<0)?'#1a8a4a':'#8a93a3'); }
+      if(sc.type === "num"){
+        var mLast=-1;
+        for(var mi=11;mi>=0;mi--){ if(arrN[mi]!=null){ mLast=mi; break; } }
+        if(mLast>=0){
+          var sN=0, sP=0;
+          for(var sj=0;sj<=mLast;sj++){ if(arrN[sj]!=null) sN+=arrN[sj]; if(arrP[sj]!=null) sP+=arrP[sj]; }
+          var diff = sP>0 ? sN-sP : null;
+          var pct = (diff!==null && sP>0) ? diff/sP*100 : null;
+          meta.innerHTML =
+            "累计 <b>"+(sN/10000).toFixed(1)+"</b> 万吨 · 同比 "+
+            "<span style='color:"+chgColor(diff)+"'>"+(diff==null?"—":((diff>0?"+":"")+(diff/10000).toFixed(1)))+"</span>"+
+            " <span style='color:"+chgColor(diff)+"'>("+(pct==null?"—":((pct>0?"+":"")+pct.toFixed(1)+"%"))+")</span>";
+        }
+      } else if(sc.type === "pct" || sc.type === "days"){
+        var aN = (D.annual[yN]||{})[sc.key], aP = (D.annual[yN-1]||{})[sc.key];
+        if(aN!==null && aN!==undefined){
+          var dd = (aP!=null&&aP!==undefined) ? aN-aP : null;
+          var unit = sc.type==="pct" ? "%" : "天";
+          meta.innerHTML =
+            "当年 <b>"+(sc.type==="pct"?Math.round(aN):Math.round(aN))+"</b> "+unit+" · 同比 "+
+            "<span style='color:"+chgColor(dd)+"'>"+(dd==null?"—":((dd>0?"+":"")+(sc.type==="pct"?Math.round(dd)+"pp":Math.round(dd)+unit)))+"</span>";
+        }
+      }
       var hasAny=false;
       Object.keys(ser).forEach(function(y){ ser[y].forEach(function(v){ if(v!==null&&v!==undefined) hasAny=true; }); });
       if(!hasAny){
@@ -399,7 +430,6 @@ function loadECharts(){
         return;
       }
       var chart=echarts.init(ech); seasonalCharts.push(chart);
-      var years=Object.keys(ser).sort();
       var series=years.map(function(y){
         return {name:y, type:"line", data:ser[y], showSymbol:false,
           lineStyle:{width:1.6}, itemStyle:{color:YEAR_COLORS[y]||"#888888"}};
