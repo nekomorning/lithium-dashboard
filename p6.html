@@ -127,6 +127,11 @@ th .sort-arrow{margin-left:4px; font-size:11px; color:var(--accent);}
   </div>
 
   <div class="tablecard">
+    <h2>全球锂资源供应（堆积柱状图）<span class="note">细分随上方「汇总维度」选择而变化，数值为产量绝对值（万吨 LCE）</span></h2>
+    <div id="stackChart" style="width:100%; height:420px;"></div>
+  </div>
+
+  <div class="tablecard">
     <h2>明细表（各锂矿项目）<span class="note">共 <span id="projCount"></span> 个项目；将鼠标悬停于「项目名称」可查看公司股权</span></h2>
     <div class="filterbar detail-filter" id="detailFilter">
       <span class="lbl">搜索：</span>
@@ -146,6 +151,7 @@ th .sort-arrow{margin-left:4px; font-size:11px; color:var(--accent);}
 </div>
 <div id="tip"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 
 <script>
 (function(){
@@ -162,6 +168,7 @@ function loadECharts(){
   var YEARS = D.years;
   var ROWS = D.rows;
   var I25 = YEARS.indexOf(2025), I26 = YEARS.indexOf(2026), I27 = YEARS.indexOf(2027);
+  var PALETTE = ["#1E6FFF","#F59A23","#8B5CF6","#0FB5AE","#D63FA6","#7A6A53"];
 
   // ---------- 工具 ----------
   function fmt(v){ return (v==null) ? '—' : Number(v).toFixed(2); }
@@ -358,8 +365,9 @@ function loadECharts(){
     return (v>0?'+':'') + (metric==='pct'||metric==='yoypct' ? Math.round(v) : Number(v).toFixed(2)) + suf;
   }
 
-  function buildTree(rows, dims, depth, anc){
+  function buildTree(rows, dims, depth, anc, path){
     anc = anc || {region:'—', country:'—', rtype:'—'};
+    path = path || [];
     if(dims.length===0) return [];
     var key = dims[0];
     var groups = {};
@@ -375,8 +383,9 @@ function loadECharts(){
       var vals = sumVals(grp);
       var newAnc = {}; newAnc.region=anc.region; newAnc.country=anc.country; newAnc.rtype=anc.rtype;
       newAnc[key] = g;
-      out.push({anc:newAnc, name:g, vals:vals, depth:depth});
-      if(dims.length>1) out = out.concat(buildTree(grp, dims.slice(1), depth+1, newAnc));
+      var newPath = path.concat([g]);
+      out.push({anc:newAnc, name:g, vals:vals, depth:depth, path:newPath});
+      if(dims.length>1) out = out.concat(buildTree(grp, dims.slice(1), depth+1, newAnc, newPath));
     });
     return out;
   }
@@ -404,6 +413,34 @@ function loadECharts(){
     renderMetricTags(); renderSummary();
   });
 
+  // ---------- 堆积柱状图（细分跟随汇总维度） ----------
+  var chart = null;
+  function renderChart(){
+    var el = document.getElementById('stackChart');
+    if(!el) return;
+    if(typeof echarts === 'undefined') return;   // CDN 未加载时静默跳过（不影响表格）
+    if(!chart) chart = echarts.init(el);
+    var tree = buildTree(ROWS, selected, 0);
+    var series = tree.map(function(node){
+      return {
+        name: node.path.join(' / '),
+        type: 'bar',
+        stack: 'total',
+        emphasis: {focus: 'series'},
+        data: node.vals.map(function(v){ return (v==null ? null : v); })
+      };
+    });
+    chart.setOption({
+      color: PALETTE,
+      tooltip: {trigger:'axis', axisPointer:{type:'shadow'}},
+      legend: {type:'scroll', bottom:0, itemWidth:12, itemHeight:10, textStyle:{fontSize:11}},
+      grid: {left:56, right:18, top:36, bottom:52},
+      xAxis: {type:'category', data: YEARS.map(String), axisLabel:{fontSize:11}},
+      yAxis: {type:'value', name:'万吨 LCE', nameTextStyle:{fontSize:11}, axisLabel:{fontSize:11}},
+      series: series
+    }, true);
+  }
+
   function renderTags(){
     var bar = document.getElementById('tagBar');
     bar.innerHTML = DIMS.map(function(d){
@@ -417,7 +454,7 @@ function loadECharts(){
     var i = selected.indexOf(d);
     if(i>=0) selected.splice(i,1); else selected.push(d);
     if(selected.length===0) selected = ['region'];   // 未选任何维度时默认按地区
-    renderTags(); renderSummary();
+    renderTags(); renderSummary(); renderChart();
   });
 
   // ---------- 明细 ----------
@@ -509,6 +546,7 @@ function loadECharts(){
   renderTags();
   renderMetricTags();
   renderSummary();
+  renderChart();
   refreshDetailFilters();
   renderDetail();
 }
