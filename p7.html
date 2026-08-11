@@ -59,12 +59,13 @@ td .pos{color:var(--up);} td .neg{color:var(--down);}
 .filter-bar .arrow{color:var(--sub); font-weight:700;}
 .filter-note{font-size:12px; color:var(--sub); margin-top:6px;}
 
-.grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:8px;}
-@media (max-width:1200px){ .grid-3{grid-template-columns:repeat(2,1fr);} }
-@media (max-width:760px){ .grid-3{grid-template-columns:1fr;} }
+.grid-4{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:8px;}
+@media (max-width:1500px){ .grid-4{grid-template-columns:repeat(3,1fr);} }
+@media (max-width:1100px){ .grid-4{grid-template-columns:repeat(2,1fr);} }
+@media (max-width:700px){ .grid-4{grid-template-columns:1fr;} }
 .chart-cell{border:1px solid var(--border); border-radius:10px; padding:8px 10px; background:var(--card);}
-.chart-cell .cap{font-size:13px; font-weight:700; color:var(--accent); margin-bottom:4px;}
-.chart-cell .ech{width:100%; height:240px;}
+.chart-cell .cap{font-size:12.5px; font-weight:700; color:var(--accent); margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.chart-cell .ech{width:100%; height:200px;}
 .footer{margin-top:30px; color:var(--sub); font-size:12px; text-align:center;}
 .note{color:var(--sub); font-size:13px; padding:10px;}
 </style>
@@ -101,7 +102,7 @@ td .pos{color:var(--up);} td .neg{color:var(--down);}
   <div class="tbl-scroll" style="max-height:none;" id="annualWrap"></div>
 
   <div class="section-title">季节图<span class="sub-inline" id="seasonalSub"></span></div>
-  <div class="grid-3" id="seasonalWrap"></div>
+  <div class="grid-4" id="seasonalWrap"></div>
 
   <div class="footer">碳酸锂数据看板 · 中国锂产业链平衡 · 数据来源：SMM / 海关（底稿《碳酸锂产业链平衡表.xlsx》） · 单位：吨 LCE</div>
 </div>
@@ -424,7 +425,7 @@ function loadECharts(){
   document.getElementById("filterSub").textContent="同比对照 · 累计值/同比增减值单位：万吨 LCE · 列结构与月度表一致";
   try{ renderSeasonal(); }catch(e){ console.error("seasonal error",e); }
   document.getElementById("seasonalSub").textContent=
-    "6 个核心指标（锂矿产量 / 进口 / 总供给 / 总需求 / 供需差 / 总库存） · 横轴 1–12 月 · 图例 "+(D.annualYears||[]).join("、");
+    "月度数据表全部指标（共 "+(D.seasonalCols||[]).length+" 个） · 一行 4 个 · 横轴 1–12 月 · 图例 "+(D.annualYears||[]).join("、");
 }
 </script>
 <!-- 红色激光笔：点击右下角按钮开/关，鼠标变为红色激光点；光点 pointer-events:none，不影响原有悬停/浮层效果 -->
