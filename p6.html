@@ -111,6 +111,8 @@ th .sort-arrow{margin-left:4px; font-size:11px; color:var(--accent);}
     <div class="filterbar">
       <span class="lbl">汇总维度：</span>
       <span id="tagBar"></span>
+      <span class="lbl" style="margin-left:16px;">数值口径：</span>
+      <span id="metricBar"></span>
     </div>
     <table class="t18" id="sumTable">
       <thead id="sumHead"></thead>
@@ -278,16 +280,23 @@ function loadECharts(){
     return '<tr class="detail">'+t+'</tr>';
   }
   function aggRow(labels, name, vals, opt){
-    var ic = groupInc(vals);
+    var gv = opt.gv || null;
+    var disp = metricVals(vals, gv);
+    var last = metricLast(vals, gv);
     var pad = opt.indent>0 ? ' style="padding-left:'+(8+opt.indent*16)+'px"' : '';
     var t = '';
     t += '<td>'+esc(labels.region)+'</td>';
     t += '<td>'+esc(labels.country)+'</td>';
     t += '<td>'+esc(labels.rtype)+'</td>';
     t += '<td'+pad+' class="grp-name">'+(opt.global?'🌐 ':'')+esc(name)+'</td>';
-    YEARS.forEach(function(y,i){ t += '<td'+(y===2026||y===2027?' class="hl"':'')+'>'+fmt(vals[i])+'</td>'; });
-    t += '<td class="'+incClass(ic[0])+'">'+inc(ic[0])+'</td>';
-    t += '<td class="'+incClass(ic[1])+'">'+inc(ic[1])+'</td>';
+    YEARS.forEach(function(y,i){
+      var cls = [];
+      if((metric==='yoyinc'||metric==='yoypct') && disp[i]!=null) cls.push(incClass(disp[i]));
+      if(y===2026||y===2027) cls.push('hl');
+      t += '<td'+(cls.length?' class="'+cls.join(' ')+'"':'')+'>'+fmtMetric(disp[i])+'</td>';
+    });
+    t += '<td class="'+incClass(last[0])+'">'+lastCell(last[0])+'</td>';
+    t += '<td class="'+incClass(last[1])+'">'+lastCell(last[1])+'</td>';
     return '<tr class="'+(opt.global?'grp global':'grp')+'">'+t+'</tr>';
   }
 
@@ -295,6 +304,53 @@ function loadECharts(){
   var DIMS = ['region','country','rtype'];
   var LBL = {region:'按地区', country:'按国家', rtype:'按资源类型'};
   var selected = ['region'];
+  var METRICS = [
+    {k:'abs',   n:'产量绝对值'},
+    {k:'pct',   n:'占比'},
+    {k:'yoyinc',n:'同比增量'},
+    {k:'yoypct',n:'同比%'}
+  ];
+  var metric = 'abs';
+
+  // 按当前口径换算某行/组各年份的显示值（gv 为全球合计，占比口径需要）
+  function metricVals(vals, gv){
+    var out = YEARS.map(function(){return null;});
+    var i;
+    if(metric==='abs'){
+      for(i=0;i<YEARS.length;i++) out[i] = vals[i];
+    } else if(metric==='pct'){
+      for(i=0;i<YEARS.length;i++) out[i] = (vals[i]!=null && gv!=null && gv[i]!=null) ? +(vals[i]/gv[i]*100).toFixed(2) : null;
+    } else if(metric==='yoyinc'){
+      for(i=1;i<YEARS.length;i++) out[i] = (vals[i]!=null && vals[i-1]!=null) ? +(vals[i]-vals[i-1]).toFixed(2) : null;
+    } else if(metric==='yoypct'){
+      for(i=1;i<YEARS.length;i++) out[i] = (vals[i]!=null && vals[i-1]!=null && vals[i-1]!==0) ? +((vals[i]/vals[i-1]-1)*100).toFixed(2) : null;
+    }
+    return out;
+  }
+  // 最后两列（2026vs2025 / 2027vs2026）按当前口径显示
+  function metricLast(vals, gv){
+    if(metric==='abs'){
+      return [ (vals[I26]!=null&&vals[I25]!=null)? +(vals[I26]-vals[I25]).toFixed(2):null,
+               (vals[I27]!=null&&vals[I26]!=null)? +(vals[I27]-vals[I26]).toFixed(2):null ];
+    }
+    if(metric==='pct'){
+      var d = metricVals(vals, gv);
+      return [ (d[I25]!=null&&d[I26]!=null)? +(d[I26]-d[I25]).toFixed(2):null,
+               (d[I26]!=null&&d[I27]!=null)? +(d[I27]-d[I26]).toFixed(2):null ];
+    }
+    var disp = metricVals(vals, gv);
+    return [ disp[I26], disp[I27] ];
+  }
+  function fmtMetric(v){
+    if(v==null) return '—';
+    if(metric==='pct' || metric==='yoypct') return (metric==='yoypct'&&v>0?'+':'') + Number(v).toFixed(2) + '%';
+    return (metric==='yoyinc'&&v>0?'+':'') + Number(v).toFixed(2);
+  }
+  function lastCell(v){
+    if(v==null) return '—';
+    var suf = metric==='pct' ? 'pp' : (metric==='yoypct' ? '%' : '');
+    return (v>0?'+':'') + Number(v).toFixed(2) + suf;
+  }
 
   function buildTree(rows, dims, depth, anc){
     anc = anc || {region:'—', country:'—', rtype:'—'};
@@ -321,11 +377,26 @@ function loadECharts(){
 
   function renderSummary(){
     var globalVals = sumVals(ROWS);
-    var html = aggRow({region:'—',country:'—',rtype:'—'}, '全球锂资源供应合计', globalVals, {global:true, indent:0});
+    var html = aggRow({region:'—',country:'—',rtype:'—'}, '全球锂资源供应合计', globalVals, {global:true, indent:0, gv:globalVals});
     var tree = buildTree(ROWS, selected, 0);
-    tree.forEach(function(node){ html += aggRow(node.anc, node.name, node.vals, {global:false, indent:node.depth}); });
+    tree.forEach(function(node){ html += aggRow(node.anc, node.name, node.vals, {global:false, indent:node.depth, gv:globalVals}); });
     document.getElementById('sumBody').innerHTML = html;
   }
+
+  function renderMetricTags(){
+    var bar = document.getElementById('metricBar');
+    bar.innerHTML = METRICS.map(function(m){
+      var on = metric === m.k;
+      return '<span class="ybtn '+(on?'on':'off')+'" data-m="'+m.k+'">'+m.n+'</span>';
+    }).join('');
+  }
+  document.getElementById('metricBar').addEventListener('click', function(e){
+    var b = e.target.closest('.ybtn'); if(!b) return;
+    var k = b.getAttribute('data-m');
+    if(metric === k) return;
+    metric = k;
+    renderMetricTags(); renderSummary();
+  });
 
   function renderTags(){
     var bar = document.getElementById('tagBar');
@@ -430,6 +501,7 @@ function loadECharts(){
   renderHead(document.getElementById('sumHead'), false);
   renderHead(document.getElementById('detailHead'), true);
   renderTags();
+  renderMetricTags();
   renderSummary();
   refreshDetailFilters();
   renderDetail();
