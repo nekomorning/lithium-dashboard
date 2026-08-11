@@ -230,7 +230,7 @@ function loadECharts(){
     return '<tr class="detail-summary">'+t+'</tr>';
   }
   function detailPctRow(summaryVals, globalVals){
-    function pct(v, g){ return (v==null || g==null) ? '—' : (v / g * 100).toFixed(1) + '%'; }
+    function pct(v, g){ return (v==null || g==null) ? '—' : Math.round(v / g * 100) + '%'; }
     var t = '';
     t += '<td>—</td>';
     t += '<td>—</td>';
@@ -343,13 +343,13 @@ function loadECharts(){
   }
   function fmtMetric(v){
     if(v==null) return '—';
-    if(metric==='pct' || metric==='yoypct') return (metric==='yoypct'&&v>0?'+':'') + Number(v).toFixed(2) + '%';
+    if(metric==='pct' || metric==='yoypct') return (metric==='yoypct'&&v>0?'+':'') + Math.round(v) + '%';
     return (metric==='yoyinc'&&v>0?'+':'') + Number(v).toFixed(2);
   }
   function lastCell(v){
     if(v==null) return '—';
     var suf = metric==='pct' ? 'pp' : (metric==='yoypct' ? '%' : '');
-    return (v>0?'+':'') + Number(v).toFixed(2) + suf;
+    return (v>0?'+':'') + (metric==='pct'||metric==='yoypct' ? Math.round(v) : Number(v).toFixed(2)) + suf;
   }
 
   function buildTree(rows, dims, depth, anc){
