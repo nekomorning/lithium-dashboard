@@ -55,11 +55,14 @@ td.up{color:var(--up); font-weight:600;} td.down{color:var(--down); font-weight:
 /* 高亮 2026/2027 两年数据列 */
 td.hl{background:#e8f1fb !important;}
 th.hl{background:#d4e3f5 !important; color:#0b3a63 !important;}
-tr.grp td{background:#eef3f9; color:var(--accent); font-weight:700; font-size:13px;}
-tr.grp.global td{background:#e3edf7; color:#0b3a63; font-weight:800;}
+/* 汇总表行：与明细表一致的白底，增量红涨绿跌 */
+tr.grp td{background:#fff; color:var(--text); font-weight:600;}
+tr.grp.global td{background:#fff; color:var(--text); font-weight:700;}
+td.grp-name{border-bottom:1px dashed #c5d2e2;}
 td.proj{border-bottom:1px dashed #c5d2e2; cursor:help;}
 td.proj:hover{color:var(--accent);}
 tr.detail:hover td{background:#fafcff;}
+tr.grp:hover td{background:#fafcff;}
 
 /* 股权浮层 */
 #tip{position:fixed; display:none; z-index:60; max-width:380px;
@@ -195,7 +198,7 @@ function loadECharts(){
     t += '<td>'+esc(labels.region)+'</td>';
     t += '<td>'+esc(labels.country)+'</td>';
     t += '<td>'+esc(labels.rtype)+'</td>';
-    t += '<td'+pad+'>'+(opt.global?'🌐 ':'')+esc(name)+'</td>';
+    t += '<td'+pad+' class="grp-name">'+(opt.global?'🌐 ':'')+esc(name)+'</td>';
     YEARS.forEach(function(y,i){ t += '<td'+(y===2026||y===2027?' class="hl"':'')+'>'+fmt(vals[i])+'</td>'; });
     t += '<td class="'+incClass(ic[0])+'">'+inc(ic[0])+'</td>';
     t += '<td class="'+incClass(ic[1])+'">'+inc(ic[1])+'</td>';
