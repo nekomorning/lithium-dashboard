@@ -128,8 +128,8 @@ function loadECharts(){
 
   function fmt(v, type){
     if(v===null || v===undefined || (typeof v==="number" && isNaN(v))) return "";
-    if(type==="pct") return Number(v).toFixed(1)+"%";
-    return Number(v).toLocaleString("zh-CN",{maximumFractionDigits:1});
+    if(type==="pct") return Math.round(v)+"%";
+    return String(Math.round(v));   // 整数显示，去掉千分位
   }
 
   /* ---------- 平衡表切换标签（本次仅实现 锂矿） ---------- */
@@ -223,6 +223,8 @@ function loadECharts(){
     renderFilterTable();
   }
   function aggRange(sy,sm,ey,em,col){
+    // 百分比/天数类列不参与区间累计
+    if(col.type==="pct" || col.type==="days") return null;
     var vals=[];
     D.months.forEach(function(mo){
       var y=+mo.slice(0,4), m=+mo.slice(5,7);
@@ -244,24 +246,28 @@ function loadECharts(){
       return diff[idx]/lst[idx]*100;
     });
     var head="<thead>"+headCells(G)+"</thead>";
-    function row(name,arr,isPct,colorFn){
+    function row(name,arr,mode,colorFn){
+      // mode: 'wan'=万吨LCE整数（吨÷10000） | 'pct'=同比%保留1位小数
       var r="<tr><td class='date-col'>"+name+"</td>";
       arr.forEach(function(v,idx){
-        var s = (v===null||v===undefined) ? "" : (isPct? v.toFixed(1)+"%" : fmt(v,G.cols[idx].type));
+        var s="";
+        if(v!==null&&v!==undefined){
+          s = (mode==="pct") ? Number(v).toFixed(1)+"%" : String(Math.round(v/10000));
+        }
         var sty=(colorFn&&s!=="")?colorFn(v,idx):"";
         r+="<td"+sty+">"+s+"</td>";
       });
       return r+"</tr>";
     }
     var body="<tbody>";
-    body+=row("上年同期区间累计值", lst, false, function(v,idx){ return signStyle(v); });
-    body+=row("所选周期区间累计值", sel, false, function(v,idx){ return signStyle(v); });
-    body+=row("同比增减值", diff, false, function(v,idx){ return signStyle(v); });
-    body+=row("同比增减%", pct, true, function(v,idx){ return signStyle(v); });
+    body+=row("上年同期区间累计值（万吨LCE）", lst, "wan", null);
+    body+=row("所选周期区间累计值（万吨LCE）", sel, "wan", null);
+    body+=row("同比增减值（万吨LCE）", diff, "wan", function(v){ return signStyle(v); });
+    body+=row("同比增减%", pct, "pct", function(v){ return signStyle(v); });
     body+="</tbody>";
     document.getElementById("filterWrap").innerHTML="<table class='data'>"+head+body+"</table>";
     document.getElementById("filterNote").textContent=
-      "区间 "+sy+"年"+sm+"月 至 "+ey+"年"+em+"月 · 区间累计（月相加）；同比对照为去年同期同区间累计；列结构与月度表一致";
+      "区间 "+sy+"年"+sm+"月 至 "+ey+"年"+em+"月 · 累计值/同比增减值单位：万吨 LCE（吨÷10000，四舍五入取整）；同比增减% 保留 1 位小数；占比/天数列不参与区间累计";
   }
 
   /* ---------- 年度数据汇总 ---------- */
@@ -283,7 +289,7 @@ function loadECharts(){
     document.getElementById("annualWrap").innerHTML="<table class='data'>"+head+body+"</table>";
     var lastM=+D.latestDate.split("-")[1];
     document.getElementById("annualNote").textContent=
-      "列结构与月度表一致 · 最新年份 "+ys[ys.length-1]+" 含预测值，为不完整年（已公布 1–"+lastM+"月）";
+      "列结构与月度表一致 · 数值保留整数（吨 LCE） · 最新年份 "+ys[ys.length-1]+" 含预测值，为不完整年（已公布 1–"+lastM+"月）";
   }
 
   /* ---------- 季节图（6 个核心指标，横轴 1–12 月） ---------- */
@@ -332,8 +338,8 @@ function loadECharts(){
   renderFilterBar();
   renderAnnual();
   document.getElementById("monthlySub").textContent=
-    "只显示原始数据（不含环比/同比） · 默认滚动到最新月份，向上滚动查看更早年份；横向滚动查看全部指标";
-  document.getElementById("filterSub").textContent="同比对照 · 列结构与月度表一致";
+    "只显示原始数据（不含环比/同比） · 数值保留整数（吨 LCE） · 默认滚动到最新月份，向上滚动查看更早年份；横向滚动查看全部指标";
+  document.getElementById("filterSub").textContent="同比对照 · 累计值/同比增减值单位：万吨 LCE · 列结构与月度表一致";
   try{ renderSeasonal(); }catch(e){ console.error("seasonal error",e); }
   document.getElementById("seasonalSub").textContent=
     "6 个核心指标（锂矿产量 / 进口 / 总供给 / 总需求 / 供需差 / 总库存） · 横轴 1–12 月 · 图例 "+(D.annualYears||[]).join("、");
