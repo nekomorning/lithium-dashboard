@@ -121,7 +121,7 @@ td.up{color:var(--up); font-weight:600;} td.down{color:var(--down); font-weight:
 
   <div class="btabs" id="btabs"></div>
 
-  <div id="sheetGlobal">
+  <div id="sheetGlobal" style="display:none;">
     <div class="caliber"><span class="ico">ℹ</span><span>销量口径均为<b>批发销量（含出口）</b>；单位：万辆；渗透率单位：%</span></div>
 
     <div class="summary" id="summary"></div>
@@ -141,7 +141,7 @@ td.up{color:var(--up); font-weight:600;} td.down{color:var(--down); font-weight:
     <div id="sections"></div>
   </div>
 
-  <div id="sheetCn" style="display:none;">
+  <div id="sheetCn">
     <div class="section-title">核心变化速览</div>
     <div class="cn-ov" id="cnSummary"></div>
 
@@ -435,7 +435,7 @@ function cnChgTxt(v, isPct){
 }
 function buildCnTabs(){
   var bar=document.getElementById("btabs");
-  bar.innerHTML='<span class="btab active" data-t="g">全球乘用车</span><span class="btab" data-t="c">中国汽车</span>';
+  bar.innerHTML='<span class="btab active" data-t="c">中国汽车</span><span class="btab" data-t="g">全球乘用车</span>';
   Array.prototype.forEach.call(bar.children, function(sp){
     sp.onclick=function(){
       var t=sp.getAttribute("data-t");
