@@ -96,6 +96,26 @@ th .sort-arrow{margin-left:4px; font-size:11px; color:var(--accent);}
   box-shadow:0 6px 20px rgba(0,0,0,.22); pointer-events:none;}
 
 .footer{margin-top:30px; color:var(--sub); font-size:12px; text-align:center;}
+
+/* ===== 全球锂需求标签页 ===== */
+.dem-kpis{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-bottom:18px;}
+@media (max-width:1200px){ .dem-kpis{grid-template-columns:repeat(2,minmax(0,1fr));} }
+@media (max-width:720px){ .dem-kpis{grid-template-columns:1fr;} }
+.dem-kpis .kpi{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px;}
+.dem-kpis .kpi .t{font-size:12.5px; color:var(--sub); margin-bottom:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.dem-kpis .kpi .v{font-size:20px; font-weight:700;}
+.dem-kpis .kpi .v .u{font-size:11px; color:var(--sub); font-weight:400; margin-left:3px;}
+.dem-kpis .kpi .s{font-size:11px; margin-top:4px; line-height:1.6; color:var(--sub);}
+.dem-kpis .kpi .s b{font-weight:600;}
+.dem-kpis .kpi .s .up{color:var(--up);} .dem-kpis .kpi .s .down{color:var(--down);} .dem-kpis .kpi .s .flat{color:var(--flat);}
+.section-title{font-size:16px; color:var(--accent); font-weight:700; margin:24px 0 4px; padding-left:10px; border-left:4px solid var(--accent);}
+.grid.c3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:8px;}
+@media (max-width:1200px){ .grid.c3{grid-template-columns:repeat(2,minmax(0,1fr));} }
+@media (max-width:720px){ .grid.c3{grid-template-columns:1fr;} }
+.grid .card{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px 12px;}
+.grid .card .cap{font-size:12.5px; font-weight:700; color:var(--accent); margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.grid .card .ech{width:100%; height:200px;}
+table.dem td{text-align:right;}
 </style>
 </head>
 <body>
@@ -165,14 +185,39 @@ th .sort-arrow{margin-left:4px; font-size:11px; color:var(--accent);}
   <div class="footer">碳酸锂数据看板 · 全球年度平衡 · 全球锂供应 · 产量单位：万吨 LCE（2026–2030 为预测值 E）· 涨=红 跌=绿</div>
   </div>
 
-  <!-- 全球锂需求（待建设） -->
+  <!-- 全球锂需求 -->
   <div id="sheetDemand" style="display:none;">
-    <div class="tablecard">
-      <h2>全球锂需求 <span class="note">该标签页建设中，数据整理中…</span></h2>
-      <div style="padding:60px 20px; text-align:center; color:var(--sub); font-size:14px;">
-        全球锂需求页面即将上线，敬请期待。
-      </div>
+    <div class="caliber" style="background:#eef7ee; border-color:#bfe0bf; color:#2f6b2f;">
+      <span class="ico">📌</span>
+      <span id="demCaliberTxt"></span>
     </div>
+
+    <div class="dem-kpis" id="demKpis"></div>
+
+    <div class="tablecard">
+      <h2>年度供需平衡表 <span class="note">单位：万吨 LCE；2026 为 中性/乐观/悲观 三档预测</span></h2>
+      <table class="t18" id="demTable" style="min-width:1500px;">
+        <thead id="demHead"></thead>
+        <tbody id="demBody"></tbody>
+      </table>
+    </div>
+
+    <div class="tablecard">
+      <h2>锂需求结构（万吨 LCE）<span class="note">动力电池 / 储能电池 / 消费电池 / 其他电池 / 传统需求</span></h2>
+      <div id="demStructChart" style="width:100%; height:380px;"></div>
+    </div>
+
+    <div class="section-title">需求驱动指标</div>
+    <div class="grid c3" id="demGrid">
+      <div class="card"><div class="cap">新能源车销量（万辆）</div><div class="ech" id="demC1"></div></div>
+      <div class="card"><div class="cap">全球动力电池出货量（GWh）</div><div class="ech" id="demC2"></div></div>
+      <div class="card"><div class="cap">全球动力电池装机量（GWh）</div><div class="ech" id="demC3"></div></div>
+      <div class="card"><div class="cap">全球储能电池出货量（GWh）</div><div class="ech" id="demC4"></div></div>
+      <div class="card"><div class="cap">全球储能电池装机量（GWh）</div><div class="ech" id="demC5"></div></div>
+      <div class="card"><div class="cap">分地区新能源车销量（万辆）</div><div class="ech" id="demC6"></div></div>
+    </div>
+
+    <div class="footer">碳酸锂数据看板 · 全球年度平衡 · 全球锂需求 · 单位：万吨 LCE（GWh / 万辆）· 2026 三档预测 · 涨=红 跌=绿</div>
   </div>
 </div>
 <div id="tip"></div>
@@ -588,9 +633,147 @@ function loadECharts(){
       setTimeout(function(){
         var ch = document.getElementById('stackChart');
         if(ch && window.echarts && chart) { try{ chart.resize(); }catch(err){} }
+        if(t==='d'){ demCharts.forEach(function(c){ try{ c.resize(); }catch(e){} }); }
       }, 80);
     });
   }
+
+  // ================= 全球锂需求标签页 =================
+  var DEM = D.demand || null;
+  var demCharts = [];
+  function demFmt(v, d){ return (v==null || isNaN(v)) ? '—' : Number(v).toFixed(d==null?2:d); }
+  function demSign(v, d){ return (v==null || isNaN(v)) ? '—' : ((v>0?'+':'') + Number(v).toFixed(d==null?2:d)); }
+  function demCls(v){ return (v==null || isNaN(v)) ? '' : (v>0 ? 'up' : (v<0 ? 'down' : 'flat')); }
+  function demYears(){ return DEM ? DEM.years : []; }
+  function demRow(k){ return (DEM && DEM.rows && DEM.rows[k]) ? DEM.rows[k] : []; }
+  function demLast(yi){ return yi; }   // 2026中性 索引 7
+
+  function renderDemKpis(){
+    var w = document.getElementById('demKpis'); if(!w || !DEM) return;
+    var i25 = 6, i26 = 7;   // 2025, 2026中性
+    var dt = demRow('demand_total');
+    var bal = demRow('balance');
+    var dg = demRow('demand_g');
+    var st = demRow('storage_ship');
+    var kpis = [
+      { t:'需求合计（2025）', v:demFmt(dt[i25],1), u:'万吨 LCE',
+        s:'同比 <b class="'+demCls(dg[i25])+'">'+demSign(dg[i25]*100,1)+'%</b>' },
+      { t:'需求合计（2026中性）', v:demFmt(dt[i26],1), u:'万吨 LCE',
+        s:'同比 <b class="'+demCls(dg[i26])+'">'+demSign(dg[i26]*100,1)+'%</b>' },
+      { t:'供需平衡（2025）', v:demFmt(bal[i25],1), u:'万吨 LCE',
+        s:'供>求 = 过剩；供<求 = 缺口' },
+      { t:'供需平衡（2026中性）', v:demFmt(bal[i26],1), u:'万吨 LCE',
+        s:'供给 <b>'+demFmt(demRow('supply_total')[i26],1)+'</b> vs 需求 <b>'+demFmt(dt[i26],1)+'</b>' },
+    ];
+    w.innerHTML = kpis.map(function(k){
+      return '<div class="kpi"><div class="t">'+k.t+'</div><div class="v">'+k.v+'<span class="u">'+k.u+'</span></div><div class="s">'+k.s+'</div></div>';
+    }).join('');
+  }
+
+  function renderDemTable(){
+    var th = document.getElementById('demHead'); if(!th || !DEM) return;
+    var tb = document.getElementById('demBody');
+    var years = demYears();
+    th.innerHTML = '<tr><th style="text-align:left">指标</th><th>单位</th>'+years.map(function(y){
+      return '<th class="'+(y==='2026中性'||y==='2027'||y==='2028'||y==='2029'||y==='2030'?'hl':'')+'">'+y+'</th>';
+    }).join('')+'</tr>';
+    var defs = [
+      {k:'supply_total', l:'供给合计', u:'万吨 LCE', w:1},
+      {k:'demand_total', l:'需求合计', u:'万吨 LCE', w:1},
+      {k:'balance', l:'供需平衡（供给−需求）', u:'万吨 LCE', w:1},
+      {k:'balance_ratio', l:'供需差 / 需求', u:'%', w:2},
+      {k:'d_power', l:'  ├ 动力电池', u:'万吨 LCE', w:1},
+      {k:'d_storage', l:'  ├ 储能电池', u:'万吨 LCE', w:1},
+      {k:'d_consumer', l:'  ├ 消费电池', u:'万吨 LCE', w:1},
+      {k:'d_other', l:'  ├ 其他电池', u:'万吨 LCE', w:1},
+      {k:'d_tradition', l:'  └ 传统需求', u:'万吨 LCE', w:1},
+    ];
+    tb.innerHTML = defs.map(function(df){
+      var arr = demRow(df.k);
+      return '<tr><td style="text-align:left">'+df.l+'</td><td style="color:var(--sub)">'+df.u+'</td>'+arr.map(function(v, i){
+        var disp = (df.w===2 && v!=null) ? (v*100).toFixed(1)+'%' : demFmt(v, df.w===2?2:2);
+        var cls = (df.k==='balance' || df.k==='balance_ratio') ? ' class="'+demCls(v)+'"' : '';
+        return '<td'+cls+'>'+disp+'</td>';
+      }).join('')+'</tr>';
+    }).join('');
+  }
+
+  function renderDemStruct(){
+    var el = document.getElementById('demStructChart'); if(!el || !DEM) return;
+    var c = echarts.init(el); demCharts.push(c);
+    var years = demYears();
+    // 只显示 2020 起的（2019 动力/储能等缺失）
+    var y0 = 2; // 2021
+    var cats = years.slice(y0);
+    var cols = [
+      {k:'d_power', l:'动力电池', c:'#1E6FFF'},
+      {k:'d_storage', l:'储能电池', c:'#F59A23'},
+      {k:'d_consumer', l:'消费电池', c:'#8B5CF6'},
+      {k:'d_other', l:'其他电池', c:'#0FB5AE'},
+      {k:'d_tradition', l:'传统需求', c:'#7A6A53'},
+    ];
+    c.setOption({
+      animation:false,
+      tooltip:{trigger:'axis', axisPointer:{type:'shadow'}},
+      legend:{type:'scroll', bottom:0, itemWidth:12, itemHeight:10, textStyle:{fontSize:11}},
+      grid:{left:56, right:18, top:30, bottom:52},
+      xAxis:{type:'category', data:cats, axisLabel:{fontSize:11, rotate:30}},
+      yAxis:{type:'value', name:'万吨 LCE', nameTextStyle:{fontSize:11}, axisLabel:{fontSize:11}},
+      series: cols.map(function(cd){
+        var arr = demRow(cd.k).slice(y0);
+        return {name:cd.l, type:'bar', stack:'d', emphasis:{focus:'series'}, itemStyle:{color:cd.c}, data:arr};
+      })
+    }, true);
+  }
+
+  function demLine(elId, keys, labels, colors, yName, pctKeys){
+    var el = document.getElementById(elId); if(!el || !DEM) return null;
+    var c = echarts.init(el); demCharts.push(c);
+    var years = demYears();
+    var series = keys.map(function(k, i){
+      var arr = demRow(k);
+      var data = arr.map(function(v, idx){
+        if(v==null) return null;
+        var y = years[idx];
+        // 2026 三档仅保留中性列，乐观/悲观不重复画
+        if(y==='2026乐观' || y==='2026悲观') return null;
+        return v;
+      });
+      return {name:labels[i], type:'line', showSymbol:false, smooth:true,
+        lineStyle:{width:1.8, color:colors[i]}, itemStyle:{color:colors[i]}, data:data};
+    });
+    c.setOption({
+      animation:false,
+      tooltip:{trigger:'axis'},
+      legend:{type:'scroll', top:0, itemWidth:12, itemHeight:10, textStyle:{fontSize:10}},
+      grid:{left:52, right:16, top:30, bottom:26},
+      xAxis:{type:'category', data:years, axisLabel:{fontSize:10, rotate:30}},
+      yAxis:{type:'value', name:yName, nameTextStyle:{fontSize:10}, axisLabel:{fontSize:10}},
+      series:series
+    }, true);
+    return c;
+  }
+
+  function renderDemGrid(){
+    if(!DEM) return;
+    demLine('demC1', ['nev_sales'], ['全球新能源车销量'], ['#1E6FFF'], '万辆');
+    demLine('demC2', ['power_ship'], ['全球动力电池出货量'], ['#F59A23'], 'GWh');
+    demLine('demC3', ['power_inst'], ['全球动力电池装机量'], ['#8B5CF6'], 'GWh');
+    demLine('demC4', ['storage_ship'], ['全球储能电池出货量'], ['#0FB5AE'], 'GWh');
+    demLine('demC5', ['storage_inst'], ['全球储能电池装机量'], ['#D63FA6'], 'GWh');
+    demLine('demC6', ['nev_cn', 'nev_eu', 'nev_us', 'nev_other'],
+      ['中国', '欧洲', '美国', '其他国家'], ['#1E6FFF','#F59A23','#8B5CF6','#0FB5AE'], '万辆');
+  }
+
+  function renderDemand(){
+    if(!DEM) return;
+    document.getElementById('demCaliberTxt').textContent = DEM.caliber || '';
+    renderDemKpis();
+    renderDemTable();
+    renderDemStruct();
+    renderDemGrid();
+  }
+  renderDemand();
 }
 </script>
 <!-- 红色激光笔：点击右下角按钮开/关，鼠标变为红色激光点；光点 pointer-events:none，不影响原有悬停/浮层效果 -->
