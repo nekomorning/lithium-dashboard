@@ -71,6 +71,31 @@ td .pos{color:var(--up);} td .neg{color:var(--down);}
 .chart-cell .ech{width:100%; height:190px;}
 .footer{margin-top:30px; color:var(--sub); font-size:12px; text-align:center;}
 .note{color:var(--sub); font-size:13px; padding:10px;}
+
+/* 核心结论与假设 */
+.conclusion-actions{float:right;}
+.btn-sm{padding:3px 12px; border:1px solid var(--border); background:#fff; border-radius:6px; font-size:12px; cursor:pointer; margin-left:6px;}
+.btn-sm:hover{background:#f0f4f9;}
+.conclusion-box{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 18px; margin-bottom:18px; min-height:60px; line-height:1.85; white-space:pre-wrap; word-break:break-word;}
+.conclusion-box.empty{color:var(--sub); font-style:italic;}
+.conclusion-box textarea{width:100%; min-height:120px; padding:10px; border:1px solid var(--border); border-radius:6px; font-family:inherit; font-size:13px; line-height:1.7; box-sizing:border-box; resize:vertical;}
+.conclusion-actions .save{background:var(--accent); color:#fff; border-color:var(--accent);}
+.conclusion-actions .save:hover{background:#093a66;}
+.conclusion-actions .cancel{color:var(--sub);}
+.conclusion-actions .cancel:hover{background:#f0f4f9;}
+.conclusion-status-saved{color:#0a9a5c; font-weight:600; margin-left:8px; font-size:12.5px;}
+.conclusion-status-unsaved{color:#d97706; font-weight:600; margin-left:8px; font-size:12.5px;}
+.conclusion-status-err{color:#d92626; font-weight:600; margin-left:8px; font-size:12.5px;}
+
+.modal-mask{position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:9999;}
+.modal-mask .box{background:#fff; border-radius:10px; padding:18px 22px; max-width:640px; width:92%; max-height:78vh; overflow:auto; box-shadow:0 8px 32px rgba(0,0,0,.2);}
+.modal-mask h3{margin-bottom:12px; color:var(--accent); font-size:16px; display:flex; justify-content:space-between; align-items:center;}
+.modal-mask h3 .x{cursor:pointer; color:var(--sub); font-size:20px; line-height:1;}
+.modal-mask .item{padding:10px 0; border-bottom:1px solid #eef1f6; font-size:13px; line-height:1.7;}
+.modal-mask .item:last-child{border-bottom:none;}
+.modal-mask .item .meta{color:var(--sub); font-size:11.5px; margin-bottom:4px;}
+.modal-mask .item .txt{white-space:pre-wrap; color:var(--text);}
+.modal-mask .empty{color:var(--sub); text-align:center; padding:30px 0;}
 </style>
 </head>
 <body>
@@ -95,6 +120,9 @@ td .pos{color:var(--up);} td .neg{color:var(--down);}
 
   <div class="section-title">月度数据<span class="sub-inline" id="monthlySub"></span></div>
   <div class="tbl-scroll" id="monthlyScroll"><table class="data" id="monthlyTable"></table></div>
+
+  <div class="section-title">核心结论与假设<span class="sub-inline" id="conclusionStatus"></span><span class="conclusion-actions"><button class="btn-sm" id="conclusionEdit">编辑</button><button class="btn-sm" id="conclusionHistory">历史</button></span></div>
+  <div class="conclusion-box empty" id="conclusionBox"></div>
 
   <div class="section-title">区间筛选（同比对照）<span class="sub-inline" id="filterSub"></span></div>
   <div class="filter-bar" id="filterBar"></div>
@@ -484,6 +512,144 @@ function loadECharts(){
     try{ renderSeasonal(); }catch(e){ console.error("seasonal error",e); }
     document.getElementById("seasonalSub").textContent=
       "月度数据表全部指标（共 "+(D.seasonalCols||[]).length+" 个）· 按一级列标题分 "+(D.groups||[]).length+" 个板块 · 每板块一行 4 个 · 横轴 1–12 月 · 图例 "+(D.annualYears||[]).join("、");
+    renderConclusion();
+  }
+
+  /* ---------- 核心结论与假设（编辑/保存/历史） ---------- */
+  var API_BASE = "http://127.0.0.1:8090";
+  var concState = { text:"", serverText:"", loaded:false, error:false };
+  function conclusionSheet(){ return ALL.activeTab || "锂矿"; }
+  function renderConclusion(){
+    var box = document.getElementById("conclusionBox");
+    var stt = document.getElementById("conclusionStatus");
+    if(!box) return;
+    var sheet = conclusionSheet();
+    box.classList.remove("empty");
+    box.innerHTML = "<div style='color:var(--sub)'>加载中…</div>";
+    stt.textContent = "";
+    fetch(API_BASE + "/api/conclusion/" + encodeURIComponent(sheet))
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        concState.serverText = (data.current && data.current.text) || "";
+        concState.text = concState.serverText;
+        concState.loaded = true;
+        concState.error = false;
+        renderConclusionBody();
+      })
+      .catch(function(){
+        concState.error = true;
+        concState.text = "";
+        concState.serverText = "";
+        concState.loaded = true;
+        renderConclusionBody();
+      });
+  }
+  function renderConclusionBody(){
+    var box = document.getElementById("conclusionBox");
+    var stt = document.getElementById("conclusionStatus");
+    if(concState.error){
+      box.className = "conclusion-box";
+      box.innerHTML = "<div style='color:var(--sub)'>（后端未启动或网络异常，无法加载核心结论与假设。请确认本地 8090 端口服务（conclusion_server.py）已运行。）</div>";
+      stt.innerHTML = "<span class='conclusion-status-err'>后端未连接</span>";
+      return;
+    }
+    if(isEditing()){
+      box.className = "conclusion-box";
+      box.innerHTML = "<textarea id='conclusionText' placeholder='请输入核心结论与假设…'>"+escapeHtml(concState.text)+"</textarea>";
+      var ta = document.getElementById("conclusionText");
+      ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+      ta.oninput = function(){ concState.text = ta.value; updateStatus(); };
+      renderEditActions();
+    } else {
+      if(!concState.text){
+        box.className = "conclusion-box empty";
+        box.innerHTML = "（暂无内容，点击 [编辑] 记录核心结论与假设）";
+      } else {
+        box.className = "conclusion-box";
+        box.innerHTML = escapeHtml(concState.text);
+      }
+      renderEditActions();
+    }
+    updateStatus();
+  }
+  function isEditing(){ return document.getElementById("conclusionText") !== null; }
+  function renderEditActions(){
+    var host = document.querySelector(".conclusion-actions");
+    if(!host) return;
+    if(isEditing()){
+      host.innerHTML = "<button class='btn-sm save' id='concSave'>保存</button><button class='btn-sm cancel' id='concCancel'>取消</button>";
+      var s = document.getElementById("concSave"), c = document.getElementById("concCancel");
+      if(s) s.onclick = saveConclusion;
+      if(c) c.onclick = cancelConclusion;
+    } else {
+      host.innerHTML = "<button class='btn-sm' id='concEdit'>编辑</button><button class='btn-sm' id='concHistory'>历史</button>";
+      var e = document.getElementById("concEdit"), h = document.getElementById("concHistory");
+      if(e) e.onclick = editConclusion;
+      if(h) h.onclick = showConclusionHistory;
+    }
+  }
+  function editConclusion(){
+    concState.text = concState.serverText || "";
+    renderConclusionBody();
+  }
+  function cancelConclusion(){
+    concState.text = concState.serverText;
+    renderConclusionBody();
+  }
+  function saveConclusion(){
+    var sheet = conclusionSheet();
+    var text = concState.text;
+    var now = new Date().toISOString().slice(0,16).replace("T"," ");
+    fetch(API_BASE + "/api/conclusion/" + encodeURIComponent(sheet), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: text, updated: now })
+    }).then(function(r){
+      if(!r.ok) throw new Error("http " + r.status);
+      return r.json();
+    }).then(function(data){
+      concState.serverText = (data.current && data.current.text) || "";
+      concState.text = concState.serverText;
+      renderConclusionBody();
+    }).catch(function(err){
+      alert("保存失败：" + (err && err.message));
+    });
+  }
+  function showConclusionHistory(){
+    var sheet = conclusionSheet();
+    fetch(API_BASE + "/api/conclusion/" + encodeURIComponent(sheet))
+      .then(function(r){ return r.json(); })
+      .then(function(data){ openHistoryModal(data); })
+      .catch(function(){ openHistoryModal(null); });
+  }
+  function openHistoryModal(data){
+    var mask = document.createElement("div"); mask.className = "modal-mask";
+    var box = document.createElement("div"); box.className = "box";
+    var html = "<h3>"+escapeHtml(conclusionSheet())+" · 历史编辑记录 <span class='x' onclick='document.body.removeChild(this.parentNode.parentNode.parentNode)'>×</span></h3>";
+    if(!data || (!data.current && (!data.history || !data.history.length))){
+      html += "<div class='empty'>暂无历史记录</div>";
+    } else {
+      if(data.current){
+        html += "<div class='item'><div class='meta'>当前版本 v"+data.current.version+" · "+escapeHtml(data.current.updated||"")+"</div><div class='txt'>"+escapeHtml(data.current.text||"")+"</div></div>";
+      }
+      (data.history||[]).slice().reverse().forEach(function(h){
+        html += "<div class='item'><div class='meta'>v"+h.version+" · "+escapeHtml(h.saved_at||"")+"</div><div class='txt'>"+escapeHtml(h.text||"")+"</div></div>";
+      });
+    }
+    box.innerHTML = html; mask.appendChild(box); document.body.appendChild(mask);
+    mask.onclick = function(e){ if(e.target === mask) document.body.removeChild(mask); };
+  }
+  function escapeHtml(s){ return (s==null?"":String(s)).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+  function updateStatus(){
+    var stt = document.getElementById("conclusionStatus");
+    if(!stt) return;
+    if(isEditing()){
+      if(concState.text !== concState.serverText) stt.innerHTML = "<span class='conclusion-status-unsaved'>尚未保存</span>";
+      else stt.innerHTML = "";
+    } else {
+      if(concState.serverText) stt.innerHTML = "<span class='conclusion-status-saved'>已保存</span>";
+      else stt.innerHTML = "";
+    }
   }
   resetFold();
   renderAll();
