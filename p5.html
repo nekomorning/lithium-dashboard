@@ -225,24 +225,17 @@ th .arr.up{color:var(--down);}
     <div id="rankSections"></div>
   </div>
 
-  <!-- 乘联会 · 车企图表 -->
+  <!-- 车企细分（新能源乘用车分车型） -->
   <div id="sheetMaker" style="display:none;">
-    <div class="section-title">车企图表<span class="clh-note">批发/零售/出口 季节图 + 各车型销量堆积柱形图（横轴月份） · 数据来源：乘联会</span></div>
+    <div class="section-title">车企细分<span style="font-size:12px;color:var(--sub);font-weight:400;margin-left:8px" id="segSub"></span></div>
     <div class="clh-toolbar">
-      <div class="grp"><label>车企：</label><select id="clhMaker" class="clh-select"></select></div>
-      <div class="grp"><label>燃料类型：</label><span id="clhMakerFuel"></span></div>
-      <div class="grp"><label>车型：</label><select id="clhModel" class="clh-select"></select></div>
-      <div class="grp"><label>年份：</label><span id="clhMakerYears"></span></div>
+      <div class="grp"><label>年份：</label><span id="segYears" class="chipwrap"></span></div>
+      <div class="grp"><label>销量类别：</label><span id="segCat"></span></div>
     </div>
-    <div class="grid3">
-      <div class="card"><div class="ct">批发销量（辆）</div><div class="chart" id="clhC1"></div></div>
-      <div class="card"><div class="ct">零售销量（辆）</div><div class="chart" id="clhC2"></div></div>
-      <div class="card"><div class="ct">出口销量（辆）</div><div class="chart" id="clhC3"></div></div>
-    </div>
-    <div class="clh-toolbar" style="margin-top:12px">
-      <div class="grp"><label>堆积图销量类别：</label><span id="clhStackPs"></span></div>
-    </div>
-    <div class="card"><div class="ct" id="clhStackTitle">车型销量结构（堆积）</div><div class="chart tall" id="clhStack"></div></div>
+    <div class="card"><div class="ct" id="segStackTitle">各车型销量堆积（万辆）</div><div class="chart tall" id="segStack"></div></div>
+
+    <div class="section-title">车型季节图<span style="font-size:12px;color:var(--sub);font-weight:400;margin-left:8px">（跟随上方年份筛选 · 一行 4 图 · 万辆）</span></div>
+    <div id="segSections"></div>
   </div>
 
   <!-- 乘联会 · 价格带 -->
@@ -311,6 +304,7 @@ function init(){
   D = window.__DATA__ || window.D;
   CN = (D && D.cn) || {};
   RANK = (D && D.rank) || {};
+  SEG = (D && D.seg) || {};
   YEARS = Array.from(new Set(D.xlabels.map(function(l){return l.slice(0,4);}))).sort();
   document.getElementById("latestDate").textContent=D.latestDataDate;
   var hideYears=["2017","2018","2019","2020"];
@@ -319,7 +313,8 @@ function init(){
   buildCnTabs();
   if(CN && CN.series) renderCn();
   if(RANK && RANK.cars) renderRank();
-  var t; window.addEventListener("resize",function(){ clearTimeout(t); t=setTimeout(function(){ charts.forEach(function(c){c.resize();}); cnCharts.forEach(function(c){c.resize();}); rankCharts.forEach(function(c){c.resize();}); },150); });
+  if(SEG && SEG.models) renderSeg();
+  var t; window.addEventListener("resize",function(){ clearTimeout(t); t=setTimeout(function(){ charts.forEach(function(c){c.resize();}); cnCharts.forEach(function(c){c.resize();}); rankCharts.forEach(function(c){c.resize();}); segCharts.forEach(function(c){c.resize();}); },150); });
 }
 
 function buildFilter(){
@@ -493,6 +488,8 @@ function makeCard(sec, ent, grid){
 var CN = {};
 var RANK = {};
 var rankCharts = [];
+var SEG = {};
+var segCharts = [];
 var cnYears = [];
 var cnCharts = [];
 function cnPad(m){ return (m<10?"0":"")+m; }
@@ -535,7 +532,7 @@ function cnChgTxt(v, isPct){
 }
 function buildCnTabs(){
   var bar=document.getElementById("btabs");
-  var tabs=[["c","中国汽车"],["g","全球乘用车"],["r","车企排名"]];
+  var tabs=[["c","中国汽车"],["g","全球乘用车"],["r","车企排名"],["m","车企细分"]];
   bar.innerHTML=tabs.map(function(t){
     return '<span class="btab'+(t[0]==="c"?" active":"")+'" data-t="'+t[0]+'">'+t[1]+'</span>';
   }).join("");
@@ -545,12 +542,14 @@ function buildCnTabs(){
       document.getElementById("sheetGlobal").style.display = (t==="g") ? "" : "none";
       document.getElementById("sheetCn").style.display = (t==="c") ? "" : "none";
       document.getElementById("sheetRank").style.display = (t==="r") ? "" : "none";
+      document.getElementById("sheetMaker").style.display = (t==="m") ? "" : "none";
       Array.prototype.forEach.call(bar.children, function(x){ x.classList.toggle("active", x===sp); });
       setTimeout(function(){
         try{
           if(t==="g") charts.forEach(function(c){ c.resize(); });
           else if(t==="c") cnCharts.forEach(function(c){ c.resize(); });
           else if(t==="r") rankCharts.forEach(function(c){ c.resize(); });
+          else if(t==="m") segCharts.forEach(function(c){ c.resize(); });
         }catch(e){}
       },80);
     };
@@ -820,6 +819,105 @@ document.getElementById("rankTableWrap").addEventListener("click", function(e){
   else { rankCol=k; rankDir=1; }
   renderRankHead(); renderRankBody();
 });
+
+/* ================= 车企细分（新能源乘用车分车型·中国整体） ================= */
+var segYearsVisible = {};
+var segStackChart = null;
+var segPalette = ["#5B8FF9","#61C6B5","#F6BD16","#9661BC","#78D3F8","#F08BB4","#65789B","#7cb305","#d48265"];
+function segByYear(key, y){
+  var arr = [];
+  for(var m=1;m<=12;m++){
+    var mk = y+"-"+((m<10?"0":"")+m);
+    var v = null;
+    if(SEG.months.indexOf(mk)>=0) v = key.vals[SEG.months.indexOf(mk)];
+    arr.push(v);
+  }
+  return arr;
+}
+function renderSeg(){
+  if(!SEG || !SEG.models) return;
+  document.getElementById("segSub").textContent = SEG.title+" · 单位："+SEG.unit+" · 数据范围 "+SEG.months[0]+" ~ "+SEG.months[SEG.months.length-1];
+  document.getElementById("segCat").textContent = SEG.category;
+  var chips = document.getElementById("segYears");
+  chips.innerHTML = "";
+  SEG.years.forEach(function(y){
+    var b = document.createElement("span");
+    b.className = "ybtn"+(segYearsVisible[y]===false?" off":"");
+    b.style.marginRight="6px";
+    b.textContent = String(y)+"年";
+    b.onclick = function(){
+      if(SEG.years.length<=1) return;
+      segYearsVisible[y] = !(segYearsVisible[y]!==false);
+      b.classList.toggle("off", segYearsVisible[y]===false);
+      renderSegStack(); renderSegSeasonal();
+    };
+    chips.appendChild(b);
+  });
+  renderSegStack();
+  renderSegSeasonal();
+}
+function segSelectedYears(){
+  return SEG.years.filter(function(y){ return segYearsVisible[y]!==false; });
+}
+function renderSegStack(){
+  var el = document.getElementById("segStack");
+  var years = segSelectedYears();
+  var cats = [], series = [];
+  years.forEach(function(y){
+    for(var m=1;m<=12;m++){
+      var mk = y+"-"+((m<10?"0":"")+m);
+      if(SEG.months.indexOf(mk)>=0) cats.push(mk);
+    }
+  });
+  SEG.models.forEach(function(md, i){
+    series.push({
+      name: md.name, type:"bar", stack:"tot",
+      itemStyle:{color:segPalette[i % segPalette.length]},
+      data: years.map(function(y){ return segByYear(md, y); }).reduce(function(a,b){ return a.concat(b); }, [])
+    });
+  });
+  if(!segStackChart) segStackChart = echarts.init(el);
+  segStackChart.setOption({
+    animation:false,
+    tooltip:{trigger:"axis", confine:true},
+    legend:{top:0, type:"scroll", textStyle:{fontSize:10}},
+    grid:{left:10,right:12,top:34,bottom:8,containLabel:true},
+    xAxis:{type:"category", data:cats, axisLabel:{fontSize:9,color:"#8a93a3",interval:0,rotate:45}},
+    yAxis:{type:"value", axisLabel:{fontSize:9,color:"#8a93a3"}, splitLine:{lineStyle:{color:"#eef1f6"}}},
+    series:series
+  }, true);
+}
+function renderSegSeasonal(){
+  var root = document.getElementById("segSections");
+  root.innerHTML="";
+  segCharts.forEach(function(c){ try{c.dispose();}catch(e){} }); segCharts=[];
+  var years = segSelectedYears();
+  var grid = document.createElement("div"); grid.className="grid c4";
+  root.appendChild(grid);
+  SEG.models.forEach(function(md){
+    var card=document.createElement("div"); card.className="card";
+    card.innerHTML = '<div class="cn-head"><span class="ttl">'+md.name+'</span></div><div class="chart"></div>';
+    grid.appendChild(card);
+    var div = card.querySelector(".chart");
+    var series=[], legend=[];
+    years.forEach(function(y){
+      legend.push(String(y));
+      series.push({name:String(y), type:"line", showSymbol:false, data:segByYear(md,y),
+        lineStyle:{width:(y===years[years.length-1]?2.2:1.4), color:(y===years[years.length-1]?"#000000":(y===years[years.length-2]?"#E60000":"#5B8FF9"))}});
+    });
+    var c = echarts.init(div);
+    c.setOption({
+      animation:false,
+      grid:{left:8,right:10,top:26,bottom:8,containLabel:true},
+      legend:{show:true, top:2, right:0, itemWidth:11, itemHeight:2, icon:"rect", textStyle:{fontSize:9}, data:legend, type:"scroll"},
+      tooltip:{trigger:"axis", confine:true},
+      xAxis:{type:"category", data:["1","2","3","4","5","6","7","8","9","10","11","12"], axisLabel:{fontSize:9,color:"#8a93a3"}},
+      yAxis:{type:"value", scale:true, axisLabel:{fontSize:9,color:"#8a93a3"}, splitLine:{lineStyle:{color:"#eef1f6"}}},
+      series:series
+    });
+    segCharts.push(c);
+  });
+}
 
 /* ================= 乘联会三页（车企排名/车企图表/价格带）· 独立作用域 ================= */
 (function(){
