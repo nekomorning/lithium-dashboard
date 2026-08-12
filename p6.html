@@ -102,14 +102,6 @@ table.dem td{text-align:right;}
 .dem-th-c26z{color:#1E6FFF; font-weight:700;}   /* 2026中性 蓝 */
 .dem-th-c26g{color:#d8392b; font-weight:700;}   /* 2026乐观 红 */
 .dem-th-c26b{color:#1a8a4a; font-weight:700;}   /* 2026悲观 绿 */
-.section-title{font-size:16px; color:var(--accent); font-weight:700; margin:24px 0 4px; padding-left:10px; border-left:4px solid var(--accent);}
-.grid.c3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:8px;}
-@media (max-width:1200px){ .grid.c3{grid-template-columns:repeat(2,minmax(0,1fr));} }
-@media (max-width:720px){ .grid.c3{grid-template-columns:1fr;} }
-.grid .card{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px 12px;}
-.grid .card .cap{font-size:12.5px; font-weight:700; color:var(--accent); margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-.grid .card .ech{width:100%; height:200px;}
-table.dem td{text-align:right;}
 </style>
 </head>
 <body>
@@ -197,16 +189,6 @@ table.dem td{text-align:right;}
     <div class="tablecard">
       <h2>锂需求结构（万吨 LCE）<span class="note">动力电池 / 储能电池 / 消费电池 / 其他电池 / 传统需求</span></h2>
       <div id="demStructChart" style="width:100%; height:380px;"></div>
-    </div>
-
-    <div class="section-title">需求驱动指标</div>
-    <div class="grid c3" id="demGrid">
-      <div class="card"><div class="cap">新能源车销量（万辆）</div><div class="ech" id="demC1"></div></div>
-      <div class="card"><div class="cap">全球动力电池出货量（GWh）</div><div class="ech" id="demC2"></div></div>
-      <div class="card"><div class="cap">全球动力电池装机量（GWh）</div><div class="ech" id="demC3"></div></div>
-      <div class="card"><div class="cap">全球储能电池出货量（GWh）</div><div class="ech" id="demC4"></div></div>
-      <div class="card"><div class="cap">全球储能电池装机量（GWh）</div><div class="ech" id="demC5"></div></div>
-      <div class="card"><div class="cap">分地区新能源车销量（万辆）</div><div class="ech" id="demC6"></div></div>
     </div>
 
     <div class="footer">碳酸锂数据看板 · 全球年度平衡 · 全球锂需求 · 单位：万吨 LCE（GWh / 万辆）· 2026 三档预测 · 涨=红 跌=绿</div>
@@ -701,54 +683,14 @@ function loadECharts(){
         var arr = demRow(cd.k).slice(y0);
         return {name:cd.l, type:'bar', stack:'d', emphasis:{focus:'series'}, itemStyle:{color:cd.c}, data:arr};
       })
-    }, true);
+}, true);
   }
 
-  function demLine(elId, keys, labels, colors, yName, pctKeys){
-    var el = document.getElementById(elId); if(!el || !DEM) return null;
-    var c = echarts.init(el); demCharts.push(c);
-    var years = demYears();
-    var series = keys.map(function(k, i){
-      var arr = demRow(k);
-      var data = arr.map(function(v, idx){
-        if(v==null) return null;
-        var y = years[idx];
-        // 2026 三档仅保留中性列，乐观/悲观不重复画
-        if(y==='2026乐观' || y==='2026悲观') return null;
-        return v;
-      });
-      return {name:labels[i], type:'line', showSymbol:false, smooth:true,
-        lineStyle:{width:1.8, color:colors[i]}, itemStyle:{color:colors[i]}, data:data};
-    });
-    c.setOption({
-      animation:false,
-      tooltip:{trigger:'axis'},
-      legend:{type:'scroll', top:0, itemWidth:12, itemHeight:10, textStyle:{fontSize:10}},
-      grid:{left:52, right:16, top:30, bottom:26},
-      xAxis:{type:'category', data:years, axisLabel:{fontSize:10, rotate:30}},
-      yAxis:{type:'value', name:yName, nameTextStyle:{fontSize:10}, axisLabel:{fontSize:10}},
-      series:series
-    }, true);
-    return c;
-  }
-
-  function renderDemGrid(){
-    if(!DEM) return;
-    demLine('demC1', ['nev_sales'], ['全球新能源车销量'], ['#1E6FFF'], '万辆');
-    demLine('demC2', ['power_ship'], ['全球动力电池出货量'], ['#F59A23'], 'GWh');
-    demLine('demC3', ['power_inst'], ['全球动力电池装机量'], ['#8B5CF6'], 'GWh');
-    demLine('demC4', ['storage_ship'], ['全球储能电池出货量'], ['#0FB5AE'], 'GWh');
-    demLine('demC5', ['storage_inst'], ['全球储能电池装机量'], ['#D63FA6'], 'GWh');
-    demLine('demC6', ['nev_cn', 'nev_eu', 'nev_us', 'nev_other'],
-      ['中国', '欧洲', '美国', '其他国家'], ['#1E6FFF','#F59A23','#8B5CF6','#0FB5AE'], '万辆');
-  }
-
-  function renderDemand(){
+function renderDemand(){
     if(!DEM) return;
     document.getElementById('demCaliberTxt').textContent = DEM.caliber || '';
     renderDemTable();
     renderDemStruct();
-    renderDemGrid();
   }
   renderDemand();
 }
