@@ -456,7 +456,10 @@ function buildCnTabs(){
       document.getElementById("sheetGlobal").style.display = (t==="g") ? "" : "none";
       document.getElementById("sheetCn").style.display = (t==="c") ? "" : "none";
       Array.prototype.forEach.call(bar.children, function(x){ x.classList.toggle("active", x===sp); });
-      if(t==="c") setTimeout(function(){ cnCharts.forEach(function(c){ try{c.resize();}catch(e){} }); },80);
+      setTimeout(function(){
+        if(t==="g") charts.forEach(function(c){ try{c.resize();}catch(e){} });
+        else cnCharts.forEach(function(c){ try{c.resize();}catch(e){} });
+      },80);
     };
   });
 }
