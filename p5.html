@@ -73,6 +73,15 @@ td.up{color:var(--up); font-weight:600;} td.down{color:var(--down); font-weight:
   color:var(--sub); font-size:13px; cursor:pointer; user-select:none;}
 .btab.active{background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600;}
 
+/* 车企排名：可排序列头 */
+th.sortable{cursor:pointer; user-select:none;}
+th.sortable:hover{background:#e6edf6;}
+th .arr{color:var(--accent); font-size:10px; margin-left:2px;}
+th .arr.up{color:var(--down);}
+#rankTable{min-width:1080px;}
+#rankTable th,#rankTable td{white-space:nowrap;}
+.clh-select{padding:4px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px; background:#fff;}
+
 /* 中国汽车：核心变化速览 */
 .cn-ov{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:8px 0 18px;}
 @media (max-width:1200px){ .cn-ov{grid-template-columns:repeat(2,minmax(0,1fr));} }
@@ -196,14 +205,24 @@ td.up{color:var(--up); font-weight:600;} td.down{color:var(--down); font-weight:
     <div id="cnSections"></div>
   </div>
 
-  <!-- 乘联会 · 车企排名 -->
+  <!-- 车企排名（新能源乘用车批发月销） -->
   <div id="sheetRank" style="display:none;">
-    <div class="section-title">车企排名<span class="clh-note">TOP20 按最新月销量从高到低 · 最新年各月销量及累计、累计同比、累计市占率、市占率同比变化 · 数据来源：乘联会</span></div>
-    <div class="clh-toolbar">
-      <div class="grp"><label>燃料类型：</label><span id="clhRankFuel"></span></div>
-      <div class="grp"><label>销量类别：</label><span id="clhRankPs"></span></div>
+    <div class="section-title">车企排名<span style="font-size:12px;color:var(--sub);font-weight:400;margin-left:8px" id="rankSub"></span></div>
+    <div class="filterbar" id="rankFilter">
+      <span class="lbl">燃料类型：</span><select id="rankFuel" class="clh-select"></select>
+      <span class="lbl">销量类别：</span><select id="rankCat" class="clh-select"></select>
+      <span class="lbl" style="margin-left:12px">（点击列头从高到低排序 · 单位：万辆）</span>
     </div>
-    <div class="tblwrap"><table id="clhRankTbl"><thead></thead><tbody></tbody></table></div>
+    <div class="tablecard" id="rankTableWrap">
+      <table id="rankTable">
+        <thead><tr id="rankHead"></tr></thead>
+        <tbody id="rankBody"></tbody>
+      </table>
+    </div>
+    <div class="filter-note" id="rankNote"></div>
+
+    <div class="section-title">车企销量季节图<span style="font-size:12px;color:var(--sub);font-weight:400;margin-left:8px">（跟随上方筛选器 · 一行 4 图 · 月度万辆）</span></div>
+    <div id="rankSections"></div>
   </div>
 
   <!-- 乘联会 · 车企图表 -->
@@ -291,6 +310,7 @@ function arrow(c){ if(c===null||c===undefined||c===0) return "→"; return c>0?"
 function init(){
   D = window.__DATA__ || window.D;
   CN = (D && D.cn) || {};
+  RANK = (D && D.rank) || {};
   YEARS = Array.from(new Set(D.xlabels.map(function(l){return l.slice(0,4);}))).sort();
   document.getElementById("latestDate").textContent=D.latestDataDate;
   var hideYears=["2017","2018","2019","2020"];
@@ -298,8 +318,8 @@ function init(){
   buildFilter(); buildSummary(); buildTable(); buildSections();
   buildCnTabs();
   if(CN && CN.series) renderCn();
-  CLHInit();
-  var t; window.addEventListener("resize",function(){ clearTimeout(t); t=setTimeout(function(){ charts.forEach(function(c){c.resize();}); cnCharts.forEach(function(c){c.resize();}); CLH_makerCharts.forEach(function(c){c.resize();}); CLH_priceChartObjs.forEach(function(c){c.resize();}); },150); });
+  if(RANK && RANK.cars) renderRank();
+  var t; window.addEventListener("resize",function(){ clearTimeout(t); t=setTimeout(function(){ charts.forEach(function(c){c.resize();}); cnCharts.forEach(function(c){c.resize();}); rankCharts.forEach(function(c){c.resize();}); },150); });
 }
 
 function buildFilter(){
@@ -471,6 +491,8 @@ function makeCard(sec, ent, grid){
 
 /* ================= 中国汽车（中汽协/乘联会/渗透率） ================= */
 var CN = {};
+var RANK = {};
+var rankCharts = [];
 var cnYears = [];
 var cnCharts = [];
 function cnPad(m){ return (m<10?"0":"")+m; }
@@ -513,7 +535,7 @@ function cnChgTxt(v, isPct){
 }
 function buildCnTabs(){
   var bar=document.getElementById("btabs");
-  var tabs=[["c","中国汽车"],["g","全球乘用车"],["r","车企排名"],["m","车企图表"],["p","价格带"]];
+  var tabs=[["c","中国汽车"],["g","全球乘用车"],["r","车企排名"]];
   bar.innerHTML=tabs.map(function(t){
     return '<span class="btab'+(t[0]==="c"?" active":"")+'" data-t="'+t[0]+'">'+t[1]+'</span>';
   }).join("");
@@ -523,15 +545,12 @@ function buildCnTabs(){
       document.getElementById("sheetGlobal").style.display = (t==="g") ? "" : "none";
       document.getElementById("sheetCn").style.display = (t==="c") ? "" : "none";
       document.getElementById("sheetRank").style.display = (t==="r") ? "" : "none";
-      document.getElementById("sheetMaker").style.display = (t==="m") ? "" : "none";
-      document.getElementById("sheetPrice").style.display = (t==="p") ? "" : "none";
       Array.prototype.forEach.call(bar.children, function(x){ x.classList.toggle("active", x===sp); });
       setTimeout(function(){
         try{
           if(t==="g") charts.forEach(function(c){ c.resize(); });
           else if(t==="c") cnCharts.forEach(function(c){ c.resize(); });
-          else if(t==="m") CLH_makerCharts.forEach(function(c){ c.resize(); });
-          else if(t==="p") CLH_priceChartObjs.forEach(function(c){ c.resize(); });
+          else if(t==="r") rankCharts.forEach(function(c){ c.resize(); });
         }catch(e){}
       },80);
     };
@@ -716,6 +735,91 @@ function renderCn(){
   renderCnTable();
   renderCnSeasonal();
 }
+
+/* ================= 车企排名（新能源乘用车批发月销） ================= */
+var rankCol = "ytd";   // 默认按 1-6月累计 降序（从高到低）
+var rankDir = 1;       // 1=降序
+function rankKey(car, k){
+  if(k==="ytd") return car.ytd;
+  var i = +k.replace("m","");
+  return car.vals[i];
+}
+function renderRank(){
+  if(!RANK || !RANK.cars) return;
+  var f = document.getElementById("rankFuel"), c = document.getElementById("rankCat");
+  f.innerHTML = '<option value="'+RANK.fuel+'">'+RANK.fuel+'</option>';
+  c.innerHTML = '<option value="'+RANK.category+'">'+RANK.category+'</option>';
+  document.getElementById("rankSub").textContent = RANK.title+" · 单位："+RANK.unit;
+  document.getElementById("rankNote").textContent = RANK.note || "";
+  renderRankHead();
+  renderRankBody();
+  renderRankSeasonal();
+}
+function sortArr(k){
+  if(rankCol!==k) return "";
+  return rankDir===1 ? " <span class='arr'>▼</span>" : " <span class='arr up'>▲</span>";
+}
+function renderRankHead(){
+  var tr = document.getElementById("rankHead");
+  var html = "<th>排名</th><th>车企</th>";
+  RANK.months.forEach(function(m, i){
+    html += '<th class="sortable" data-k="m'+i+'">'+m+sortArr("m"+i)+'</th>';
+  });
+  html += '<th class="sortable" data-k="ytd">'+RANK.ytdLabel+sortArr("ytd")+'</th>';
+  tr.innerHTML = html;
+}
+function renderRankBody(){
+  var tb = document.getElementById("rankBody");
+  var sorted = RANK.cars.slice().sort(function(a,b){
+    var va=rankKey(a,rankCol), vb=rankKey(b,rankCol);
+    if(va==null && vb==null) return 0;
+    if(va==null) return 1; if(vb==null) return -1;
+    return (vb-va)*rankDir;
+  });
+  var html = "";
+  sorted.forEach(function(car, idx){
+    html += "<tr><td>"+(idx+1)+"</td><td style='text-align:left;font-weight:600'>"+car.name+"</td>";
+    car.vals.forEach(function(v){ html += "<td>"+(v==null?"—":v.toFixed(2))+"</td>"; });
+    html += "<td><b>"+(car.ytd==null?"—":car.ytd.toFixed(2))+"</b></td></tr>";
+  });
+  tb.innerHTML = html;
+}
+function renderRankSeasonal(){
+  var root = document.getElementById("rankSections");
+  root.innerHTML="";
+  rankCharts.forEach(function(c){ try{c.dispose();}catch(e){} }); rankCharts=[];
+  var grid = document.createElement("div"); grid.className="grid c4";
+  root.appendChild(grid);
+  RANK.cars.forEach(function(car){ rankCard(car, grid); });
+}
+function rankCard(car, grid){
+  var card=document.createElement("div"); card.className="card";
+  var last = car.latest;
+  card.innerHTML = '<div class="cn-head"><span class="ttl">'+car.name+'</span>'+
+    '<span class="latest">'+(last==null?"—":last.toFixed(2))+'<i>万辆</i></span></div>'+
+    '<div class="cn-meta">'+RANK.ytdLabel+' <b>'+(car.ytd==null?"—":car.ytd.toFixed(2))+'</b>万辆</div>'+
+    '<div class="chart"></div>';
+  grid.appendChild(card);
+  var div = card.querySelector(".chart");
+  var c = echarts.init(div);
+  c.setOption({
+    animation:false,
+    grid:{left:8,right:10,top:14,bottom:8,containLabel:true},
+    tooltip:{trigger:"axis", confine:true},
+    xAxis:{type:"category", data:RANK.months, axisLabel:{fontSize:8.5,color:"#8a93a3",interval:1,rotate:32}, axisTick:{show:false}, axisLine:{lineStyle:{color:"#dde3ec"}}, splitLine:{show:false}},
+    yAxis:{type:"value", scale:true, axisLabel:{fontSize:9,color:"#8a93a3"}, splitLine:{lineStyle:{color:"#eef1f6"}}},
+    series:[{name:car.name, type:"line", data:car.vals, showSymbol:false, connectNulls:false, lineStyle:{width:1.8,color:"#0f4c81"}, itemStyle:{color:"#0f4c81"}}]
+  });
+  rankCharts.push(c);
+}
+document.getElementById("rankTableWrap").addEventListener("click", function(e){
+  var th = e.target.closest ? e.target.closest("th.sortable") : null;
+  if(!th) return;
+  var k = th.getAttribute("data-k");
+  if(rankCol===k) rankDir = rankDir===1 ? -1 : 1;
+  else { rankCol=k; rankDir=1; }
+  renderRankHead(); renderRankBody();
+});
 
 /* ================= 乘联会三页（车企排名/车企图表/价格带）· 独立作用域 ================= */
 (function(){
