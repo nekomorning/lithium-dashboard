@@ -102,6 +102,16 @@ table.dem td{text-align:right;}
 .dem-th-c26z{color:#1E6FFF; font-weight:700;}   /* 2026中性 蓝 */
 .dem-th-c26g{color:#d8392b; font-weight:700;}   /* 2026乐观 红 */
 .dem-th-c26b{color:#1a8a4a; font-weight:700;}   /* 2026悲观 绿 */
+/* 电池需求表：层级缩进 */
+.dem-bat-row td{font-size:12.5px;}
+.dem-bat-row.dem-bat-lv0 td{font-weight:700; color:var(--text); background:#f5f8fc;}
+.dem-bat-row.dem-bat-lv0 td.dem-bat-unit{font-weight:400; color:var(--sub);}
+.dem-bat-row.dem-bat-lv1 td{color:#3a4657;}
+.dem-bat-row.dem-bat-lv1 td.dem-bat-lv1{padding-left:26px;}
+.dem-bat-row.dem-bat-lv2 td{color:#6b7686; font-size:12px;}
+.dem-bat-row.dem-bat-lv2 td.dem-bat-lv2{padding-left:46px;}
+.dem-bat-row td.dem-bat-unit{color:var(--sub); font-weight:400; font-size:11.5px;}
+.dem-bat-row.dem-bat-lv1 td.dem-bat-lv1{font-weight:600;}
 </style>
 </head>
 <body>
@@ -705,12 +715,15 @@ function loadECharts(){
     tb.innerHTML = DEM.bat.rows.map(function(br){
       var arr = DEM.bat.data[br[0]] || [];
       var isPct = (br[3]==='pct');
+      var lv = br[4] || 0;
       var cells = arr.map(function(v, i){
         if(v==null) return '<td>—</td>';
         var disp = isPct ? (v*100).toFixed(1)+'%' : demFmt(v, 1);
         return '<td>'+disp+'</td>';
       }).join('');
-      return '<tr><td style="text-align:left">'+br[1]+'</td><td style="color:var(--sub)">'+br[2]+'</td>'+cells+'</tr>';
+      // 层级缩进：主指标加粗加深，子项缩进并弱化
+      var nameCell = '<td class="dem-bat-lv'+lv+'">'+br[1]+'</td>';
+      return '<tr class="dem-bat-row dem-bat-lv'+lv+'">'+nameCell+'<td class="dem-bat-unit">'+br[2]+'</td>'+cells+'</tr>';
     }).join('');
   }
 
