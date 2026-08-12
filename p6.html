@@ -191,6 +191,14 @@ table.dem td{text-align:right;}
       <div id="demStructChart" style="width:100%; height:380px;"></div>
     </div>
 
+    <div class="tablecard">
+      <h2>电池需求表 <span class="note">单位：GWh（新能源车销量为万辆）；2020 起有数据；2026 为 中性/乐观/悲观 三档预测</span></h2>
+      <table class="t18" id="demBatTable" style="min-width:1600px;">
+        <thead id="demBatHead"></thead>
+        <tbody id="demBatBody"></tbody>
+      </table>
+    </div>
+
     <div class="footer">碳酸锂数据看板 · 全球年度平衡 · 全球锂需求 · 单位：万吨 LCE（GWh / 万辆）· 2026 三档预测 · 涨=红 跌=绿</div>
   </div>
 </div>
@@ -686,10 +694,31 @@ function loadECharts(){
 }, true);
   }
 
+  // 电池需求表（全球需求 sheet 下半部，32 指标）
+  function renderDemBatTable(){
+    var th = document.getElementById('demBatHead'); if(!th || !DEM || !DEM.bat) return;
+    var tb = document.getElementById('demBatBody');
+    var years = demYears();
+    th.innerHTML = '<tr><th style="text-align:left">指标</th><th>单位</th>'+years.map(function(y){
+      return '<th class="'+demColCls(y)+'">'+y+'</th>';
+    }).join('')+'</tr>';
+    tb.innerHTML = DEM.bat.rows.map(function(br){
+      var arr = DEM.bat.data[br[0]] || [];
+      var isPct = (br[3]==='pct');
+      var cells = arr.map(function(v, i){
+        if(v==null) return '<td>—</td>';
+        var disp = isPct ? (v*100).toFixed(1)+'%' : demFmt(v, 1);
+        return '<td>'+disp+'</td>';
+      }).join('');
+      return '<tr><td style="text-align:left">'+br[1]+'</td><td style="color:var(--sub)">'+br[2]+'</td>'+cells+'</tr>';
+    }).join('');
+  }
+
 function renderDemand(){
     if(!DEM) return;
     document.getElementById('demCaliberTxt').textContent = DEM.caliber || '';
     renderDemTable();
+    renderDemBatTable();
     renderDemStruct();
   }
   renderDemand();
