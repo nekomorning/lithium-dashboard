@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>碳酸锂数据看板 · 全球锂资源</title>
+<title>碳酸锂数据看板 · 全球年度平衡</title>
 <style>
 :root{
   --bg:#f4f6fa; --card:#ffffff; --border:#e5e9f0; --text:#1f2733; --sub:#6b7686;
@@ -22,6 +22,13 @@ body{background:var(--bg); color:var(--text);
   background:#e9edf3; color:var(--sub); cursor:default; font-size:14px; text-decoration:none; display:inline-block;}
 .tab.active{background:var(--accent); color:#fff; font-weight:600;}
 .tab.disabled{opacity:.55;}
+
+/* 页内子标签（全球锂供应 / 全球锂需求） */
+.btabs{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;}
+.btab{padding:6px 18px; border-radius:16px; border:1px solid var(--border); background:#fff;
+  color:var(--sub); cursor:pointer; font-size:13px; user-select:none; transition:all .15s;}
+.btab:hover{border-color:var(--accent); color:var(--accent);}
+.btab.active{background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600;}
 
 .caliber{display:flex; align-items:center; gap:8px; margin-bottom:14px;
   background:#fff8e6; border:1px solid #f1d79a; border-radius:10px; padding:9px 16px;
@@ -94,7 +101,7 @@ th .sort-arrow{margin-left:4px; font-size:11px; color:var(--accent);}
 <body>
 <div class="wrap">
   <div class="header">
-    <h1>全球锂资源</h1>
+    <h1>全球年度平衡</h1>
     <div class="date" id="updDate"></div>
   </div>
   <div class="tabs">
@@ -103,10 +110,17 @@ th .sort-arrow{margin-left:4px; font-size:11px; color:var(--accent);}
     <a class="tab" href="p2.html">产量开工利润</a>
     <a class="tab" href="p3.html">产业链库存</a>
     <a class="tab" href="p5.html">全球汽车</a>
-    <div class="tab active">全球锂资源</div>
+    <div class="tab active">全球年度平衡</div>
     <a class="tab" href="p7.html">中国锂产业链平衡</a>
     <a class="tab" href="p4.html">数据对比</a>
   </div>
+
+  <div class="btabs">
+    <span class="btab active" data-t="s">全球锂供应</span>
+    <span class="btab" data-t="d">全球锂需求</span>
+  </div>
+
+  <div id="sheetSupply">
 
   <div class="caliber">
     <span class="ico">📌</span>
@@ -114,7 +128,7 @@ th .sort-arrow{margin-left:4px; font-size:11px; color:var(--accent);}
   </div>
 
   <div class="tablecard">
-    <h2>汇总表（全球锂资源供应）<span class="note">首行固定为全球锂资源供应合计；下方按所选维度汇总，可多选（如「按地区」+「按资源类型」即地区下再分资源类型）</span></h2>
+    <h2>汇总表（全球锂供应）<span class="note">首行固定为全球锂供应合计；下方按所选维度汇总，可多选（如「按地区」+「按资源类型」即地区下再分资源类型）</span></h2>
     <div class="filterbar">
       <span class="lbl">汇总维度：</span>
       <span id="tagBar"></span>
@@ -128,7 +142,7 @@ th .sort-arrow{margin-left:4px; font-size:11px; color:var(--accent);}
   </div>
 
   <div class="tablecard">
-    <h2>全球锂资源供应（堆积柱状图）<span class="note">细分随上方「汇总维度」选择而变化，数值为产量绝对值（万吨 LCE）</span></h2>
+    <h2>全球锂供应（堆积柱状图）<span class="note">细分随上方「汇总维度」选择而变化，数值为产量绝对值（万吨 LCE）</span></h2>
     <div id="stackChart" style="width:100%; height:420px;"></div>
   </div>
 
@@ -148,7 +162,18 @@ th .sort-arrow{margin-left:4px; font-size:11px; color:var(--accent);}
     </table>
   </div>
 
-  <div class="footer">碳酸锂数据看板 · 全球锂资源 · 产量单位：万吨 LCE（2026–2030 为预测值 E）· 涨=红 跌=绿</div>
+  <div class="footer">碳酸锂数据看板 · 全球年度平衡 · 全球锂供应 · 产量单位：万吨 LCE（2026–2030 为预测值 E）· 涨=红 跌=绿</div>
+  </div>
+
+  <!-- 全球锂需求（待建设） -->
+  <div id="sheetDemand" style="display:none;">
+    <div class="tablecard">
+      <h2>全球锂需求 <span class="note">该标签页建设中，数据整理中…</span></h2>
+      <div style="padding:60px 20px; text-align:center; color:var(--sub); font-size:14px;">
+        全球锂需求页面即将上线，敬请期待。
+      </div>
+    </div>
+  </div>
 </div>
 <div id="tip"></div>
 
@@ -393,7 +418,7 @@ function loadECharts(){
 
   function renderSummary(){
     var globalVals = sumVals(ROWS);
-    var html = aggRow({region:'—',country:'—',rtype:'—'}, '全球锂资源供应合计', globalVals, {global:true, indent:0, gv:globalVals});
+    var html = aggRow({region:'—',country:'—',rtype:'—'}, '全球锂供应合计', globalVals, {global:true, indent:0, gv:globalVals});
     var tree = buildTree(ROWS, selected, 0);
     tree.forEach(function(node){ html += aggRow(node.anc, node.name, node.vals, {global:false, indent:node.depth, gv:globalVals}); });
     document.getElementById('sumBody').innerHTML = html;
@@ -550,6 +575,22 @@ function loadECharts(){
   renderChart();
   refreshDetailFilters();
   renderDetail();
+
+  // ---------- 子标签切换（全球锂供应 / 全球锂需求） ----------
+  var btabs = document.querySelector('.btabs');
+  if(btabs){
+    btabs.addEventListener('click', function(e){
+      var sp = e.target.closest('.btab'); if(!sp) return;
+      var t = sp.getAttribute('data-t');
+      document.getElementById('sheetSupply').style.display = (t==='s') ? '' : 'none';
+      document.getElementById('sheetDemand').style.display = (t==='d') ? '' : 'none';
+      Array.prototype.forEach.call(btabs.children, function(x){ x.classList.toggle('active', x===sp); });
+      setTimeout(function(){
+        var ch = document.getElementById('stackChart');
+        if(ch && window.echarts && chart) { try{ chart.resize(); }catch(err){} }
+      }, 80);
+    });
+  }
 }
 </script>
 <!-- 红色激光笔：点击右下角按钮开/关，鼠标变为红色激光点；光点 pointer-events:none，不影响原有悬停/浮层效果 -->
