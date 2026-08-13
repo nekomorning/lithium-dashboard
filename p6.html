@@ -122,6 +122,17 @@ td.pct-name{border-bottom:1px dashed #cdd9e8;}
 .modal-x{background:none; border:0; cursor:pointer; font-size:20px; color:var(--sub); padding:0 4px;}
 .modal-x:hover{color:var(--accent);}
 .modal-body{overflow-y:auto;}
+/* 历史记录条目 */
+.hist-item{padding:8px 0; border-bottom:1px solid #eee;}
+.hist-item:last-child{border-bottom:0;}
+.hist-head{display:flex; justify-content:space-between; align-items:center; gap:8px;}
+.hist-pre{white-space:pre-wrap; margin:6px 0; font-family:inherit; background:#f7f8fa; border-radius:6px; padding:8px 10px; font-size:12.5px; color:var(--text);}
+.hist-btn{padding:2px 10px; border:1px solid var(--border); border-radius:6px; background:#fff; cursor:pointer; font-size:12px; margin-left:4px;}
+.hist-btn:hover{border-color:var(--accent); color:var(--accent);}
+.hist-btn.hist-del:hover{border-color:#d8392b; color:#d8392b;}
+.hist-btn.hist-save{border-color:var(--accent); background:var(--accent); color:#fff;}
+.hist-text{width:100%; min-height:80px; padding:6px 8px; border:1px solid var(--accent); border-radius:6px; font-family:inherit; font-size:13px; resize:vertical; box-sizing:border-box;}
+.hist-edit-bar{margin-top:6px; text-align:right;}
 th.sortable{cursor:pointer; user-select:none;}
 th.sortable:hover{background:#e4ebf3;}
 th .sort-arrow{margin-left:4px; font-size:11px; color:var(--accent);}
@@ -695,6 +706,14 @@ function loadECharts(){
     document.getElementById('summaryEdit').textContent = '编辑';
     renderSummary();
   }
+  function syncCloud(d, done){
+    fetch(CLOUD_URL, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name:'lc-summary', data: d})
+    }).then(function(r){ if(done) done(r.ok); })
+      .catch(function(){ if(done) done(false); });
+  }
   function saveSummary(){
     var ta = document.getElementById('summaryText');
     if(!ta) return;
@@ -713,33 +732,95 @@ function loadECharts(){
     var st = document.getElementById('summaryStatus');
     st.textContent = '已保存，正在同步云端…';
     st.className = 'status';
-    fetch(CLOUD_URL, {
-      method:'PUT',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({name:'lc-summary', data: d})
-    }).then(function(r){
-      if(r.ok){ st.textContent = '已保存（云端同步）'; st.className = 'status saved'; }
-      else { st.textContent = '已保存（云端同步失败，仅本地）'; st.className = 'status unsaved'; }
-    }).catch(function(){
-      st.textContent = '已保存（云端同步失败，仅本地）';
-      st.className = 'status unsaved';
+    syncCloud(d, function(ok){
+      st.textContent = ok ? '已保存（云端同步）' : '已保存（云端同步失败，仅本地）';
+      st.className = ok ? 'status saved' : 'status unsaved';
     });
   }
   function showHistory(){
     var d = getStore();
     var hist = d.history || [];
-    var html = '<div style="max-height:60vh;overflow-y:auto">';
-    html += '<div style="padding:6px 0;border-bottom:1px solid #eee"><b>当前版本</b><pre style="white-space:pre-wrap;margin:6px 0;font-family:inherit">'+(summaryOrig?escSummary(summaryOrig):'(空)')+'</pre></div>';
+    var html = '<div style="max-height:60vh;overflow-y:auto" id="histList">';
+    /* 当前版本 */
+    html += '<div class="hist-item" data-idx="cur">'
+      + '<div class="hist-head"><b>当前版本</b><span><button type="button" class="hist-btn" data-act="edit" data-idx="cur">编辑</button></span></div>'
+      + '<pre class="hist-pre" data-idx="cur">'+(summaryOrig?escSummary(summaryOrig):'(空)')+'</pre></div>';
     if(hist.length){
       hist.forEach(function(h,i){
         var ts = h.ts ? new Date(h.ts).toLocaleString() : '';
-        html += '<div style="padding:8px 0;border-bottom:1px solid #eee"><b>历史版本 '+(hist.length-i)+'</b> <span style="color:#888;font-size:12px">'+ts+'</span><pre style="white-space:pre-wrap;margin:6px 0;font-family:inherit">'+escSummary(h.current||'(空)')+'</pre></div>';
+        html += '<div class="hist-item" data-idx="'+i+'">'
+          + '<div class="hist-head"><b>历史版本 '+(hist.length-i)+'</b><span style="color:#888;font-size:12px">'+ts+'</span><span><button type="button" class="hist-btn" data-act="edit" data-idx="'+i+'">编辑</button> <button type="button" class="hist-btn hist-del" data-act="del" data-idx="'+i+'">删除</button></span></div>'
+          + '<pre class="hist-pre" data-idx="'+i+'">'+escSummary(h.current||'(空)')+'</pre></div>';
       });
     } else {
       html += '<div style="padding:10px;color:#888">暂无历史版本</div>';
     }
     html += '</div>';
     showModal('历史编辑记录', html);
+    var list = document.getElementById('histList');
+    list.addEventListener('click', function(e){
+      var btn = e.target.closest ? e.target.closest('.hist-btn') : null;
+      if(!btn) return;
+      var act = btn.getAttribute('data-act');
+      var idx = btn.getAttribute('data-idx');
+      if(act==='edit') editHistItem(idx);
+      else if(act==='del') delHistItem(idx);
+      else if(act==='save') saveHistItem(idx);
+      else if(act==='cancel') showHistory();
+    });
+  }
+  function editHistItem(idx){
+    var list = document.getElementById('histList'); if(!list) return;
+    var item = list.querySelector('.hist-item[data-idx="'+idx+'"]'); if(!item) return;
+    var cur = '';
+    if(idx==='cur') cur = summaryOrig;
+    else { var d = getStore(); cur = (d.history[parseInt(idx,10)]||{}).current || ''; }
+    var pre = item.querySelector('.hist-pre');
+    var edit = document.createElement('div');
+    edit.className = 'hist-edit';
+    edit.innerHTML = '<textarea class="hist-text">'+escSummary(cur)+'</textarea>'
+      + '<div class="hist-edit-bar"><button type="button" class="hist-btn hist-save" data-act="save" data-idx="'+idx+'">保存</button> <button type="button" class="hist-btn" data-act="cancel">取消</button></div>';
+    pre.parentNode.replaceChild(edit, pre);
+  }
+  function saveHistItem(idx){
+    var list = document.getElementById('histList'); if(!list) return;
+    var item = list.querySelector('.hist-item[data-idx="'+idx+'"]'); if(!item) return;
+    var ta = item.querySelector('.hist-text'); if(!ta) return;
+    var val = ta.value;
+    var d = getStore();
+    if(idx==='cur'){
+      if(d.current !== val){
+        d.history = d.history || [];
+        d.history.unshift({ts: new Date().toISOString(), current: d.current || ''});
+        if(d.history.length > 50) d.history = d.history.slice(0, 50);
+      }
+      d.current = val;
+      summaryOrig = val;
+    } else {
+      var hi = parseInt(idx,10);
+      if(d.history[hi]){ d.history[hi].current = val; d.history[hi].ts = new Date().toISOString(); }
+    }
+    putStore(d);
+    syncCloud(d, function(){});
+    showHistory();
+  }
+  function delHistItem(idx){
+    var d = getStore();
+    if(idx==='cur'){
+      if(d.current){
+        d.history = d.history || [];
+        d.history.unshift({ts: new Date().toISOString(), current: d.current});
+        if(d.history.length > 50) d.history = d.history.slice(0, 50);
+      }
+      d.current = '';
+      summaryOrig = '';
+    } else {
+      var hi = parseInt(idx,10);
+      if(d.history[hi]) d.history.splice(hi,1);
+    }
+    putStore(d);
+    syncCloud(d, function(){});
+    showHistory();
   }
   function showModal(title, bodyHtml){
     var mask = document.createElement('div');
