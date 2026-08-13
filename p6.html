@@ -98,7 +98,12 @@ th .sort-arrow{margin-left:4px; font-size:11px; color:var(--accent);}
 .footer{margin-top:30px; color:var(--sub); font-size:12px; text-align:center;}
 
 /* ===== 全球锂需求标签页 ===== */
-table.dem td{text-align:right;}
+/* 年度供需平衡表 + 电池需求表：固定列宽布局，指标/单位列固定，数据列等宽 */
+table.t18{table-layout:fixed;}
+table.t18 th, table.t18 td{padding:4px 6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+table.t18 th:first-child, table.t18 td:first-child{width:170px; text-align:left;}
+table.t18 th:nth-child(2), table.t18 td:nth-child(2){width:60px;}
+table.t18 td{text-align:right;}
 .dem-th-c26z{color:#1E6FFF; font-weight:700;}   /* 2026中性 蓝 */
 .dem-th-c26g{color:#d8392b; font-weight:700;}   /* 2026乐观 红 */
 .dem-th-c26b{color:#1a8a4a; font-weight:700;}   /* 2026悲观 绿 */
