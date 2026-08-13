@@ -206,14 +206,6 @@ table.t18 td{text-align:right;}
 
   <div class="tablecard">
     <h2>明细表（各锂矿项目）<span class="note">共 <span id="projCount"></span> 个项目；将鼠标悬停于「项目名称」可查看公司股权</span></h2>
-    <div class="filterbar detail-filter" id="detailFilter">
-      <input type="text" class="search-input" id="searchInput" placeholder="搜索：项目名称 / 股权">
-      <div class="dd" data-key="region"><button class="dd-trigger" type="button">地区<span class="dd-count">0</span><span class="dd-arrow">▾</span></button><div class="dd-panel"></div></div>
-      <div class="dd" data-key="country"><button class="dd-trigger" type="button">国家<span class="dd-count">0</span><span class="dd-arrow">▾</span></button><div class="dd-panel"></div></div>
-      <div class="dd" data-key="rtype"><button class="dd-trigger" type="button">资源类型<span class="dd-count">0</span><span class="dd-arrow">▾</span></button><div class="dd-panel"></div></div>
-      <span class="ybtn off" id="clearFilters">清空</span>
-    </div>
-
     <div class="supply-summary" id="supplySummary">
       <span class="lbl">核心变化</span>
       <span class="status" id="summaryStatus"></span>
@@ -222,6 +214,14 @@ table.t18 td{text-align:right;}
         <button type="button" class="btn-sm" id="summaryHistory">历史</button>
       </div>
       <div class="sum-body" id="summaryBody"></div>
+    </div>
+
+    <div class="filterbar detail-filter" id="detailFilter">
+      <input type="text" class="search-input" id="searchInput" placeholder="搜索：项目名称 / 股权">
+      <div class="dd" data-key="region"><button class="dd-trigger" type="button">地区<span class="dd-count">0</span><span class="dd-arrow">▾</span></button><div class="dd-panel"></div></div>
+      <div class="dd" data-key="country"><button class="dd-trigger" type="button">国家<span class="dd-count">0</span><span class="dd-arrow">▾</span></button><div class="dd-panel"></div></div>
+      <div class="dd" data-key="rtype"><button class="dd-trigger" type="button">资源类型<span class="dd-count">0</span><span class="dd-arrow">▾</span></button><div class="dd-panel"></div></div>
+      <span class="ybtn off" id="clearFilters">清空</span>
     </div>
     <table class="t18" id="detailTable">
       <thead id="detailHead"></thead>
