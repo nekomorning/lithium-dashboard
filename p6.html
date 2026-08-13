@@ -158,7 +158,7 @@ table.t18 th:nth-child(4), table.t18 td:nth-child(4){width:80px; text-align:left
 #demTable th:nth-child(3), #demTable td:nth-child(3),
 #demBatTable th:nth-child(3), #demBatTable td:nth-child(3),
 #demTable th:nth-child(4), #demTable td:nth-child(4),
-#demBatTable th:nth-child(4), #demBatTable td:nth-child(4){width:auto; text-align:inherit;}
+#demBatTable th:nth-child(4), #demBatTable td:nth-child(4){width:auto; text-align:right;}
 /* 指标列：固定足够宽度，整行显示不折叠；其余列在 table-layout:fixed 下均分 */
 #demTable th:first-child, #demTable td:first-child,
 #demBatTable th:first-child, #demBatTable td:first-child{
@@ -166,6 +166,9 @@ table.t18 th:nth-child(4), table.t18 td:nth-child(4){width:80px; text-align:left
 }
 #demTable th:nth-child(2), #demTable td:nth-child(2),
 #demBatTable th:nth-child(2), #demBatTable td:nth-child(2){width:50px;}
+/* 锂需求两表：所有表格右对齐（覆盖默认 center）；指标列保留左对齐 */
+#demTable th, #demBatTable th{text-align:right;}
+#demTable th:first-child, #demBatTable th:first-child{text-align:left;}
 table.t18 td{text-align:right;}
 .dem-th-c26z{color:#1E6FFF; font-weight:700;}   /* 2026中性 蓝 */
 .dem-th-c26g{color:#d8392b; font-weight:700;}   /* 2026乐观 红 */
