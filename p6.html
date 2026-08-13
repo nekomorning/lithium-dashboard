@@ -625,7 +625,8 @@ function loadECharts(){
     });
   }
 
-  // ---------- 核心变化编辑（localStorage） ----------
+  // ---------- 核心变化编辑（云端 + localStorage） ----------
+  var CLOUD_URL = 'https://api.restful-api.dev/objects/ff8081819ff5b110019ff9e7115c0a02';
   var SUMMARY_KEY = 'lc_supply_summary';
   var summaryOrig = '';
   var summaryDirty = false;
@@ -660,7 +661,7 @@ function loadECharts(){
         body.classList.add('empty');
         body.textContent = '（暂无内容，点击「编辑」添加核心变化记录）';
       }
-      status.textContent = summaryOrig ? '已保存（浏览器本地）' : '';
+      status.textContent = summaryOrig ? '已保存' : '';
       status.className = summaryOrig ? 'status saved' : 'status';
     }
   }
@@ -668,6 +669,20 @@ function loadECharts(){
     var d = getStore();
     summaryOrig = d.current || '';
     renderSummary();
+    // 云端优先：拉取最新覆盖本地
+    fetch(CLOUD_URL, {method:'GET'})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){
+        if(j && j.data && typeof j.data.current === 'string'){
+          var cd = j.data;
+          summaryOrig = cd.current || '';
+          putStore(cd);
+          renderSummary();
+          var st = document.getElementById('summaryStatus');
+          if(summaryOrig){ st.textContent = '已同步云端'; st.className = 'status saved'; }
+        }
+      })
+      .catch(function(){});
   }
   function editSummary(){
     summaryEditing = true;
@@ -691,10 +706,24 @@ function loadECharts(){
       if(d.history.length > 50) d.history = d.history.slice(0, 50);
     }
     d.current = txt;
-    putStore(d);
+    putStore(d);                       // 先写本地（离线可用）
     summaryOrig = txt; summaryDirty = false; summaryEditing = false;
     document.getElementById('summaryEdit').textContent = '编辑';
     renderSummary();
+    var st = document.getElementById('summaryStatus');
+    st.textContent = '已保存，正在同步云端…';
+    st.className = 'status';
+    fetch(CLOUD_URL, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name:'lc-summary', data: d})
+    }).then(function(r){
+      if(r.ok){ st.textContent = '已保存（云端同步）'; st.className = 'status saved'; }
+      else { st.textContent = '已保存（云端同步失败，仅本地）'; st.className = 'status unsaved'; }
+    }).catch(function(){
+      st.textContent = '已保存（云端同步失败，仅本地）';
+      st.className = 'status unsaved';
+    });
   }
   function showHistory(){
     var d = getStore();
