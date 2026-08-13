@@ -719,11 +719,12 @@ function loadECharts(){
     tb.innerHTML = DEM.bat.rows.map(function(br){
       var arr = DEM.bat.data[br[0]] || [];
       var isPct = (br[3]==='pct');
+      var isCoef = (br[0].indexOf('coef')>=0);   // 备货系数：保留 1 位小数
       var lv = br[4] || 0;
       var cells = years.map(function(y){
         var v = arr[yearsAll.indexOf(y)];
         if(v==null) return '<td>—</td>';
-        var disp = isPct ? (v*100).toFixed(1)+'%' : demFmt(v, 1);
+        var disp = isPct ? (v*100).toFixed(1)+'%' : demFmt(v, isCoef?1:0);
         return '<td>'+disp+'</td>';
       }).join('');
       // 层级缩进：主指标加粗加深，子项缩进并弱化
