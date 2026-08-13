@@ -710,7 +710,9 @@ function loadECharts(){
   function renderDemBatTable(){
     var th = document.getElementById('demBatHead'); if(!th || !DEM || !DEM.bat) return;
     var tb = document.getElementById('demBatBody');
-    var years = demYears();
+    var yearsAll = demYears();
+    /* 电池需求表不显示 2019（该年无数据） */
+    var years = yearsAll.filter(function(y){ return y !== '2019'; });
     th.innerHTML = '<tr><th style="text-align:left">指标</th><th>单位</th>'+years.map(function(y){
       return '<th class="'+demColCls(y)+'">'+y+'</th>';
     }).join('')+'</tr>';
@@ -718,7 +720,8 @@ function loadECharts(){
       var arr = DEM.bat.data[br[0]] || [];
       var isPct = (br[3]==='pct');
       var lv = br[4] || 0;
-      var cells = arr.map(function(v, i){
+      var cells = years.map(function(y){
+        var v = arr[yearsAll.indexOf(y)];
         if(v==null) return '<td>—</td>';
         var disp = isPct ? (v*100).toFixed(1)+'%' : demFmt(v, 1);
         return '<td>'+disp+'</td>';
