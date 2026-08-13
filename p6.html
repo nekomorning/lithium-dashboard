@@ -625,12 +625,16 @@ function loadECharts(){
     });
   }
 
-  // ---------- 核心变化编辑 ----------
-  var SUMMARY_KEY = '锂资源供应';
-  var API_BASE = 'http://127.0.0.1:8090';
+  // ---------- 核心变化编辑（localStorage） ----------
+  var SUMMARY_KEY = 'lc_supply_summary';
   var summaryOrig = '';
   var summaryDirty = false;
   var summaryEditing = false;
+  function getStore(){
+    try { return JSON.parse(localStorage.getItem(SUMMARY_KEY) || '{}'); }
+    catch(e){ return {}; }
+  }
+  function putStore(d){ try{ localStorage.setItem(SUMMARY_KEY, JSON.stringify(d)); }catch(e){} }
   function escSummary(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
   function renderSummary(){
     var body = document.getElementById('summaryBody');
@@ -645,13 +649,8 @@ function loadECharts(){
       document.getElementById('summaryCancel').addEventListener('click', cancelSummary);
       document.getElementById('summaryText').addEventListener('input', function(e){
         summaryDirty = (e.target.value !== summaryOrig);
-        if(summaryDirty){
-          status.textContent = '尚未保存';
-          status.className = 'status unsaved';
-        } else {
-          status.textContent = '';
-          status.className = 'status';
-        }
+        status.textContent = summaryDirty ? '尚未保存' : '';
+        status.className = summaryDirty ? 'status unsaved' : 'status';
       });
     } else {
       if(summaryOrig){
@@ -661,19 +660,14 @@ function loadECharts(){
         body.classList.add('empty');
         body.textContent = '（暂无内容，点击「编辑」添加核心变化记录）';
       }
-      status.textContent = summaryOrig ? '已保存' : '';
+      status.textContent = summaryOrig ? '已保存（浏览器本地）' : '';
       status.className = summaryOrig ? 'status saved' : 'status';
     }
   }
   function loadSummary(){
-    fetch(API_BASE + '/api/conclusion/' + encodeURIComponent(SUMMARY_KEY))
-      .then(function(r){ return r.ok ? r.json() : null; })
-      .then(function(j){ summaryOrig = (j && j.current) || ''; renderSummary(); })
-      .catch(function(){
-        document.getElementById('summaryStatus').textContent = '后端未连接';
-        document.getElementById('summaryStatus').className = 'status';
-        summaryOrig = ''; renderSummary();
-      });
+    var d = getStore();
+    summaryOrig = d.current || '';
+    renderSummary();
   }
   function editSummary(){
     summaryEditing = true;
@@ -687,42 +681,36 @@ function loadECharts(){
     renderSummary();
   }
   function saveSummary(){
-    var txt = document.getElementById('summaryText').value;
-    fetch(API_BASE + '/api/conclusion/' + encodeURIComponent(SUMMARY_KEY), {
-      method:'PUT', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({current: txt})
-    }).then(function(r){
-      if(r.ok){
-        summaryOrig = txt; summaryDirty = false; summaryEditing = false;
-        document.getElementById('summaryEdit').textContent = '编辑';
-        renderSummary();
-      } else {
-        alert('保存失败：' + r.status);
-      }
-    }).catch(function(){
-      var ta = document.getElementById('summaryText');
-      if(ta) ta.value = ta.value + '\n\n（本地保存失败：后端未连接；内容仅保留在浏览器）';
-    });
+    var ta = document.getElementById('summaryText');
+    if(!ta) return;
+    var txt = ta.value;
+    var d = getStore();
+    if(d.current !== txt){
+      d.history = d.history || [];
+      d.history.unshift({ts: new Date().toISOString(), current: d.current || ''});
+      if(d.history.length > 50) d.history = d.history.slice(0, 50);
+    }
+    d.current = txt;
+    putStore(d);
+    summaryOrig = txt; summaryDirty = false; summaryEditing = false;
+    document.getElementById('summaryEdit').textContent = '编辑';
+    renderSummary();
   }
   function showHistory(){
-    fetch(API_BASE + '/api/conclusion/' + encodeURIComponent(SUMMARY_KEY) + '/history')
-      .then(function(r){ return r.ok ? r.json() : null; })
-      .then(function(j){
-        var hist = (j && j.history) || [];
-        var html = '<div style="max-height:60vh;overflow-y:auto">';
-        html += '<div style="padding:6px 0;border-bottom:1px solid #eee"><b>当前版本</b><pre style="white-space:pre-wrap;margin:6px 0;font-family:inherit">'+(summaryOrig?escSummary(summaryOrig):'(空)')+'</pre></div>';
-        if(hist.length){
-          hist.forEach(function(h,i){
-            var ts = h.ts ? new Date(h.ts).toLocaleString() : '';
-            html += '<div style="padding:8px 0;border-bottom:1px solid #eee"><b>历史版本 '+(hist.length-i)+'</b> <span style="color:#888;font-size:12px">'+ts+'</span><pre style="white-space:pre-wrap;margin:6px 0;font-family:inherit">'+escSummary(h.current)+'</pre></div>';
-          });
-        } else {
-          html += '<div style="padding:10px;color:#888">暂无历史版本</div>';
-        }
-        html += '</div>';
-        showModal('历史编辑记录', html);
-      })
-      .catch(function(){ alert('加载历史失败：后端未连接'); });
+    var d = getStore();
+    var hist = d.history || [];
+    var html = '<div style="max-height:60vh;overflow-y:auto">';
+    html += '<div style="padding:6px 0;border-bottom:1px solid #eee"><b>当前版本</b><pre style="white-space:pre-wrap;margin:6px 0;font-family:inherit">'+(summaryOrig?escSummary(summaryOrig):'(空)')+'</pre></div>';
+    if(hist.length){
+      hist.forEach(function(h,i){
+        var ts = h.ts ? new Date(h.ts).toLocaleString() : '';
+        html += '<div style="padding:8px 0;border-bottom:1px solid #eee"><b>历史版本 '+(hist.length-i)+'</b> <span style="color:#888;font-size:12px">'+ts+'</span><pre style="white-space:pre-wrap;margin:6px 0;font-family:inherit">'+escSummary(h.current||'(空)')+'</pre></div>';
+      });
+    } else {
+      html += '<div style="padding:10px;color:#888">暂无历史版本</div>';
+    }
+    html += '</div>';
+    showModal('历史编辑记录', html);
   }
   function showModal(title, bodyHtml){
     var mask = document.createElement('div');
@@ -730,7 +718,7 @@ function loadECharts(){
     mask.innerHTML = '<div class="modal-card" style="max-width:680px"><div class="modal-head"><span>'+title+'</span><button type="button" class="modal-x">×</button></div><div class="modal-body" style="padding:14px 18px;font-size:13px;line-height:1.7">'+bodyHtml+'</div></div>';
     document.body.appendChild(mask);
     mask.addEventListener('click', function(e){
-      if(e.target===mask || e.target.classList.contains('modal-x') || e.target.classList.contains('modal-close')) mask.remove();
+      if(e.target===mask || e.target.classList.contains('modal-x')) mask.remove();
     });
   }
   document.getElementById('summaryEdit').addEventListener('click', function(){
