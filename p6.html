@@ -477,37 +477,41 @@ function loadECharts(){
     if(metric==='abs'){
       for(i=0;i<YEARS.length;i++) out[i] = vals[i];
     } else if(metric==='pct'){
-      for(i=0;i<YEARS.length;i++) out[i] = (vals[i]!=null && gv!=null && gv[i]!=null) ? +(vals[i]/gv[i]*100).toFixed(2) : null;
+      for(i=0;i<YEARS.length;i++) out[i] = (vals[i]!=null && gv!=null && gv[i]!=null) ? +(vals[i]/gv[i]*100).toFixed(1) : null;
     } else if(metric==='yoyinc'){
-      for(i=1;i<YEARS.length;i++) out[i] = (vals[i]!=null && vals[i-1]!=null) ? +(vals[i]-vals[i-1]).toFixed(2) : null;
+      for(i=1;i<YEARS.length;i++) out[i] = (vals[i]!=null && vals[i-1]!=null) ? Math.round(vals[i]-vals[i-1]) : null;
     } else if(metric==='yoypct'){
-      for(i=1;i<YEARS.length;i++) out[i] = (vals[i]!=null && vals[i-1]!=null && vals[i-1]!==0) ? +((vals[i]/vals[i-1]-1)*100).toFixed(2) : null;
+      for(i=1;i<YEARS.length;i++) out[i] = (vals[i]!=null && vals[i-1]!=null && vals[i-1]!==0) ? +((vals[i]/vals[i-1]-1)*100).toFixed(1) : null;
     }
     return out;
   }
   // 最后两列（2026vs2025 / 2027vs2026）按当前口径显示
   function metricLast(vals, gv){
     if(metric==='abs'){
-      return [ (vals[I26]!=null&&vals[I25]!=null)? +(vals[I26]-vals[I25]).toFixed(2):null,
-               (vals[I27]!=null&&vals[I26]!=null)? +(vals[I27]-vals[I26]).toFixed(2):null ];
+      return [ (vals[I26]!=null&&vals[I25]!=null)? Math.round(vals[I26]-vals[I25]):null,
+               (vals[I27]!=null&&vals[I26]!=null)? Math.round(vals[I27]-vals[I26]):null ];
     }
     if(metric==='pct'){
       var d = metricVals(vals, gv);
-      return [ (d[I25]!=null&&d[I26]!=null)? +(d[I26]-d[I25]).toFixed(2):null,
-               (d[I26]!=null&&d[I27]!=null)? +(d[I27]-d[I26]).toFixed(2):null ];
+      return [ (d[I25]!=null&&d[I26]!=null)? +(d[I26]-d[I25]).toFixed(1):null,
+               (d[I26]!=null&&d[I27]!=null)? +(d[I27]-d[I26]).toFixed(1):null ];
+    }
+    if(metric==='yoyinc'){
+      return [ (vals[I26]!=null&&vals[I25]!=null)? Math.round(vals[I26]-vals[I25]):null,
+               (vals[I27]!=null&&vals[I26]!=null)? Math.round(vals[I27]-vals[I26]):null ];
     }
     var disp = metricVals(vals, gv);
     return [ disp[I26], disp[I27] ];
   }
   function fmtMetric(v){
     if(v==null) return '—';
-    if(metric==='pct' || metric==='yoypct') return (metric==='yoypct'&&v>0?'+':'') + Math.round(v) + '%';
-    return (metric==='yoyinc'&&v>0?'+':'') + Number(v).toFixed(2);
+    if(metric==='pct' || metric==='yoypct') return (metric==='yoypct'&&v>0?'+':'') + Number(v).toFixed(1) + '%';
+    return (metric==='yoyinc'&&v>0?'+':'') + Math.round(v);
   }
   function lastCell(v){
     if(v==null) return '—';
     var suf = metric==='pct' ? 'pp' : (metric==='yoypct' ? '%' : '');
-    return (v>0?'+':'') + (metric==='pct'||metric==='yoypct' ? Math.round(v) : Number(v).toFixed(2)) + suf;
+    return (v>0?'+':'') + (metric==='pct'||metric==='yoypct' ? Number(v).toFixed(1) : Math.round(v)) + suf;
   }
 
   function buildTree(rows, dims, depth, anc, path){
