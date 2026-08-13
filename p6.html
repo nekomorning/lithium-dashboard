@@ -268,7 +268,7 @@ function loadECharts(){
 
   // ---------- 明细表筛选 / 排序状态 ----------
   var filterState = { search:'', region:[], country:[], rtype:[] };
-  var sortState = { year:null, dir:'desc' };
+  var sortState = { col:null, dir:'desc' };
   function uniqueValues(key){
     var s = {}; ROWS.forEach(function(r){ s[r[key]] = 1; });
     return Object.keys(s).sort(function(a,b){ return a.localeCompare(b,'zh-CN'); });
@@ -285,10 +285,20 @@ function loadECharts(){
     return true;
   }
   function sortRows(rows){
-    if(sortState.year == null) return rows.slice();
-    var yi = YEARS.indexOf(sortState.year);
+    if(sortState.col == null) return rows.slice();
     return rows.slice().sort(function(a,b){
-      var av = a.vals[yi], bv = b.vals[yi];
+      var av, bv;
+      if(sortState.col === 'inc1'){      // 2026vs2025
+        av = (a.vals[YEARS.indexOf(2026)]||0) - (a.vals[YEARS.indexOf(2025)]||0);
+        bv = (b.vals[YEARS.indexOf(2026)]||0) - (b.vals[YEARS.indexOf(2025)]||0);
+      } else if(sortState.col === 'inc2'){ // 2027vs2026
+        av = (a.vals[YEARS.indexOf(2027)]||0) - (a.vals[YEARS.indexOf(2026)]||0);
+        bv = (b.vals[YEARS.indexOf(2027)]||0) - (b.vals[YEARS.indexOf(2026)]||0);
+      } else {                            // 年份列
+        var yi = YEARS.indexOf(sortState.col);
+        if(yi < 0) return 0;
+        av = a.vals[yi]; bv = b.vals[yi];
+      }
       if(av==null && bv==null) return 0;
       if(av==null) return 1;
       if(bv==null) return -1;
@@ -334,12 +344,22 @@ function loadECharts(){
       var hl = (h==='2026'||h==='2027') ? ' hl' : '';
       var base = i>=4 ? (i>=YEARS.length+4 ? 'col-inc' : 'col-y') : '';
       var c = (base + hl).trim();
-      if(sortable && i>=4 && i<YEARS.length+4){
-        var arrow = '';
-        if(sortState.year === parseInt(h,10)){
-          arrow = sortState.dir === 'desc' ? '▼' : '▲';
-        }
-        html += '<th class="'+c+' sortable" data-year="'+h+'">'+esc(h)+'<span class="sort-arrow">'+arrow+'</span></th>';
+      // 年份列 + 增量列均可点击排序
+      var isIncCol = (i === YEARS.length+4);   // 2026vs2025
+      var isInc2Col = (i === YEARS.length+5);  // 2027vs2026
+      var incKey = isIncCol ? 'inc1' : (isInc2Col ? 'inc2' : null);
+      var canSort = sortable && i>=4;
+      var arrow = '';
+      if(canSort && h === String(sortState.col)){
+        arrow = sortState.dir === 'desc' ? '▼' : '▲';
+      }
+      if(canSort && incKey && sortState.col === incKey){
+        arrow = sortState.dir === 'desc' ? '▼' : '▲';
+      }
+      if(canSort){
+        var attr = incKey ? ' data-col="'+incKey+'"' : ' data-year="'+h+'"';
+        var label = incKey ? (incKey==='inc1'?'2026增量':'2027增量') : esc(h);
+        html += '<th class="'+c+' sortable"'+attr+'>'+label+'<span class="sort-arrow">'+arrow+'</span></th>';
       } else {
         html += '<th'+(c?' class="'+c+'"':'')+'>'+esc(h)+'</th>';
       }
@@ -589,19 +609,21 @@ function loadECharts(){
   document.getElementById('clearFilters').addEventListener('click', function(e){
     filterState = { search:'', region:[], country:[], rtype:[] };
     document.getElementById('searchInput').value = '';
-    sortState = { year:null, dir:'desc' };
+    sortState = { col:null, dir:'desc' };
     refreshDetailFilters();
     renderHead(document.getElementById('detailHead'), true);
     renderDetail();
   });
   document.getElementById('detailHead').addEventListener('click', function(e){
     var th = e.target.closest('th.sortable'); if(!th) return;
-    var y = parseInt(th.getAttribute('data-year'),10);
-    if(sortState.year === y){
+    var col = th.getAttribute('data-col') || ('y'+th.getAttribute('data-year'));
+    // 归一化：年份 'data-year' 转 number
+    var key = th.getAttribute('data-col') ? col : parseInt(th.getAttribute('data-year'),10);
+    if(sortState.col === key){
       if(sortState.dir === 'desc') sortState.dir = 'asc';
-      else { sortState.year = null; sortState.dir = 'desc'; }
+      else { sortState.col = null; sortState.dir = 'desc'; }
     } else {
-      sortState.year = y; sortState.dir = 'desc';
+      sortState.col = key; sortState.dir = 'desc';
     }
     renderHead(document.getElementById('detailHead'), true);
     renderDetail();
