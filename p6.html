@@ -636,6 +636,8 @@ function loadECharts(){
   function demFmt(v, d){ return (v==null || isNaN(v)) ? '—' : Number(v).toFixed(d==null?2:d); }
   function demSign(v, d){ return (v==null || isNaN(v)) ? '—' : ((v>0?'+':'') + Number(v).toFixed(d==null?2:d)); }
   function demCls(v){ return (v==null || isNaN(v)) ? '' : (v>0 ? 'up' : (v<0 ? 'down' : 'flat')); }
+  /* 仅用于 供需平衡 / 供需差 占比：红跌绿涨（过剩=绿，缺口=红） */
+  function demClsInv(v){ return (v==null || isNaN(v)) ? '' : (v>0 ? 'down' : (v<0 ? 'up' : 'flat')); }
   function demYears(){ return DEM ? DEM.years : []; }
   function demRow(k){ return (DEM && DEM.rows && DEM.rows[k]) ? DEM.rows[k] : []; }
   function demLast(yi){ return yi; }   // 2026中性 索引 7
@@ -670,7 +672,7 @@ function loadECharts(){
       var arr = demRow(df.k);
       return '<tr><td style="text-align:left">'+df.l+'</td><td style="color:var(--sub)">'+df.u+'</td>'+arr.map(function(v, i){
         var disp = (df.w===2 && v!=null) ? (v*100).toFixed(1)+'%' : demFmt(v, df.w===2?2:2);
-        var cls = (df.k==='balance' || df.k==='balance_ratio') ? ' class="'+demCls(v)+'"' : '';
+        var cls = (df.k==='balance' || df.k==='balance_ratio') ? ' class="'+demClsInv(v)+'"' : '';
         return '<td'+cls+'>'+disp+'</td>';
       }).join('')+'</tr>';
     }).join('');
