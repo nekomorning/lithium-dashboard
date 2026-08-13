@@ -159,12 +159,13 @@ table.t18 th:nth-child(4), table.t18 td:nth-child(4){width:80px; text-align:left
 #demBatTable th:nth-child(3), #demBatTable td:nth-child(3),
 #demTable th:nth-child(4), #demTable td:nth-child(4),
 #demBatTable th:nth-child(4), #demBatTable td:nth-child(4){width:auto; text-align:inherit;}
-/* 指标列：不折叠、显示完整；剩余宽度均分给其余列（含层级缩进空间） */
+/* 指标列：固定足够宽度，整行显示不折叠；其余列在 table-layout:fixed 下均分 */
 #demTable th:first-child, #demTable td:first-child,
 #demBatTable th:first-child, #demBatTable td:first-child{
-  width:auto; min-width:300px; text-align:left; white-space:normal; overflow:visible;
-  word-break:break-word;
+  width:280px; min-width:280px; white-space:nowrap; overflow:visible; text-overflow:clip; text-align:left;
 }
+#demTable th:nth-child(2), #demTable td:nth-child(2),
+#demBatTable th:nth-child(2), #demBatTable td:nth-child(2){width:50px;}
 table.t18 td{text-align:right;}
 .dem-th-c26z{color:#1E6FFF; font-weight:700;}   /* 2026中性 蓝 */
 .dem-th-c26g{color:#d8392b; font-weight:700;}   /* 2026乐观 红 */
