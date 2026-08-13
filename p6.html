@@ -648,7 +648,7 @@ function loadECharts(){
   }
   function putStore(d){ try{ localStorage.setItem(SUMMARY_KEY, JSON.stringify(d)); }catch(e){} }
   function escSummary(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
-  function renderSummary(){
+  function renderCoreChange(){
     var body = document.getElementById('summaryBody');
     var status = document.getElementById('summaryStatus');
     if(summaryEditing){
@@ -679,7 +679,7 @@ function loadECharts(){
   function loadSummary(){
     var d = getStore();
     summaryOrig = d.current || '';
-    renderSummary();
+    renderCoreChange();
     // 云端优先：拉取最新覆盖本地
     fetch(CLOUD_URL, {method:'GET'})
       .then(function(r){ return r.ok ? r.json() : null; })
@@ -688,7 +688,7 @@ function loadECharts(){
           var cd = j.data;
           summaryOrig = cd.current || '';
           putStore(cd);
-          renderSummary();
+          renderCoreChange();
           var st = document.getElementById('summaryStatus');
           if(summaryOrig){ st.textContent = '已同步云端'; st.className = 'status saved'; }
         }
@@ -698,13 +698,13 @@ function loadECharts(){
   function editSummary(){
     summaryEditing = true;
     document.getElementById('summaryEdit').textContent = '关闭';
-    renderSummary();
+    renderCoreChange();
   }
   function cancelSummary(){
     summaryEditing = false;
     summaryDirty = false;
     document.getElementById('summaryEdit').textContent = '编辑';
-    renderSummary();
+    renderCoreChange();
   }
   function syncCloud(d, done){
     fetch(CLOUD_URL, {
@@ -728,7 +728,7 @@ function loadECharts(){
     putStore(d);                       // 先写本地（离线可用）
     summaryOrig = txt; summaryDirty = false; summaryEditing = false;
     document.getElementById('summaryEdit').textContent = '编辑';
-    renderSummary();
+    renderCoreChange();
     var st = document.getElementById('summaryStatus');
     st.textContent = '已保存，正在同步云端…';
     st.className = 'status';
