@@ -84,8 +84,44 @@ td.pct-name{border-bottom:1px dashed #cdd9e8;}
 
 /* 明细表筛选与排序 */
 .detail-filter{align-items:center; gap:8px 12px;}
-.search-input{padding:5px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px; width:180px;}
+.search-input{padding:5px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px; width:200px;}
 .search-input:focus{outline:none; border-color:var(--accent);}
+
+/* 下拉筛选 */
+.dd{position:relative;}
+.dd-trigger{display:inline-flex; align-items:center; gap:5px; padding:5px 12px; border:1px solid var(--border); border-radius:6px; background:#fff; cursor:pointer; font-size:13px; color:var(--text); user-select:none;}
+.dd-trigger:hover{border-color:var(--accent);}
+.dd-count{display:inline-block; min-width:18px; padding:0 5px; border-radius:9px; background:var(--accent); color:#fff; font-size:11px; line-height:16px; text-align:center;}
+.dd-count:empty,.dd-count.zero{display:none;}
+.dd-arrow{font-size:9px; color:var(--sub);}
+.dd-panel{position:absolute; top:100%; left:0; margin-top:4px; background:#fff; border:1px solid var(--border); border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.1); padding:8px 10px; z-index:100; min-width:220px; max-width:340px; max-height:300px; overflow-y:auto; display:none;}
+.dd.open .dd-panel{display:block;}
+.dd-panel .ybtn{margin:3px; font-size:12px; padding:3px 10px;}
+
+/* 核心变化编辑框 */
+.supply-summary{margin:8px 0 16px; padding:10px 14px; background:var(--card); border:1px solid var(--border); border-radius:10px; position:relative;}
+.supply-summary .lbl{font-size:13px; font-weight:700; color:var(--accent); margin-right:6px;}
+.supply-summary .status{font-size:12px; color:var(--sub); margin-left:6px;}
+.supply-summary .status.unsaved{color:#d97706;}
+.supply-summary .status.saved{color:#1a8a4a;}
+.supply-summary .sum-btns{position:absolute; top:10px; right:12px; display:flex; gap:6px;}
+.supply-summary .btn-sm{padding:3px 10px; border:1px solid var(--border); border-radius:6px; background:#fff; cursor:pointer; font-size:12px;}
+.supply-summary .btn-sm:hover{border-color:var(--accent); color:var(--accent);}
+.supply-summary .sum-body{min-height:32px; padding:4px 0 4px 4px; font-size:13px; color:var(--text); line-height:1.7; white-space:pre-wrap; word-break:break-word;}
+.supply-summary .sum-body.empty{color:var(--sub); font-style:italic;}
+.supply-summary .sum-body textarea{width:100%; min-height:90px; padding:6px 8px; border:1px solid var(--accent); border-radius:6px; font-family:inherit; font-size:13px; resize:vertical;}
+.supply-summary .save-bar{margin-top:8px; display:flex; gap:6px; justify-content:flex-end;}
+.supply-summary .save-bar .btn-sm{border-color:var(--accent); background:var(--accent); color:#fff;}
+.btn-sm{padding:3px 10px; border:1px solid var(--border); border-radius:6px; background:#fff; cursor:pointer; font-size:12px;}
+.btn-sm:hover{border-color:var(--accent); color:var(--accent);}
+
+/* Modal */
+.modal-mask{position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:1000; display:flex; align-items:flex-start; justify-content:center; padding-top:60px;}
+.modal-card{background:#fff; border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,.2); min-width:340px; max-width:92vw; max-height:80vh; display:flex; flex-direction:column; overflow:hidden;}
+.modal-head{display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border); font-weight:700; color:var(--accent);}
+.modal-x{background:none; border:0; cursor:pointer; font-size:20px; color:var(--sub); padding:0 4px;}
+.modal-x:hover{color:var(--accent);}
+.modal-body{overflow-y:auto;}
 th.sortable{cursor:pointer; user-select:none;}
 th.sortable:hover{background:#e4ebf3;}
 th .sort-arrow{margin-left:4px; font-size:11px; color:var(--accent);}
@@ -171,12 +207,21 @@ table.t18 td{text-align:right;}
   <div class="tablecard">
     <h2>明细表（各锂矿项目）<span class="note">共 <span id="projCount"></span> 个项目；将鼠标悬停于「项目名称」可查看公司股权</span></h2>
     <div class="filterbar detail-filter" id="detailFilter">
-      <span class="lbl">搜索：</span>
-      <input type="text" class="search-input" id="searchInput" placeholder="项目名称 / 股权">
-      <span class="lbl">地区：</span><span id="regionFilter"></span>
-      <span class="lbl">国家：</span><span id="countryFilter"></span>
-      <span class="lbl">资源类型：</span><span id="rtypeFilter"></span>
+      <input type="text" class="search-input" id="searchInput" placeholder="搜索：项目名称 / 股权">
+      <div class="dd" data-key="region"><button class="dd-trigger" type="button">地区<span class="dd-count">0</span><span class="dd-arrow">▾</span></button><div class="dd-panel"></div></div>
+      <div class="dd" data-key="country"><button class="dd-trigger" type="button">国家<span class="dd-count">0</span><span class="dd-arrow">▾</span></button><div class="dd-panel"></div></div>
+      <div class="dd" data-key="rtype"><button class="dd-trigger" type="button">资源类型<span class="dd-count">0</span><span class="dd-arrow">▾</span></button><div class="dd-panel"></div></div>
       <span class="ybtn off" id="clearFilters">清空</span>
+    </div>
+
+    <div class="supply-summary" id="supplySummary">
+      <span class="lbl">核心变化</span>
+      <span class="status" id="summaryStatus"></span>
+      <div class="sum-btns">
+        <button type="button" class="btn-sm" id="summaryEdit">编辑</button>
+        <button type="button" class="btn-sm" id="summaryHistory">历史</button>
+      </div>
+      <div class="sum-body" id="summaryBody"></div>
     </div>
     <table class="t18" id="detailTable">
       <thead id="detailHead"></thead>
@@ -561,19 +606,138 @@ function loadECharts(){
     document.getElementById('detailBody').innerHTML = html;
     document.getElementById('projCount').textContent = sorted.length + (sorted.length !== ROWS.length ? ' / ' + ROWS.length : '');
   }
-  function renderFilterTags(containerId, key, selectedArr){
-    var values = uniqueValues(key);
-    var container = document.getElementById(containerId);
-    container.innerHTML = values.map(function(v){
-      var on = selectedArr.indexOf(v) >= 0;
-      return '<span class="ybtn '+(on?'on':'off')+'" data-filter="'+escAttr(key)+'" data-v="'+escAttr(v)+'">'+esc(v)+'</span>';
-    }).join('');
-  }
   function refreshDetailFilters(){
-    renderFilterTags('regionFilter','region',filterState.region);
-    renderFilterTags('countryFilter','country',filterState.country);
-    renderFilterTags('rtypeFilter','rtype',filterState.rtype);
+    ['region','country','rtype'].forEach(function(key){
+      var dd = document.querySelector('.dd[data-key="'+key+'"]');
+      if(!dd) return;
+      var sel = filterState[key];
+      // 更新 trigger 显示计数
+      var cnt = dd.querySelector('.dd-count');
+      cnt.textContent = sel.length || '';
+      cnt.classList.toggle('zero', sel.length===0);
+      // 渲染 panel 多选 chips
+      var values = uniqueValues(key);
+      var panel = dd.querySelector('.dd-panel');
+      panel.innerHTML = values.map(function(v){
+        var on = sel.indexOf(v) >= 0;
+        return '<span class="ybtn '+(on?'on':'off')+'" data-filter="'+escAttr(key)+'" data-v="'+escAttr(v)+'">'+esc(v)+'</span>';
+      }).join('');
+    });
   }
+
+  // ---------- 核心变化编辑 ----------
+  var SUMMARY_KEY = '锂资源供应';
+  var API_BASE = 'http://127.0.0.1:8090';
+  var summaryOrig = '';
+  var summaryDirty = false;
+  var summaryEditing = false;
+  function escSummary(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  function renderSummary(){
+    var body = document.getElementById('summaryBody');
+    var status = document.getElementById('summaryStatus');
+    if(summaryEditing){
+      body.classList.remove('empty');
+      body.innerHTML = '<textarea id="summaryText">'+escSummary(summaryOrig)+'</textarea>'
+        + '<div class="save-bar"><button type="button" class="btn-sm" id="summarySave">保存</button><button type="button" class="btn-sm" id="summaryCancel">取消</button></div>';
+      status.textContent = '尚未保存';
+      status.className = 'status unsaved';
+      document.getElementById('summarySave').addEventListener('click', saveSummary);
+      document.getElementById('summaryCancel').addEventListener('click', cancelSummary);
+      document.getElementById('summaryText').addEventListener('input', function(e){
+        summaryDirty = (e.target.value !== summaryOrig);
+        if(summaryDirty){
+          status.textContent = '尚未保存';
+          status.className = 'status unsaved';
+        } else {
+          status.textContent = '';
+          status.className = 'status';
+        }
+      });
+    } else {
+      if(summaryOrig){
+        body.classList.remove('empty');
+        body.textContent = summaryOrig;
+      } else {
+        body.classList.add('empty');
+        body.textContent = '（暂无内容，点击「编辑」添加核心变化记录）';
+      }
+      status.textContent = summaryOrig ? '已保存' : '';
+      status.className = summaryOrig ? 'status saved' : 'status';
+    }
+  }
+  function loadSummary(){
+    fetch(API_BASE + '/api/conclusion/' + encodeURIComponent(SUMMARY_KEY))
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){ summaryOrig = (j && j.current) || ''; renderSummary(); })
+      .catch(function(){
+        document.getElementById('summaryStatus').textContent = '后端未连接';
+        document.getElementById('summaryStatus').className = 'status';
+        summaryOrig = ''; renderSummary();
+      });
+  }
+  function editSummary(){
+    summaryEditing = true;
+    document.getElementById('summaryEdit').textContent = '关闭';
+    renderSummary();
+  }
+  function cancelSummary(){
+    summaryEditing = false;
+    summaryDirty = false;
+    document.getElementById('summaryEdit').textContent = '编辑';
+    renderSummary();
+  }
+  function saveSummary(){
+    var txt = document.getElementById('summaryText').value;
+    fetch(API_BASE + '/api/conclusion/' + encodeURIComponent(SUMMARY_KEY), {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({current: txt})
+    }).then(function(r){
+      if(r.ok){
+        summaryOrig = txt; summaryDirty = false; summaryEditing = false;
+        document.getElementById('summaryEdit').textContent = '编辑';
+        renderSummary();
+      } else {
+        alert('保存失败：' + r.status);
+      }
+    }).catch(function(){
+      var ta = document.getElementById('summaryText');
+      if(ta) ta.value = ta.value + '\n\n（本地保存失败：后端未连接；内容仅保留在浏览器）';
+    });
+  }
+  function showHistory(){
+    fetch(API_BASE + '/api/conclusion/' + encodeURIComponent(SUMMARY_KEY) + '/history')
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){
+        var hist = (j && j.history) || [];
+        var html = '<div style="max-height:60vh;overflow-y:auto">';
+        html += '<div style="padding:6px 0;border-bottom:1px solid #eee"><b>当前版本</b><pre style="white-space:pre-wrap;margin:6px 0;font-family:inherit">'+(summaryOrig?escSummary(summaryOrig):'(空)')+'</pre></div>';
+        if(hist.length){
+          hist.forEach(function(h,i){
+            var ts = h.ts ? new Date(h.ts).toLocaleString() : '';
+            html += '<div style="padding:8px 0;border-bottom:1px solid #eee"><b>历史版本 '+(hist.length-i)+'</b> <span style="color:#888;font-size:12px">'+ts+'</span><pre style="white-space:pre-wrap;margin:6px 0;font-family:inherit">'+escSummary(h.current)+'</pre></div>';
+          });
+        } else {
+          html += '<div style="padding:10px;color:#888">暂无历史版本</div>';
+        }
+        html += '</div>';
+        showModal('历史编辑记录', html);
+      })
+      .catch(function(){ alert('加载历史失败：后端未连接'); });
+  }
+  function showModal(title, bodyHtml){
+    var mask = document.createElement('div');
+    mask.className = 'modal-mask';
+    mask.innerHTML = '<div class="modal-card" style="max-width:680px"><div class="modal-head"><span>'+title+'</span><button type="button" class="modal-x">×</button></div><div class="modal-body" style="padding:14px 18px;font-size:13px;line-height:1.7">'+bodyHtml+'</div></div>';
+    document.body.appendChild(mask);
+    mask.addEventListener('click', function(e){
+      if(e.target===mask || e.target.classList.contains('modal-x') || e.target.classList.contains('modal-close')) mask.remove();
+    });
+  }
+  document.getElementById('summaryEdit').addEventListener('click', function(){
+    if(summaryEditing) cancelSummary(); else editSummary();
+  });
+  document.getElementById('summaryHistory').addEventListener('click', showHistory);
+  loadSummary();
 
   // ---------- 股权浮层 ----------
   var tip = document.getElementById('tip');
@@ -596,15 +760,30 @@ function loadECharts(){
     filterState.search = e.target.value.trim();
     renderDetail();
   });
-  document.getElementById('detailFilter').addEventListener('click', function(e){
-    var b = e.target.closest('.ybtn[data-filter]'); if(!b) return;
-    var key = b.getAttribute('data-filter');
-    var v = b.getAttribute('data-v');
-    var arr = filterState[key];
-    var i = arr.indexOf(v);
-    if(i>=0) arr.splice(i,1); else arr.push(v);
-    refreshDetailFilters();
-    renderDetail();
+  /* 下拉标签交互（开/关 + 外部点击关闭） */
+  document.querySelectorAll('.dd').forEach(function(dd){
+    var trigger = dd.querySelector('.dd-trigger');
+    trigger.addEventListener('click', function(e){
+      e.stopPropagation();
+      var wasOpen = dd.classList.contains('open');
+      document.querySelectorAll('.dd.open').forEach(function(x){ x.classList.remove('open'); });
+      if(!wasOpen) dd.classList.add('open');
+    });
+    dd.querySelector('.dd-panel').addEventListener('click', function(e){
+      e.stopPropagation();
+      var b = e.target.closest('.ybtn[data-filter]');
+      if(!b) return;
+      var key = b.getAttribute('data-filter');
+      var v = b.getAttribute('data-v');
+      var arr = filterState[key];
+      var i = arr.indexOf(v);
+      if(i>=0) arr.splice(i,1); else arr.push(v);
+      refreshDetailFilters();
+      renderDetail();
+    });
+  });
+  document.addEventListener('click', function(){
+    document.querySelectorAll('.dd.open').forEach(function(x){ x.classList.remove('open'); });
   });
   document.getElementById('clearFilters').addEventListener('click', function(e){
     filterState = { search:'', region:[], country:[], rtype:[] };
