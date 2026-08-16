@@ -95,6 +95,7 @@ body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple
 .sec--charts.c5 .chart{aspect-ratio:16 / 11;}
 .sec--tables{margin-top:12px;}
 .sec--row-label{font-size:12px;color:var(--accent);font-weight:700;margin:8px 0 4px;padding-left:2px;}
+.merge-group-label{font-size:12px;color:var(--accent);font-weight:700;margin:0 0 6px;padding-left:2px;line-height:1.2;}
 .sec--tables table{width:100%;border-collapse:collapse;font-size:12px;}
 .sec--tables th,.sec--tables td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;}
 .sec--tables th{background:#f0f3f8;color:#44506a;font-weight:600;text-align:center;}
@@ -424,13 +425,66 @@ function renderCanvas(){
     div.querySelector('.sec--ttl').addEventListener('input', function(){ sec.title = this.value; if(String(sec.id).indexOf('custom_')===0) renderLib(); });
     div.querySelector('.sec--desc').addEventListener('input', function(){ sec.analysis = this.value; });
     var chartBox = div.querySelector('.sec--charts');
-    if(sec.rows && sec.rows.length){ chartBox.classList.add('has-rows'); }
+    var isMerge = String(sec.id).indexOf('custom_merge_') === 0;
+    if(sec.rows && sec.rows.length && !isMerge){ chartBox.classList.add('has-rows'); }
     if(sec.chart_ids.length===0){
       if(String(sec.id).indexOf('custom_')===0){
         if(sec.images && sec.images.length){ chartBox.innerHTML = ''; }
         else { chartBox.innerHTML = '<div class="custom-tip" style="grid-column:span 4">在此粘贴截图（Ctrl+V），图片将显示在该板块中</div>'; }
       } else { chartBox.innerHTML = '<div class="empty-tip" style="grid-column:span 4">（该板块无图表）</div>'; }
+    } else if(sec.rows && sec.rows.length && isMerge){
+      // 合并板块：把各子行图表平铺到一个统一 grid，自动填补上一行空白
+      var flatIds = [];
+      var firstCidOfGroup = {};
+      sec.rows.forEach(function(row){
+        var first = true;
+        row.chart_ids.forEach(function(cid){
+          flatIds.push(cid);
+          if(first && row.label){
+            firstCidOfGroup[cid] = row.label;
+            first = false;
+          }
+        });
+      });
+      var n = flatIds.length;
+      function mergeColScore(n, c){ return n % c === 0 ? 1000 : n % c; }
+      var mColCnt = 4;
+      if(n <= 4) mColCnt = 4;
+      else if(n === 5) mColCnt = 5;
+      else {
+        var bestC = 4, bestScore = mergeColScore(n, 4);
+        [5, 3].forEach(function(c){
+          var s = mergeColScore(n, c);
+          if(s > bestScore){ bestC = c; bestScore = s; }
+        });
+        mColCnt = bestC;
+      }
+      chartBox.className += ' c' + mColCnt;
+      var mergeCards = [];
+      flatIds.forEach(function(cid, mi){
+        var c = WEEKLY.charts[cid];
+        if(!c) return;
+        var gLabel = firstCidOfGroup[cid];
+        var card = document.createElement('div');
+        card.className = 'citem';
+        var labelHtml = gLabel ? '<div class="merge-group-label">'+esc(gLabel)+'</div>' : '';
+        card.innerHTML = labelHtml +
+          '<div class="ttl">'+esc(c.title)+'</div>'+
+          '<div class="meta">'+statsHtml(c)+'</div>'+
+          '<div class="chart" id="wchart_'+idx+'_'+mi+'"></div>';
+        chartBox.appendChild(card);
+        mergeCards.push({card:card, c:c});
+      });
+      mergeCards.forEach(function(o){
+        var el = o.card.querySelector('.chart');
+        var ch = echarts.init(el);
+        ch.setOption(buildOption(o.c));
+        hideHiddenYears(ch);
+        ch.resize();
+        charts.push(ch);
+      });
     } else if(sec.rows && sec.rows.length){
+      // 普通多行板块：按子行独立换行
       sec.rows.forEach(function(row, ri){
         if(row.label){
           var sub = document.createElement('div');
