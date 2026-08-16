@@ -93,6 +93,14 @@ body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple
 @media (max-width:600px){.sec--charts{grid-template-columns:1fr;}}
 
 .note{font-size:12px;color:var(--sub);margin-top:12px;line-height:1.7;}
+
+/* 年份筛选条（默认隐藏 2023，可点击切换） */
+.ybar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;}
+.ybar .ylab{font-size:12px;color:var(--sub);}
+.ybtn{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:16px;
+  border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px;user-select:none;transition:all .15s;}
+.ybtn .dot{width:10px;height:10px;border-radius:50%;}
+.ybtn.off{opacity:.35;filter:grayscale(.6);}
 </style>
 </head>
 <body>
@@ -105,6 +113,10 @@ body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple
     <span style="flex:1"></span>
     <button class="btn primary" onclick="saveLayout()">💾 保存布局</button>
     <button class="btn primary" onclick="exportPDF()">📄 导出周报 PDF</button>
+  </div>
+
+  <div class="ybar" id="yearBar">
+    <span class="ylab">显示年份：</span>
   </div>
 
   <div class="editor-card">
@@ -172,6 +184,8 @@ function loadECharts(){
 var WEEKLY = null;
 var echarts;
 var PALETTE=["#1E6FFF","#F59A23","#8B5CF6","#0FB5AE","#D63FA6","#7A6A53"];
+/* 年份可见性：默认隐藏 2023（与日度价格页一致），可点击年份条切换 */
+var yearVisible = {};
 
 /* ===== 导航 ===== */
 function renderNav(){
@@ -424,6 +438,7 @@ function renderCanvas(){
           var el = card.querySelector('.chart');
           var ch = echarts.init(el);
           ch.setOption(buildOption(c));
+          hideHiddenYears(ch);
           charts.push(ch);
         });
         chartBox.appendChild(grid);
@@ -441,6 +456,7 @@ function renderCanvas(){
         var el = card.querySelector('.chart');
         var ch = echarts.init(el);
         ch.setOption(buildOption(c));
+        hideHiddenYears(ch);
         charts.push(ch);
       });
     }
@@ -558,6 +574,33 @@ function yearColor(y){
   if(idx === n-1) return "#000000";
   if(idx === n-2) return "#E60000";
   return PALETTE[idx % PALETTE.length];
+}
+
+/* ===== 年份筛选条（默认隐藏 2023，与日度价格页一致） ===== */
+function buildYearBar(){
+  var bar = document.getElementById('yearBar');
+  if(!bar) return;
+  var html = '<span class="ylab">显示年份：</span>';
+  (WEEKLY.years || []).forEach(function(y){
+    var on = yearVisible[String(y)] !== false;
+    html += '<span class="ybtn'+(on?'':' off')+'" data-year="'+esc(y)+'" onclick="toggleYear(this.dataset.year)">'+
+      '<span class="dot" style="background:'+yearColor(y)+'"></span>'+esc(y)+'年</span>';
+  });
+  bar.innerHTML = html;
+}
+function toggleYear(y){
+  y = String(y);
+  yearVisible[y] = !(yearVisible[y] !== false);
+  buildYearBar();
+  renderCanvas();
+}
+/* 隐藏被关闭年份的图例项（与日度价格页 legendToggleSelect 逻辑一致） */
+function hideHiddenYears(ch){
+  (WEEKLY.years || []).forEach(function(y){
+    if(yearVisible[String(y)] === false){
+      try{ ch.dispatchAction({type:"legendToggleSelect", name:String(y)}); }catch(e){}
+    }
+  });
 }
 function monthTicks(xlabels){
   var idx={};
@@ -706,8 +749,11 @@ function saveLayout(){
 function init(){
   WEEKLY = window.__DATA__;
   if(!WEEKLY || !WEEKLY.sections) return;
+  // 年份默认可见性：隐藏 2023（与日度价格页一致）
+  (WEEKLY.years || []).forEach(function(y){ yearVisible[String(y)] = (String(y) !== "2023"); });
   renderNav();
   document.getElementById('latestDate').textContent = WEEKLY.latestDataDate || '';
+  buildYearBar();
   var saved = null;
   try{ saved = JSON.parse(localStorage.getItem('lc_weekly_payload') || 'null'); }catch(e){}
   if(saved && saved.layout && saved.layout.length){
