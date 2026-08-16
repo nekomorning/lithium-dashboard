@@ -440,18 +440,7 @@ function renderCanvas(){
         });
       });
       var n = flatIds.length;
-      function mergeColScore(n, c){ return n % c === 0 ? 1000 : n % c; }
-      var mColCnt = 4;
-      if(n <= 4) mColCnt = 4;
-      else if(n === 5) mColCnt = 5;
-      else {
-        var bestC = 4, bestScore = mergeColScore(n, 4);
-        [5, 3].forEach(function(c){
-          var s = mergeColScore(n, c);
-          if(s > bestScore){ bestC = c; bestScore = s; }
-        });
-        mColCnt = bestC;
-      }
+      var mColCnt = bestGrid(n);
       chartBox.className += ' c' + mColCnt;
       var mergeCards = [];
       flatIds.forEach(function(cid, mi){
@@ -483,7 +472,7 @@ function renderCanvas(){
           chartBox.appendChild(sub);
         }
         var grid = document.createElement('div');
-        var colCnt = Math.min(row.chart_ids.length || 1, 5);
+        var colCnt = bestGrid(row.chart_ids.length);
         grid.className = 'sec--charts c' + colCnt;
         grid.style.marginTop = '4px';
         chartBox.appendChild(grid);
@@ -509,7 +498,7 @@ function renderCanvas(){
         });
       });
     } else {
-      var flatCnt = Math.min(sec.chart_ids.length || 1, 5);
+      var flatCnt = bestGrid(sec.chart_ids.length);
       chartBox.className += ' c' + flatCnt;
       var flatCards = [];
       sec.chart_ids.forEach(function(cid, i){
@@ -550,6 +539,24 @@ function renderCanvas(){
   });
 }
 
+/* 根据图表数量返回最均匀的网格列数：行×列尽量接近、避免太扁/太竖、浪费格最少。
+   规则（已逐条验算）：1→1×1, 2→1×2, 3→1×3, 4→2×2, 5→2×3, 6→2×3, 7→2×4,
+   8→2×4, 9→3×3, 10→2×5, 11→3×4, 12→3×4（>12 自动延续：浪费最少且偏宽屏）。 */
+function bestGrid(n){
+  n = n || 1; if(n < 1) n = 1;
+  if(n === 1) return 1;
+  var best = null, maxC = 5;
+  for(var c = 1; c <= Math.min(n, maxC); c++){
+    var r = Math.ceil(n / c);
+    if(r === 1 && c >= 4) continue;            // 单行 ≥4 列太扁，跳过
+    if(c === 1 && n > 1) continue;            // 单列竖条（n>1）不美观，跳过
+    if(r > c) continue;                        // 排除竖条（行>列），统一宽屏网格
+    var waste = r * c - n;
+    var score = waste * 1000 + Math.abs(r - c) * 10;
+    if(best === null || score < best.score){ best = {c:c, score:score}; }
+  }
+  return best ? best.c : Math.min(n, 4);
+}
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function fmt(v,dec){
   if(v===null||v===undefined||isNaN(v)) return '—';
