@@ -89,8 +89,10 @@ body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple
 .citem .chg{font-size:13px;font-weight:600;}
 .citem .chg.up{color:var(--red);} .citem .chg.down{color:var(--green);} .citem .chg.flat{color:var(--sub);}
 .citem .dt{font-size:11px;color:var(--sub);}
-/* 图表采用宽屏长方形（16:9≈1.78），呈横向长方形、左对齐，高度适中，与日度价格页保持一致 */
-.citem .chart{width:100%;aspect-ratio:16 / 9;height:auto;min-width:0;}
+/* 图表采用宽屏长方形；默认 16:10 比日度价格页（16:9）略高，c4/c5 列数多时进一步拉高，避免折线区域过小 */
+.citem .chart{width:100%;aspect-ratio:16 / 10;height:auto;min-width:0;}
+.sec--charts.c4 .chart{aspect-ratio:16 / 10.5;}
+.sec--charts.c5 .chart{aspect-ratio:16 / 11;}
 .sec--tables{margin-top:12px;}
 .sec--row-label{font-size:12px;color:var(--accent);font-weight:700;margin:8px 0 4px;padding-left:2px;}
 .sec--tables table{width:100%;border-collapse:collapse;font-size:12px;}
