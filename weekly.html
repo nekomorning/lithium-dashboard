@@ -46,6 +46,9 @@ body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple
 .lib-item .lib-ctrl button:hover{color:var(--accent);border-color:var(--accent);}
 .lib-item .lib-ctrl button.del:hover{color:var(--red);border-color:var(--red);}
 .lib-item .lib-ctrl button:disabled{opacity:0.4;cursor:not-allowed;}
+.lib-item .chkwrap{display:flex;align-items:center;margin-right:8px;flex-shrink:0;}
+.lib-item .chk{width:15px;height:15px;cursor:pointer;accent-color:var(--accent);}
+.lib-item.added .chk{accent-color:var(--green);}
 .lib-group{font-size:12px;color:var(--accent);font-weight:700;margin:10px 0 4px;display:none;}
 .sec--images{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px;}
 .sec--images img{width:100%;border:1px solid var(--border);border-radius:6px;background:#fff;}
@@ -117,8 +120,12 @@ body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple
 
   <div class="lib-card">
     <div class="card-ttl" style="display:flex;justify-content:space-between;align-items:center;">
-      <span>板块库 <span style="font-size:12px;color:var(--sub);font-weight:400">（点击左侧名称加入画布；卡片按钮可调整/删除画布中的对应板块）</span></span>
-      <button class="btn" onclick="addCustomSection()">＋ 添加板块</button>
+      <span>板块库 <span style="font-size:12px;color:var(--sub);font-weight:400">（点击左侧名称加入画布；勾选多个板块后点「合并选中板块」可合并为一张卡片；卡片按钮可调整/删除画布中的对应板块）</span></span>
+      <span style="display:inline-flex;gap:8px;align-items:center">
+        <span id="mergeCount" style="font-size:12px;color:var(--sub)"></span>
+        <button class="btn" onclick="mergeChecked()">⊞ 合并选中板块</button>
+        <button class="btn" onclick="addCustomSection()">＋ 添加板块</button>
+      </span>
     </div>
     <div id="libGrid" class="lib-grid"></div>
   </div>
@@ -128,7 +135,7 @@ body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple
     <div id="canvas"></div>
   </div>
 
-  <p class="note">说明：① 点击板块库左侧名称加入画布；点击卡片上的 ▲▼✕ 可调整/删除画布中的对应板块。② 自定义板块可编辑标题、分析文字并粘贴截图（Ctrl+V），截图将铺满卡片宽度。③ 导出 PDF 按屏幕所见 A4 横向排版（一行 4 图）。④ 点击顶部「保存布局」后，板块顺序、标题、分析文字、截图等会保存在浏览器本地，下次打开自动恢复。</p>
+  <p class="note">说明：① 点击板块库左侧名称加入画布；勾选多个板块后点「合并选中板块」可把它们合并为一张卡片（含全部图表、保留原板块分组），再点卡片上的 ▲▼✕ 可调整/删除。② 自定义板块可编辑标题、分析文字并粘贴截图（Ctrl+V），截图将铺满卡片宽度。③ 导出 PDF 按屏幕所见 A4 横向排版（一行 4 图）。④ 点击顶部「保存布局」后，板块顺序、标题、分析文字、截图、合并板块等会保存在浏览器本地，下次打开自动恢复。</p>
 </div>
 
 <script>
@@ -214,7 +221,8 @@ function loadNote(){
 }
 
 /* ===== 板块库 ===== */
-var selected = []; // [{id, name, desc, chart_ids, tables, title, analysis, images }，前端可改 title/desc]
+var selected = []; // [{id, name, desc, chart_ids, tables, title, analysis, images, rows }，前端可改 title/desc]
+var checkedIds = {}; // 板块库勾选状态 {id:true}
 function renderLib(){
   var g = document.getElementById('libGrid');
   var html = '';
@@ -227,7 +235,9 @@ function renderLib(){
     var desc = isCustom ? '自定义板块' : (s ? s.desc : sec.desc);
     var canUp = idx > 0;
     var canDown = idx < selected.length - 1;
+    var chk = checkedIds[sec.id] ? 'checked' : '';
     html += '<div class="lib-item added">'+
+      '<label class="chkwrap"><input type="checkbox" class="chk" '+chk+' onchange="toggleCheck(\''+sec.id+'\')"></label>'+
       '<div class="txt" onclick="focusSec(\''+sec.id+'\')">'+esc(name)+'<span class="pg">'+esc(desc)+'</span></div>'+
       '<div class="lib-ctrl">'+
       '<button title="上移" '+(canUp?'':'disabled')+' onclick="event.stopPropagation();moveSecById(\''+sec.id+'\',-1)">▲</button>'+
@@ -237,7 +247,9 @@ function renderLib(){
   });
   html += WEEKLY.sections.map(function(s){
     if(addedIds[s.id]) return '';
+    var chk = checkedIds[s.id] ? 'checked' : '';
     return '<div class="lib-item">'+
+      '<label class="chkwrap"><input type="checkbox" class="chk" '+chk+' onchange="toggleCheck(\''+s.id+'\')"></label>'+
       '<div class="txt" onclick="toggleSection(\''+s.id+'\')">'+esc(s.name)+'<span class="pg">'+esc(s.desc)+'</span></div>'+
       '<div class="lib-ctrl">'+
       '<button title="上移" disabled onclick="event.stopPropagation();">▲</button>'+
@@ -246,6 +258,53 @@ function renderLib(){
       '</div></div>';
   }).join('');
   g.innerHTML = html;
+  var cnt = Object.keys(checkedIds).filter(function(k){return checkedIds[k];}).length;
+  document.getElementById('mergeCount').textContent = cnt ? ('已选 '+cnt+' 个板块') : '';
+}
+
+function toggleCheck(id){
+  if(checkedIds[id]) delete checkedIds[id];
+  else checkedIds[id] = true;
+  var cnt = Object.keys(checkedIds).filter(function(k){return checkedIds[k];}).length;
+  document.getElementById('mergeCount').textContent = cnt ? ('已选 '+cnt+' 个板块') : '';
+}
+
+/* 合并勾选的多个板块为新板块（持久化在画布布局中） */
+function mergeChecked(){
+  var ids = Object.keys(checkedIds).filter(function(k){return checkedIds[k];});
+  if(ids.length < 2){ alert('请至少勾选 2 个板块再合并'); return; }
+  var mergedChartIds = [];
+  var mergedRows = [];
+  var names = [];
+  ids.forEach(function(id){
+    var inCanvas = selected.find(function(x){return x.id===id;});
+    var src = inCanvas || findSec(id);
+    if(!src) return;
+    var srcName = inCanvas ? inCanvas.title : (src.name || src.title);
+    names.push(srcName);
+    var rows = src.rows && src.rows.length ? src.rows : [{label:'', chart_ids:(src.chart_ids||[]).slice()}];
+    rows.forEach(function(r){
+      var label = r.label || srcName;
+      var cids = (r.chart_ids||[]).slice();
+      mergedRows.push({label:label, chart_ids:cids});
+      cids.forEach(function(c){ if(mergedChartIds.indexOf(c)<0) mergedChartIds.push(c); });
+    });
+  });
+  if(!mergedChartIds.length){ alert('所选板块均无图表，无法合并'); return; }
+  // 从画布移除被合并的原板块，新增合并板块
+  selected = selected.filter(function(x){ return ids.indexOf(x.id) < 0; });
+  var mid = 'custom_merge_' + Date.now();
+  selected.push({
+    id: mid, name: '合并：' + names.join(' + '), desc: '合并板块',
+    chart_ids: mergedChartIds, tables: [], rows: mergedRows,
+    title: '合并：' + names.join(' + '), analysis: '', images: []
+  });
+  checkedIds = {};
+  renderLib(); renderCanvas();
+  setTimeout(function(){
+    var secs = document.querySelectorAll('.sec');
+    if(secs.length){ secs[secs.length-1].scrollIntoView({behavior:'smooth', block:'center'}); }
+  }, 60);
 }
 
 function focusSec(id){
@@ -628,7 +687,8 @@ function saveLayout(){
         id:s.id, title:s.title, analysis:s.analysis,
         name:s.name, desc:s.desc,
         chart_ids:s.chart_ids.slice(), tables:(s.tables||[]).slice(),
-        images:(s.images||[]).slice()
+        images:(s.images||[]).slice(),
+        rows:(s.rows&&s.rows.length)?s.rows.map(function(r){return {label:r.label||'', chart_ids:(r.chart_ids||[]).slice()};}):[]
       };
     }),
     updatedAt: new Date().toISOString(),
@@ -661,7 +721,8 @@ function init(){
       return {id:x.id, name:x.title||x.name||'新板块', desc:x.desc||'',
               chart_ids:(x.chart_ids||[]).slice(), tables:(x.tables||[]).slice(),
               charts_rendered:false, title:x.title||x.name||'新板块',
-              analysis:x.analysis||'', images:x.images||[]};
+              analysis:x.analysis||'', images:x.images||[],
+              rows:(x.rows&&x.rows.length)?x.rows.map(function(r){return {label:r.label||'', chart_ids:(r.chart_ids||[]).slice()};}):[]};
     }).filter(Boolean);
   } else {
     selected = (WEEKLY.defaultLayout || []).map(function(id){
