@@ -440,6 +440,8 @@ function renderCanvas(){
         var colCnt = Math.min(row.chart_ids.length || 1, 5);
         grid.className = 'sec--charts c' + colCnt;
         grid.style.marginTop = '4px';
+        chartBox.appendChild(grid);
+        var rowCards = [];
         row.chart_ids.forEach(function(cid){
           var c = WEEKLY.charts[cid];
           if(!c) return;
@@ -449,18 +451,21 @@ function renderCanvas(){
             '<div class="meta">'+statsHtml(c)+'</div>'+
             '<div class="chart" id="wchart_'+idx+'_'+ri+'_'+cid.replace(/[^a-z0-9]/gi,'_')+'"></div>';
           grid.appendChild(card);
-          var el = card.querySelector('.chart');
+          rowCards.push({card:card, c:c});
+        });
+        rowCards.forEach(function(o){
+          var el = o.card.querySelector('.chart');
           var ch = echarts.init(el);
-          ch.setOption(buildOption(c));
+          ch.setOption(buildOption(o.c));
           hideHiddenYears(ch);
           ch.resize();
           charts.push(ch);
         });
-        chartBox.appendChild(grid);
       });
     } else {
       var flatCnt = Math.min(sec.chart_ids.length || 1, 5);
       chartBox.className += ' c' + flatCnt;
+      var flatCards = [];
       sec.chart_ids.forEach(function(cid, i){
         var c = WEEKLY.charts[cid];
         if(!c) return;
@@ -470,9 +475,12 @@ function renderCanvas(){
           '<div class="meta">'+statsHtml(c)+'</div>'+
           '<div class="chart" id="wchart_'+idx+'_'+i+'"></div>';
         chartBox.appendChild(card);
-        var el = card.querySelector('.chart');
+        flatCards.push({card:card, c:c});
+      });
+      flatCards.forEach(function(o){
+        var el = o.card.querySelector('.chart');
         var ch = echarts.init(el);
-        ch.setOption(buildOption(c));
+        ch.setOption(buildOption(o.c));
         hideHiddenYears(ch);
         ch.resize();
         charts.push(ch);
