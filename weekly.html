@@ -90,7 +90,7 @@ body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple
 .citem .chg.up{color:var(--red);} .citem .chg.down{color:var(--green);} .citem .chg.flat{color:var(--sub);}
 .citem .dt{font-size:11px;color:var(--sub);}
 /* 图表采用宽屏长方形；默认 16:10 比日度价格页（16:9）略高，c4/c5 列数多时进一步拉高，避免折线区域过小 */
-.citem .chart{width:100%;aspect-ratio:16 / 10;height:auto;min-width:0;}
+.citem .chart{width:100%;display:block;aspect-ratio:16 / 10;height:auto;min-width:0;}
 .sec--charts.c4 .chart{aspect-ratio:16 / 10.5;}
 .sec--charts.c5 .chart{aspect-ratio:16 / 11;}
 .sec--tables{margin-top:12px;}
@@ -715,7 +715,7 @@ function buildOption(c){
   if(c.bar){
     return {
       animation:false,
-      grid:{left:8,right:14,top:26,bottom:4,containLabel:true},
+      grid:{left:'1%',right:'1%',top:26,bottom:4,containLabel:true},
       legend:{show:true, top:0, right:0, itemWidth:14, itemHeight:2, icon:'rect', textStyle:{fontSize:11,color:'#6b7686'}, data:legend},
       tooltip:{trigger:'axis', confine:true, valueFormatter:function(v){ return v===null?'—':v; }},
       xAxis:{type:'category', data:xData, axisLabel:{fontSize:10,color:'#8a93a3'}, axisTick:{show:false}, axisLine:{lineStyle:{color:'#dde3ec'}}},
@@ -725,7 +725,7 @@ function buildOption(c){
   }
   return {
     animation:false,
-    grid:{left:8,right:14,top:26,bottom:4,containLabel:true},
+    grid:{left:'1%',right:'1%',top:26,bottom:4,containLabel:true},
     legend:{show:true, top:0, right:0, itemWidth:14, itemHeight:2, icon:'rect', textStyle:{fontSize:11,color:'#6b7686'}, data:legend},
     tooltip:{trigger:'axis', confine:true,
       formatter:function(ps){
@@ -782,6 +782,8 @@ async function exportPDF(){
     doc.addImage(coverCanvas.toDataURL('image/png'), 'PNG', margin, margin, coverW, coverH);
 
     var secEls = document.querySelectorAll('.sec');
+    // PDF 导出前强制所有图表按当前容器尺寸重绘，避免 ECharts canvas 与容器宽度不一致导致窄边
+    charts.forEach(function(ch){ if(ch && ch.resize) ch.resize(); });
     for(var i=0; i<secEls.length; i++){
       doc.addPage();
       var canvas = await html2canvas(secEls[i], {backgroundColor:'#fff', scale:1.5, useCORS:true});
