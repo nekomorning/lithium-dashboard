@@ -69,10 +69,19 @@ body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple
 .sec--desc{width:100%;border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:12px;color:var(--sub);min-height:50px;background:#fff;font-family:inherit;resize:vertical;}
 .sec--desc:focus{outline:none;border-color:var(--accent);}
 .sec--charts{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:10px;}
-/* 合并板块含多行子分组时，外层容器改为块级，内部每个 sec--charts 仍保持 4 列网格 */
+/* 按每行图表数自动列数：5 图一行显示，避免 4+1 留白 */
+.sec--charts.c1{grid-template-columns:repeat(1,minmax(0,1fr));}
+.sec--charts.c2{grid-template-columns:repeat(2,minmax(0,1fr));}
+.sec--charts.c3{grid-template-columns:repeat(3,minmax(0,1fr));}
+.sec--charts.c4{grid-template-columns:repeat(4,minmax(0,1fr));}
+.sec--charts.c5{grid-template-columns:repeat(5,minmax(0,1fr));}
+@media (max-width:1200px){ .sec--charts.c5{grid-template-columns:repeat(3,minmax(0,1fr));} }
+@media (max-width:800px){ .sec--charts.c4,.sec--charts.c5{grid-template-columns:repeat(2,minmax(0,1fr));} }
+@media (max-width:600px){ .sec--charts.c1,.sec--charts.c2,.sec--charts.c3,.sec--charts.c4,.sec--charts.c5{grid-template-columns:1fr;} }
+/* 合并板块含多行子分组时，外层容器改为块级，内部每个 sec--charts 仍保持网格 */
 .sec--charts.has-rows{display:block;}
 .sec--charts.has-rows .sec--row-label{display:block;width:100%;}
-.citem{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 14px 6px;display:flex;flex-direction:column;min-width:0;}
+.citem{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 14px 6px;min-width:0;}
 .citem .ttl{font-size:14px;font-weight:700;color:#2a3345;}
 .citem .meta{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:4px 0 2px;}
 .citem .val{font-size:20px;font-weight:700;color:var(--text);}
@@ -428,7 +437,8 @@ function renderCanvas(){
           chartBox.appendChild(sub);
         }
         var grid = document.createElement('div');
-        grid.className = 'sec--charts';
+        var colCnt = Math.min(row.chart_ids.length || 1, 5);
+        grid.className = 'sec--charts c' + colCnt;
         grid.style.marginTop = '4px';
         row.chart_ids.forEach(function(cid){
           var c = WEEKLY.charts[cid];
@@ -443,11 +453,14 @@ function renderCanvas(){
           var ch = echarts.init(el);
           ch.setOption(buildOption(c));
           hideHiddenYears(ch);
+          ch.resize();
           charts.push(ch);
         });
         chartBox.appendChild(grid);
       });
     } else {
+      var flatCnt = Math.min(sec.chart_ids.length || 1, 5);
+      chartBox.className += ' c' + flatCnt;
       sec.chart_ids.forEach(function(cid, i){
         var c = WEEKLY.charts[cid];
         if(!c) return;
@@ -461,6 +474,7 @@ function renderCanvas(){
         var ch = echarts.init(el);
         ch.setOption(buildOption(c));
         hideHiddenYears(ch);
+        ch.resize();
         charts.push(ch);
       });
     }
