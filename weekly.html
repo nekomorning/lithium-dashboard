@@ -95,7 +95,6 @@ body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple
 .sec--charts.c5 .chart{aspect-ratio:16 / 11;}
 .sec--tables{margin-top:12px;}
 .sec--row-label{font-size:12px;color:var(--accent);font-weight:700;margin:8px 0 4px;padding-left:2px;}
-.merge-group-label{font-size:12px;color:var(--accent);font-weight:700;margin:0 0 6px;padding-left:2px;line-height:1.2;}
 .sec--tables table{width:100%;border-collapse:collapse;font-size:12px;}
 .sec--tables th,.sec--tables td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;}
 .sec--tables th{background:#f0f3f8;color:#44506a;font-weight:600;text-align:center;}
@@ -435,15 +434,9 @@ function renderCanvas(){
     } else if(sec.rows && sec.rows.length && isMerge){
       // 合并板块：把各子行图表平铺到一个统一 grid，自动填补上一行空白
       var flatIds = [];
-      var firstCidOfGroup = {};
       sec.rows.forEach(function(row){
-        var first = true;
         row.chart_ids.forEach(function(cid){
           flatIds.push(cid);
-          if(first && row.label){
-            firstCidOfGroup[cid] = row.label;
-            first = false;
-          }
         });
       });
       var n = flatIds.length;
@@ -464,12 +457,9 @@ function renderCanvas(){
       flatIds.forEach(function(cid, mi){
         var c = WEEKLY.charts[cid];
         if(!c) return;
-        var gLabel = firstCidOfGroup[cid];
         var card = document.createElement('div');
         card.className = 'citem';
-        var labelHtml = gLabel ? '<div class="merge-group-label">'+esc(gLabel)+'</div>' : '';
-        card.innerHTML = labelHtml +
-          '<div class="ttl">'+esc(c.title)+'</div>'+
+        card.innerHTML = '<div class="ttl">'+esc(c.title)+'</div>'+
           '<div class="meta">'+statsHtml(c)+'</div>'+
           '<div class="chart" id="wchart_'+idx+'_'+mi+'"></div>';
         chartBox.appendChild(card);
