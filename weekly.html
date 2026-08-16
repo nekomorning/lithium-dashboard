@@ -69,6 +69,9 @@ body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple
 .sec--desc{width:100%;border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:12px;color:var(--sub);min-height:50px;background:#fff;font-family:inherit;resize:vertical;}
 .sec--desc:focus{outline:none;border-color:var(--accent);}
 .sec--charts{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:10px;}
+/* 合并板块含多行子分组时，外层容器改为块级，内部每个 sec--charts 仍保持 4 列网格 */
+.sec--charts.has-rows{display:block;}
+.sec--charts.has-rows .sec--row-label{display:block;width:100%;}
 .citem{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 14px 6px;display:flex;flex-direction:column;min-width:0;}
 .citem .ttl{font-size:14px;font-weight:700;color:#2a3345;}
 .citem .meta{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:4px 0 2px;}
@@ -410,6 +413,7 @@ function renderCanvas(){
     div.querySelector('.sec--ttl').addEventListener('input', function(){ sec.title = this.value; if(String(sec.id).indexOf('custom_')===0) renderLib(); });
     div.querySelector('.sec--desc').addEventListener('input', function(){ sec.analysis = this.value; });
     var chartBox = div.querySelector('.sec--charts');
+    if(sec.rows && sec.rows.length){ chartBox.classList.add('has-rows'); }
     if(sec.chart_ids.length===0){
       if(String(sec.id).indexOf('custom_')===0){
         if(sec.images && sec.images.length){ chartBox.innerHTML = ''; }
