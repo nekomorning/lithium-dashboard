@@ -900,6 +900,11 @@ async function exportPDF(){
     await new Promise(function(r){ setTimeout(r, 180); });
     charts.forEach(function(ch){ if(ch && ch.resize) ch.resize(); });
     for(var i=0; i<secEls.length; i++){
+      // 每页截图前：把该 section 滚到视口里、强制所有图表按当前容器尺寸 resize，确保 ECharts canvas 与容器同宽
+      try{ secEls[i].scrollIntoView({block:'start'}); }catch(e){}
+      await new Promise(function(r){ setTimeout(r, 120); });
+      charts.forEach(function(ch){ if(ch && ch.resize) ch.resize(); });
+      await new Promise(function(r){ setTimeout(r, 60); });
       doc.addPage();
       var restore = replaceDescForExport(secEls[i]);
       var canvas = await html2canvas(secEls[i], {backgroundColor:'#fff', scale:1.5, useCORS:true});
