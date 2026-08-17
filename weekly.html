@@ -66,7 +66,7 @@ body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple
 .sec--ctrl button{font-size:11px;padding:2px 8px;margin-left:4px;border:1px solid var(--border);border-radius:4px;background:#fff;color:var(--sub);cursor:pointer;}
 .sec--ctrl button:hover{color:var(--accent);border-color:var(--accent);}
 .sec--ctrl button.del:hover{color:var(--red);border-color:var(--red);}
-.sec--desc{width:100%;border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:12px;color:var(--sub);min-height:50px;background:#fff;font-family:inherit;resize:vertical;}
+.sec--desc{width:100%;border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:12px;color:var(--sub);min-height:50px;background:#fff;font-family:inherit;resize:vertical;white-space:pre-wrap;word-break:break-word;line-height:1.6;overflow:hidden;}
 .sec--desc:focus{outline:none;border-color:var(--accent);}
 .sec--charts{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:10px;}
 /* 按每行图表数自动列数：5 图一行显示，避免 4+1 留白 */
@@ -248,6 +248,29 @@ function loadNote(){
   if(v){ document.getElementById('notePreview').innerHTML = fmtNote(v); document.getElementById('notePreview').style.display='block'; }
 }
 
+function autoResizeDesc(ta){
+  if(!ta) return;
+  ta.style.height = 'auto';
+  ta.style.height = ta.scrollHeight + 'px';
+}
+function replaceDescForExport(container){
+  // html2canvas 对 textarea 的换行/高度支持不稳定，导出前临时替换成 div 以保证多行文字完整渲染
+  var tas = container.querySelectorAll ? container.querySelectorAll('textarea.sec--desc') : [];
+  var backups = [];
+  tas.forEach(function(ta){
+    var div = document.createElement('div');
+    div.className = 'sec--desc';
+    div.textContent = ta.value;
+    var style = window.getComputedStyle(ta);
+    div.style.cssText = 'width:'+ta.offsetWidth+'px;min-height:'+ta.offsetHeight+'px;height:auto;white-space:pre-wrap;word-break:break-word;line-height:'+style.lineHeight+';font-size:'+style.fontSize+';font-family:'+style.fontFamily+';padding:'+style.padding+';border:'+style.border+';border-radius:'+style.borderRadius+';background:'+style.background+';color:'+style.color+';box-sizing:'+style.boxSizing+';';
+    ta.parentNode.replaceChild(div, ta);
+    backups.push({div:div, ta:ta, parent:div.parentNode});
+  });
+  return function restore(){
+    backups.forEach(function(b){ b.parent.replaceChild(b.ta, b.div); });
+  };
+}
+
 /* ===== 板块库 ===== */
 var selected = []; // [{id, name, desc, chart_ids, tables, title, analysis, images, rows }，前端可改 title/desc]
 var checkedIds = {}; // 板块库勾选状态 {id:true}
@@ -422,7 +445,9 @@ function renderCanvas(){
       '<div class="sec--tables" id="sec_table_'+idx+'"></div>';
     wrap.appendChild(div);
     div.querySelector('.sec--ttl').addEventListener('input', function(){ sec.title = this.value; if(String(sec.id).indexOf('custom_')===0) renderLib(); });
-    div.querySelector('.sec--desc').addEventListener('input', function(){ sec.analysis = this.value; });
+    var descTa = div.querySelector('.sec--desc');
+    descTa.addEventListener('input', function(){ sec.analysis = this.value; autoResizeDesc(this); });
+    autoResizeDesc(descTa);
     var chartBox = div.querySelector('.sec--charts');
     var isMerge = String(sec.id).indexOf('custom_merge_') === 0;
     if(sec.rows && sec.rows.length && !isMerge){ chartBox.classList.add('has-rows'); }
@@ -786,7 +811,9 @@ async function exportPDF(){
     charts.forEach(function(ch){ if(ch && ch.resize) ch.resize(); });
     for(var i=0; i<secEls.length; i++){
       doc.addPage();
+      var restore = replaceDescForExport(secEls[i]);
       var canvas = await html2canvas(secEls[i], {backgroundColor:'#fff', scale:1.5, useCORS:true});
+      restore();
       var imgW = pageW - margin*2;
       var imgH = canvas.height * imgW / canvas.width;
       if(imgH > pageH - margin*2){ imgH = pageH - margin*2; imgW = canvas.width * imgH / canvas.width; }
