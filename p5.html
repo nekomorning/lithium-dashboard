@@ -1084,7 +1084,17 @@ function renderCn(){
   var inited={rank:false,maker:false,price:false};
   window.DASH_init=function(pid,dash){
     if(!dash)return;
-    DASH=dash; LY=DASH.latestYear; LM=DASH.latestMonth;
+    DASH=dash;
+    // 车企细分优先使用 CLH 的 makers 数据，其中包含零售销量
+    if(pid==='maker' && window.CLH && window.CLH.makers){
+      var merged={};
+      for(var k in dash) merged[k]=dash[k];
+      merged.makers=window.CLH.makers;
+      merged.makerList=window.CLH.makerList || dash.makerList;
+      merged.p3Years=window.CLH.p3Years || dash.p3Years;
+      DASH=merged;
+    }
+    LY=DASH.latestYear; LM=DASH.latestMonth;
     var sub=document.getElementById('mkSubDate'); if(sub)sub.textContent=LY+'年'+LM+'月';
     if(pid==='rank'&&!inited.rank){inited.rank=true;buildP2Bar();bindRankSort();renderRank();}
     if(pid==='maker'&&!inited.maker){inited.maker=true;p3maker=DASH.makerList[0]||'';p3Visible=DASH.p3Years.slice(-5);buildP3Controls();renderP3();}
