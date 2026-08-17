@@ -11,11 +11,12 @@
 }
 *{box-sizing:border-box; margin:0; padding:0;}
 body{background:var(--bg); color:var(--text);
-  font-family:"Microsoft YaHei","PingFang SC","Helvetica Neue",Arial,sans-serif; font-size:14px;}
-.wrap{max-width:1560px; margin:0 auto; padding:18px 22px 60px;}
-body{overflow-x:hidden;}
-/* 图表卡片「全宽出血」：跨满整个视口宽度，不受 .wrap max-width 限制，让图表撑满整个页面 */
-.tablecard.chart-card{position:relative; width:100vw; left:50%; right:50%; margin-left:-50vw; margin-right:-50vw; border-radius:0; border-left:none; border-right:none;}
+  font-family:"Microsoft YaHei","PingFang SC","Helvetica Neue",Arial,sans-serif; font-size:14px;
+  margin:0; overflow-x:hidden;}
+/* 整页贴满整个视口宽度，去掉 max-width 居中限制，让文字和图表都撑满页面 */
+.wrap{padding:18px 22px 60px;}
+/* 图表卡片「全宽出血」：跨满整个视口边缘，让图表（ECharts canvas）真正撑满整个页面宽度 */
+.tablecard.chart-card{position:relative; width:100vw; left:50%; margin-left:-50vw; padding-left:0; padding-right:0; border-radius:0; border-left:none; border-right:none;}
 .tablecard.chart-card > h2{padding-left:22px;}
 
 .header{display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:14px;}
