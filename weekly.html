@@ -29,6 +29,9 @@ body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple
 #noteInput:focus{outline:none;border-color:var(--accent);}
 .editor-actions{display:flex;gap:10px;align-items:center;margin-top:10px;}
 #notePreview{line-height:2;font-size:14px;margin-top:10px;padding:10px 12px;background:#f8fafd;border-radius:6px;display:none;}
+#notePreview .nl-sub{font-weight:700;color:var(--accent);border-left:3px solid var(--accent);padding-left:8px;margin:8px 0 3px;}
+#notePreview .nl-pt{margin:2px 0;}
+#notePreview .nl-b{color:var(--accent);margin-right:6px;}
 .up{color:var(--red);font-weight:600;}
 .down{color:var(--green);font-weight:600;}
 .key{color:var(--accent);font-weight:700;text-decoration:underline;}
@@ -134,8 +137,14 @@ body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple
   </div>
 
   <div class="editor-card">
-    <div class="card-ttl">本周核心变化 <span>（纯文本输入 → 自动格式化：红涨绿跌 / 利好红 / 负面绿 / 重点蓝加粗下划线）</span></div>
-    <textarea id="noteInput" placeholder="例：电碳现货上涨3.2%，利好价格。云母矿价下跌，负面拖累。重点关注：某装置检修、某大厂减停产。"></textarea>
+    <div class="card-ttl">本周核心变化 <span>（纯文本 → 自动格式化：要点列表 + 子标题 + 缩进层级；红涨绿跌 / 利好红 / 负面绿 / 重点蓝加粗下划线）</span></div>
+    <textarea id="noteInput" placeholder="例：
+一、价格：
+  电碳现货上涨3.2%，利好价格。
+  云母矿价下跌，负面拖累。
+二、供给：
+  重点关注：某大厂减停产、某装置检修。
+【提示】行首每 4 空格或 1 个 Tab 为一级缩进，可逐级嵌套突出层级；以【】包裹或以"："结尾的短行会自动渲染为子标题。"></textarea>
     <div class="editor-actions">
       <button class="btn primary" onclick="saveNote()">保存</button>
       <button class="btn" onclick="loadNote()">载入</button>
@@ -213,12 +222,16 @@ function renderNav(){
   }).join('');
 }
 
-/* ===== 文本格式化 ===== */
-function fmtNote(text){
-  if(!text) return '';
-  var sentences = text.split(/(?<=[。！？；\n])/).filter(function(s){ return s.trim(); });
-  return sentences.map(function(s){
-    var t = s.trim();
+/* ===== 文本格式化（参考日报汇总格式：要点列表 + 子标题 + 缩进层级 + 红涨绿跌/重点高亮） ===== */
+function escHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;'); }
+function noteIndent(line){
+  var ws = (line.match(/^\s*/)||[''])[0];
+  return Math.min(Math.round(ws.replace(/\t/g,'    ').length / 4), 4);
+}
+function colorizeNote(s){
+  var parts = s.split(/(?<=[。！？；])/).filter(function(x){ return x.trim(); });
+  return parts.map(function(seg){
+    var t = seg.trim();
     if(!t) return '';
     var cls = null;
     if(/(上涨|上升|走高|涨至|环比.*\+?\d|增加|提升|涨了|增长|抬升|上探|调涨|累库|去库不及预期)/.test(t)) cls = 'up';
@@ -226,11 +239,28 @@ function fmtNote(text){
     if(/(利好|利多|支撑|偏紧|供需缺口|乐观)/.test(t)) cls = 'up';
     else if(/(利空|负面|风险|悲观|承压|过剩|需求疲软|拖累)/.test(t)) cls = 'down';
     var isKey = /(重点关注|重点|关注|注意|提示|提醒|核心|关键|重要|务必)/.test(t);
-    var tag = isKey ? '<span class="key">' : '';
-    var etag = isKey ? '</span>' : '';
-    if(cls) return '<span class="'+cls+'">'+tag+t+etag+'</span>';
-    return tag+t+etag;
-  }).join('<br>');
+    var colored = cls ? '<span class="'+cls+'">'+escHtml(t)+'</span>' : escHtml(t);
+    return isKey ? '<span class="key">'+colored+'</span>' : colored;
+  }).join('');
+}
+function fmtNote(text){
+  if(!text) return '';
+  var bullets = ['▪','▸','▹','·','·'];
+  var out = [];
+  text.split('\n').forEach(function(line){
+    if(!line.trim()) return;
+    var m = line.match(/^(\s*)(.*)$/);
+    var lvl = noteIndent(m[1]);
+    var content = (m[2]||'').trim();
+    if(!content) return;
+    var isSub = /^【.+】$/.test(content) || /^[^。！？；]{1,26}[:：]$/.test(content);
+    if(isSub){
+      out.push('<div class="nl-sub" style="margin-left:'+(lvl*12)+'px">'+escHtml(content.replace(/^【|】$/g,''))+'</div>');
+    } else {
+      out.push('<div class="nl-pt" style="padding-left:'+(lvl*18)+'px"><span class="nl-b">'+bullets[lvl]+'</span>'+colorizeNote(content)+'</div>');
+    }
+  });
+  return out.join('');
 }
 
 function saveNote(){
