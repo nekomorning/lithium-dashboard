@@ -888,10 +888,39 @@ async function exportPDF(){
     document.body.appendChild(cover);
     var coverCanvas = await html2canvas(cover, {backgroundColor:'#fff', scale:1.5, useCORS:true});
     document.body.removeChild(cover);
-    var coverW = pageW - margin*2;
-    var coverH = coverCanvas.height * coverW / coverCanvas.width;
-    if(coverH > pageH - margin*2){ coverH = pageH - margin*2; coverW = coverCanvas.width * coverH / coverCanvas.height; }
-    doc.addImage(coverCanvas.toDataURL('image/png'), 'PNG', margin, margin, coverW, coverH);
+    /* 超高内容（封面/板块）不再等比缩小（会压窄+右侧留白），改为纵向切成多页、每页保持整页宽度 */
+    var availH = pageH - margin*2;
+    function sliceToPages(src, n){
+      var slices = [], sliceH = src.height / n;
+      for(var p=0; p<n; p++){
+        var top = Math.round(p*sliceH);
+        var h = Math.round((p===n-1) ? (src.height - top) : sliceH);
+        var sc = document.createElement('canvas');
+        sc.width = src.width; sc.height = h;
+        sc.getContext('2d').drawImage(src, 0, top, src.width, h, 0, 0, src.width, h);
+        slices.push(sc);
+      }
+      return slices;
+    }
+    function placeImage(doc, canvas, firstPage){
+      var w = pageW - margin*2;
+      var h = canvas.height * w / canvas.width;
+      if(h <= availH + 0.5){
+        if(!firstPage) doc.addPage();
+        doc.addImage(canvas.toDataURL('image/png'), 'PNG', margin, margin, w, h);
+        return 1;
+      }
+      var n = Math.ceil(h / availH);
+      var pageImgH = h / n;
+      var slices = sliceToPages(canvas, n);
+      for(var p=0; p<n; p++){
+        if(p>0 || !firstPage) doc.addPage();
+        doc.addImage(slices[p].toDataURL('image/png'), 'PNG', margin, margin, w, pageImgH);
+      }
+      return n;
+    }
+
+    placeImage(doc, coverCanvas, true);
 
     var secEls = document.querySelectorAll('.sec');
     // PDF 导出前强制所有图表按当前容器尺寸重绘，避免 ECharts canvas 与容器宽度不一致导致窄边
@@ -905,14 +934,10 @@ async function exportPDF(){
       await new Promise(function(r){ setTimeout(r, 120); });
       charts.forEach(function(ch){ if(ch && ch.resize) ch.resize(); });
       await new Promise(function(r){ setTimeout(r, 60); });
-      doc.addPage();
       var restore = replaceDescForExport(secEls[i]);
       var canvas = await html2canvas(secEls[i], {backgroundColor:'#fff', scale:1.5, useCORS:true});
       restore();
-      var imgW = pageW - margin*2;
-      var imgH = canvas.height * imgW / canvas.width;
-      if(imgH > pageH - margin*2){ imgH = pageH - margin*2; imgW = canvas.width * imgH / canvas.width; }
-      doc.addImage(canvas.toDataURL('image/png'), 'PNG', margin, margin, imgW, imgH);
+      placeImage(doc, canvas, false);
     }
     doc.save(titleText+'.pdf');
   }catch(e){
