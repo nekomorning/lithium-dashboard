@@ -839,6 +839,9 @@ async function exportPDF(){
     var secEls = document.querySelectorAll('.sec');
     // PDF 导出前强制所有图表按当前容器尺寸重绘，避免 ECharts canvas 与容器宽度不一致导致窄边
     charts.forEach(function(ch){ if(ch && ch.resize) ch.resize(); });
+    // 等字体/布局稳定后再 resize 一次，确保每个 .sec 里的图表都撑满容器；否则 PDF 会留下大片空白
+    await new Promise(function(r){ setTimeout(r, 180); });
+    charts.forEach(function(ch){ if(ch && ch.resize) ch.resize(); });
     for(var i=0; i<secEls.length; i++){
       doc.addPage();
       var restore = replaceDescForExport(secEls[i]);
