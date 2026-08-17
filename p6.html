@@ -231,7 +231,7 @@ table.t18 td{text-align:right;}
 
   <div class="tablecard">
     <h2>全球锂供应（堆积柱状图）<span class="note">细分随上方「汇总维度」选择而变化，数值为产量绝对值（万吨 LCE）</span></h2>
-    <div id="stackChart" style="width:100%; height:420px;"></div>
+    <div id="stackChart" style="width:100%; height:420px; min-width:0;"></div>
   </div>
 
   <div class="tablecard">
@@ -279,7 +279,7 @@ table.t18 td{text-align:right;}
 
     <div class="tablecard">
       <h2>锂需求结构（万吨 LCE）<span class="note">动力电池 / 储能电池 / 消费电池 / 其他电池 / 传统需求</span></h2>
-      <div id="demStructChart" style="width:100%; height:380px;"></div>
+      <div id="demStructChart" style="width:100%; height:380px; min-width:0;"></div>
     </div>
 
     <div class="tablecard">
@@ -1069,6 +1069,22 @@ function renderDemand(){
     renderDemStruct();
   }
   renderDemand();
+
+  // 窗口 resize：重排所有图表，确保容器宽度变化后图表及时撑满
+  (function(){
+    function resizeAll(){
+      try{ if(chart) chart.resize(); }catch(e){}
+      (demCharts||[]).forEach(function(c){ try{ c.resize(); }catch(e){} });
+    }
+    var t=null;
+    window.addEventListener('resize', function(){
+      if(t) clearTimeout(t);
+      t=setTimeout(resizeAll, 80);
+    });
+    // 首次加载后延迟 resize 两次：避免字体/布局稳定前 ECharts 拿到错误的窄 offsetWidth
+    setTimeout(resizeAll, 120);
+    setTimeout(resizeAll, 400);
+  })();
 }
 </script>
 <!-- 红色激光笔：点击右下角按钮开/关，鼠标变为红色激光点；光点 pointer-events:none，不影响原有悬停/浮层效果 -->
