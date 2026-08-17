@@ -13,6 +13,10 @@
 body{background:var(--bg); color:var(--text);
   font-family:"Microsoft YaHei","PingFang SC","Helvetica Neue",Arial,sans-serif; font-size:14px;}
 .wrap{max-width:1560px; margin:0 auto; padding:18px 22px 60px;}
+body{overflow-x:hidden;}
+/* 图表卡片「全宽出血」：跨满整个视口宽度，不受 .wrap max-width 限制，让图表撑满整个页面 */
+.tablecard.chart-card{position:relative; width:100vw; left:50%; right:50%; margin-left:-50vw; margin-right:-50vw; border-radius:0; border-left:none; border-right:none;}
+.tablecard.chart-card > h2{padding-left:22px;}
 
 .header{display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:14px;}
 .header h1{font-size:24px; color:var(--accent); letter-spacing:1px;}
@@ -229,7 +233,7 @@ table.t18 td{text-align:right;}
     </table>
   </div>
 
-  <div class="tablecard">
+  <div class="tablecard chart-card">
     <h2>全球锂供应（堆积柱状图）<span class="note">细分随上方「汇总维度」选择而变化，数值为产量绝对值（万吨 LCE）</span></h2>
     <div id="stackChart" style="width:100%; height:420px; min-width:0;"></div>
   </div>
@@ -277,8 +281,8 @@ table.t18 td{text-align:right;}
       </table>
     </div>
 
-    <div class="tablecard">
-      <h2>锂需求结构（万吨 LCE）<span class="note">动力电池 / 储能电池 / 消费电池 / 其他电池 / 传统需求</span></h2>
+<div class="tablecard chart-card">
+    <h2>锂需求结构（万吨 LCE）<span class="note">动力电池 / 储能电池 / 消费电池 / 其他电池 / 传统需求</span></h2>
       <div id="demStructChart" style="width:100%; height:380px; min-width:0;"></div>
     </div>
 
