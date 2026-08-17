@@ -27,11 +27,25 @@ body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple
 .editor-card .card-ttl span{font-size:12px;color:var(--sub);font-weight:400;}
 #noteInput{width:100%;min-height:120px;border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:14px;line-height:1.8;resize:vertical;font-family:inherit;}
 #noteInput:focus{outline:none;border-color:var(--accent);}
+.note-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+.note-toolbar .tl{font-size:12px;color:var(--sub);}
+.color-btn{padding:4px 14px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-size:12px;font-weight:700;user-select:none;}
+.color-btn:hover{border-color:var(--accent);}
+.color-btn.red{color:#d92626;}
+.color-btn.green{color:#0a9a5c;}
+.color-btn.blue{color:#1E6FFF;}
+.color-btn.black{color:#000;}
+.color-btn:active{transform:translateY(1px);}
 .editor-actions{display:flex;gap:10px;align-items:center;margin-top:10px;}
 #notePreview{line-height:2;font-size:14px;margin-top:10px;padding:10px 12px;background:#f8fafd;border-radius:6px;display:none;}
 #notePreview .nl-sub{font-weight:700;color:var(--accent);border-left:3px solid var(--accent);padding-left:8px;margin:8px 0 3px;}
 #notePreview .nl-pt{margin:2px 0;}
 #notePreview .nl-b{color:var(--accent);margin-right:6px;}
+/* 手动字体颜色：红/绿/蓝默认加粗，黑色不加粗 */
+.c-red{color:var(--red);font-weight:600;}
+.c-green{color:var(--green);font-weight:600;}
+.c-blue{color:var(--accent);font-weight:600;}
+.c-black{color:#000;font-weight:400;}
 .up{color:var(--red);font-weight:600;}
 .down{color:var(--green);font-weight:600;}
 .key{color:var(--accent);font-weight:700;text-decoration:underline;}
@@ -137,14 +151,22 @@ body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple
   </div>
 
   <div class="editor-card">
-    <div class="card-ttl">本周核心变化 <span>（纯文本 → 自动格式化：要点列表 + 子标题 + 缩进层级；红涨绿跌 / 利好红 / 负面绿 / 重点蓝加粗下划线）</span></div>
-    <textarea id="noteInput" placeholder="例：
+    <div class="card-ttl">本周核心变化 <span>（选中文字 → 点颜色按钮手动上色：红/绿/蓝默认加粗、黑不加粗；行首缩进形成层级；【】或以"："结尾的短行为子标题）</span></div>
+    <div class="note-toolbar">
+      <span class="tl">字体颜色：</span>
+      <button type="button" class="color-btn red" onclick="applyNoteColor('red')">红</button>
+      <button type="button" class="color-btn green" onclick="applyNoteColor('green')">绿</button>
+      <button type="button" class="color-btn blue" onclick="applyNoteColor('blue')">蓝</button>
+      <button type="button" class="color-btn black" onclick="applyNoteColor('black')">黑</button>
+      <span class="tl">（先选中文字再点按钮；已上色的文字再点同色按钮可取消颜色）</span>
+    </div>
+    <textarea id="noteInput" oninput="updateNotePreview()" placeholder="例：
 一、价格：
   电碳现货上涨3.2%，利好价格。
   云母矿价下跌，负面拖累。
 二、供给：
   重点关注：某大厂减停产、某装置检修。
-【提示】行首每 4 空格或 1 个 Tab 为一级缩进，可逐级嵌套突出层级；以【】包裹或以"："结尾的短行会自动渲染为子标题。"></textarea>
+【提示】选中文字后点上方颜色按钮上色；行首每 4 空格或 1 个 Tab 为一级缩进，可嵌套；【】或以"："结尾的短行会自动渲染为子标题。"></textarea>
     <div class="editor-actions">
       <button class="btn primary" onclick="saveNote()">保存</button>
       <button class="btn" onclick="loadNote()">载入</button>
@@ -222,26 +244,19 @@ function renderNav(){
   }).join('');
 }
 
-/* ===== 文本格式化（参考日报汇总格式：要点列表 + 子标题 + 缩进层级 + 红涨绿跌/重点高亮） ===== */
+/* ===== 文本格式化（参考日报汇总格式：要点列表 + 子标题 + 缩进层级；颜色由用户手动标记） ===== */
 function escHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;'); }
 function noteIndent(line){
   var ws = (line.match(/^\s*/)||[''])[0];
   return Math.min(Math.round(ws.replace(/\t/g,'    ').length / 4), 4);
 }
-function colorizeNote(s){
-  var parts = s.split(/(?<=[。！？；])/).filter(function(x){ return x.trim(); });
-  return parts.map(function(seg){
-    var t = seg.trim();
-    if(!t) return '';
-    var cls = null;
-    if(/(上涨|上升|走高|涨至|环比.*\+?\d|增加|提升|涨了|增长|抬升|上探|调涨|累库|去库不及预期)/.test(t)) cls = 'up';
-    else if(/(下跌|下降|走低|跌至|环比.*-?\d|减少|降低|下调|回落|亏损|走弱|疲软|累库|跌了|下探|调降|减产|去库)/.test(t)) cls = 'down';
-    if(/(利好|利多|支撑|偏紧|供需缺口|乐观)/.test(t)) cls = 'up';
-    else if(/(利空|负面|风险|悲观|承压|过剩|需求疲软|拖累)/.test(t)) cls = 'down';
-    var isKey = /(重点关注|重点|关注|注意|提示|提醒|核心|关键|重要|务必)/.test(t);
-    var colored = cls ? '<span class="'+cls+'">'+escHtml(t)+'</span>' : escHtml(t);
-    return isKey ? '<span class="key">'+colored+'</span>' : colored;
-  }).join('');
+/* 手动颜色标记渲染：§red§…§/§ §green§…§/§ §blue§…§/§ §black§…§/§ */
+function renderMarkup(s){
+  return escHtml(s)
+    .replace(/§red§([^§]+)§\/§/g, '<span class="c-red">$1</span>')
+    .replace(/§green§([^§]+)§\/§/g, '<span class="c-green">$1</span>')
+    .replace(/§blue§([^§]+)§\/§/g, '<span class="c-blue">$1</span>')
+    .replace(/§black§([^§]+)§\/§/g, '<span class="c-black">$1</span>');
 }
 function fmtNote(text){
   if(!text) return '';
@@ -257,25 +272,67 @@ function fmtNote(text){
     if(isSub){
       out.push('<div class="nl-sub" style="margin-left:'+(lvl*12)+'px">'+escHtml(content.replace(/^【|】$/g,''))+'</div>');
     } else {
-      out.push('<div class="nl-pt" style="padding-left:'+(lvl*18)+'px"><span class="nl-b">'+bullets[lvl]+'</span>'+colorizeNote(content)+'</div>');
+      out.push('<div class="nl-pt" style="padding-left:'+(lvl*18)+'px"><span class="nl-b">'+bullets[lvl]+'</span>'+renderMarkup(content)+'</div>');
     }
   });
   return out.join('');
+}
+/* 给 textarea 选中文字加颜色标记（红/绿/蓝/黑）；已上色文字再点同色按钮 = 取消颜色 */
+function applyNoteColor(c){
+  var ta = document.getElementById('noteInput');
+  var s = ta.selectionStart, e = ta.selectionEnd;
+  if(s===null || e===null || s===e){
+    document.getElementById('saveStatus').textContent = '请先选中要上色的文字，再点颜色按钮';
+    return;
+  }
+  var marks = {red:'§red§', green:'§green§', blue:'§blue§', black:'§black§'};
+  var open = marks[c] || '';
+  if(!open) return;
+  var close = '§/§';
+  var val = ta.value;
+  var sel = val.slice(s, e);
+  // 若选中内容恰好是同色的整段标记 → 取消颜色
+  var unwrap = new RegExp('^'+open+'([\\s\\S]+)'+close+'$');
+  var m2 = sel.match(unwrap);
+  if(m2){
+    ta.value = val.slice(0, s) + m2[1] + val.slice(e);
+    ta.focus();
+    ta.selectionStart = s;
+    ta.selectionEnd = s + m2[1].length;
+    updateNotePreview();
+    document.getElementById('saveStatus').textContent = '已取消该段颜色';
+    return;
+  }
+  if(sel.indexOf('§') >= 0){
+    document.getElementById('saveStatus').textContent = '选中内容里含颜色标记，请只选中纯文字再上色';
+    return;
+  }
+  var body = open + sel + close;
+  ta.value = val.slice(0, s) + body + val.slice(e);
+  ta.focus();
+  ta.selectionStart = s + open.length;
+  ta.selectionEnd = s + open.length + sel.length;
+  updateNotePreview();
+  document.getElementById('saveStatus').textContent = '';
+}
+function updateNotePreview(){
+  var v = document.getElementById('noteInput').value;
+  var pv = document.getElementById('notePreview');
+  pv.innerHTML = fmtNote(v);
+  pv.style.display = v.trim() ? 'block' : 'none';
 }
 
 function saveNote(){
   var v = document.getElementById('noteInput').value;
   try { localStorage.setItem('lc_weekly_note', v); } catch(e){}
-  var pv = document.getElementById('notePreview');
-  pv.innerHTML = fmtNote(v);
-  pv.style.display = 'block';
+  updateNotePreview();
   document.getElementById('saveStatus').textContent = '✓ 已保存到本机（'+new Date().toLocaleString()+'）';
 }
 function loadNote(){
   var v = '';
   try { v = localStorage.getItem('lc_weekly_note') || ''; } catch(e){}
   document.getElementById('noteInput').value = v;
-  if(v){ document.getElementById('notePreview').innerHTML = fmtNote(v); document.getElementById('notePreview').style.display='block'; }
+  updateNotePreview();
 }
 
 function autoResizeDesc(ta){
