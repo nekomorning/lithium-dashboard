@@ -1426,57 +1426,5 @@ window.CLHInit=function(){
   });
 })();
 </script>
-<div id="lockScreen" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;background:linear-gradient(135deg,#eef2f7 0%,#e2e8f0 100%);display:flex;align-items:center;justify-content:center;font-family:-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;">
-  <div style="background:#fff;border:1px solid #dbe3ee;border-radius:18px;box-shadow:0 20px 60px rgba(30,42,58,.18);width:340px;padding:36px 34px 30px;text-align:center;">
-    <div style="width:56px;height:56px;margin:0 auto 14px;border-radius:50%;background:linear-gradient(135deg,#1e2a3a,#2d3f57);display:flex;align-items:center;justify-content:center;font-size:26px;">&#128274;</div>
-    <div style="font-size:19px;font-weight:700;color:#1e2a3a;letter-spacing:.5px;">RU / BR / LC 汇总看板</div>
-    <div style="font-size:12.5px;color:#7b8aa0;margin:6px 0 20px;">请输入访问密码以继续</div>
-    <input id="lockPwd" type="password" placeholder="输入密码" autocomplete="off" style="width:100%;box-sizing:border-box;padding:11px 14px;border:1px solid #cbd5e1;border-radius:10px;font-size:15px;outline:none;text-align:center;background:#f8fafc;" onfocus="this.style.borderColor='#1d4ed8';this.style.background='#fff';" onblur="this.style.borderColor='#cbd5e1';this.style.background='#f8fafc';">
-    <div id="lockErr" style="display:none;color:#dc2626;font-size:12.5px;margin:9px 0 0;">&#10060; 密码错误，无法打开看板</div>
-    <button id="lockBtn" style="width:100%;margin-top:16px;padding:11px 0;border:none;border-radius:10px;background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;font-size:15px;font-weight:600;cursor:pointer;letter-spacing:2px;" onmouseover="this.style.filter='brightness(1.08)'" onmouseout="this.style.filter='none'">解 锁</button>
-    <div style="font-size:11px;color:#a5b2c4;margin-top:16px;">数据看板 · 仅授权用户访问</div>
-  </div>
-</div>
-<script>
-(function(){
-  var PWD = atob('c3Vpaml1ODg=');
-  var KEY = 'wb_unlock';
-  var TS = 'wb_unlock_ts';
-  var HOURS = 8;
-  var screen = document.getElementById('lockScreen');
-  var pwd = document.getElementById('lockPwd');
-  var err = document.getElementById('lockErr');
-  function remembered(){
-    try {
-      if (sessionStorage.getItem(KEY) === '1') return true;
-      var ts = parseInt(localStorage.getItem(TS) || '0', 10);
-      if (ts && (Date.now() - ts) < HOURS * 3600 * 1000) return true;
-    } catch(e) {}
-    return false;
-  }
-  function remember(){
-    try { sessionStorage.setItem(KEY, '1'); localStorage.setItem(TS, String(Date.now())); } catch(e) {}
-  }
-  function unlock(){
-    if (pwd.value === PWD) {
-      remember();
-      screen.style.display = 'none';
-      document.body.style.overflow = '';
-    } else {
-      err.style.display = 'block';
-      pwd.value = '';
-      pwd.focus();
-    }
-  }
-  if (remembered()) {
-    screen.style.display = 'none';
-  } else {
-    document.getElementById('lockBtn').addEventListener('click', unlock);
-    pwd.addEventListener('keydown', function(e){ if (e.key === 'Enter') unlock(); });
-    document.body.style.overflow = 'hidden';
-    pwd.focus();
-  }
-})();
-</script>
 </body>
 </html>
