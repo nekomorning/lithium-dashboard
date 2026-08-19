@@ -41,8 +41,12 @@ body{background:var(--bg); color:var(--text);
 .ybtn.off{opacity:.35; filter:grayscale(.6);}
 
 /* 数据表 */
-.tablecard{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:22px; overflow-x:auto;}
+.tablecard{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:22px; overflow-x:auto; position:relative;}
 .tablecard h2{font-size:16px; color:var(--accent); margin-bottom:10px;}
+.tablecard.collapsed table{display:none;}
+.tc-toggle{position:absolute; top:12px; right:16px; padding:4px 14px; border:1px solid var(--border);
+  border-radius:14px; background:#fff; color:var(--sub); cursor:pointer; font-size:12px; user-select:none; transition:all .15s; z-index:2;}
+.tc-toggle:hover{border-color:var(--accent); color:var(--accent);}
 table{width:100%; border-collapse:collapse; font-size:13px; min-width:980px;}
 th,td{padding:6px 10px; text-align:right; border-bottom:1px solid #eef1f6; white-space:nowrap;}
 th{background:#f0f4f9; color:#44506a; font-weight:600; position:sticky; top:0;}
@@ -111,8 +115,9 @@ tr.abn td{background:#fff7f0;}
 
   <div class="filterbar" id="filterbar"><span class="lbl">年份筛选（点击显隐，作用于全部图表）：</span></div>
 
-  <div class="tablecard">
+  <div class="tablecard collapsed" id="overviewCard">
     <h2>最新数据一览表 <span style="font-size:12px;color:var(--sub);font-weight:400">（环比：周度指标 = 最新值相对上一周观测，月度指标 = 相对上月值；|环比%| ≥ 5% 标记为大幅变化）</span></h2>
+    <button class="tc-toggle" id="tcToggle" type="button">展开 ▾</button>
     <table id="dataTable">
       <thead><tr>
         <th>指标</th><th>单位</th><th>最新日期</th><th>最新值</th><th>前值</th><th>环比增减</th><th>环比%</th><th>标记</th>
@@ -122,6 +127,18 @@ tr.abn td{background:#fff7f0;}
   </div>
 
   <div id="sections"></div>
+  <script>
+  (function(){
+    var card=document.getElementById('overviewCard');
+    var btn=document.getElementById('tcToggle');
+    if(card&&btn){
+      btn.addEventListener('click',function(){
+        var collapsed=card.classList.toggle('collapsed');
+        btn.textContent=collapsed?'展开 ▾':'折叠 ▴';
+      });
+    }
+  })();
+  </script>
 
   <div class="footer">碳酸锂数据看板 · 产业链库存（季节图）· 涨=红 跌=绿 · 最新年黑线、前一年红线</div>
 </div>
