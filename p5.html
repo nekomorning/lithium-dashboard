@@ -48,8 +48,11 @@ body{background:var(--bg); color:var(--text);
 .ybtn.off{opacity:.35; filter:grayscale(.6);}
 
 /* 数据表 */
-.tablecard{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:22px; overflow-x:auto;}
+.tablecard{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:22px; overflow-x:auto; position:relative;}
 .tablecard h2{font-size:16px; color:var(--accent); margin-bottom:10px;}
+.tablecard.collapsed table{display:none;}
+.tc-toggle{position:absolute; top:12px; right:16px; padding:4px 14px; border:1px solid var(--border); background:#fff; border-radius:14px; font-size:12px; color:var(--sub); cursor:pointer; z-index:2;}
+.tc-toggle:hover{border-color:var(--accent); color:var(--accent);}
 table{width:100%; border-collapse:collapse; font-size:13px; min-width:920px;}
 th,td{padding:6px 10px; text-align:right; border-bottom:1px solid #eef1f6; white-space:nowrap;}
 th{background:#f0f4f9; color:#44506a; font-weight:600; position:sticky; top:0;}
@@ -192,7 +195,8 @@ th .arr.up{color:var(--down);}
 
     <div class="filterbar" id="filterbar"><span class="lbl">年份筛选（点击显隐，作用于全部图表）：</span></div>
 
-    <div class="tablecard">
+    <div class="tablecard collapsed" id="overviewCardGlobal">
+      <button class="tc-toggle" id="tcToggleGlobal" type="button">展开 ▾</button>
       <h2>数据一览表 <span style="font-size:12px;color:var(--sub);font-weight:400">（最新月销量·万辆 / 渗透率·%；销量板块：环比为环比%、同比/累计同比为%，当年累计值=年初至今累计销量，去年同期累计值=去年同月累计销量，累计增减量=两者差值（万辆）；渗透率板块：环比/同比/累计同比均为±pp，当年累计值=累计新能源销量/累计总销量（%），去年同期累计值=去年同期累计渗透率，累计增减量=两者差值（pp））</span></h2>
       <table id="dataTable">
         <thead><tr>
@@ -210,7 +214,8 @@ th .arr.up{color:var(--down);}
     <div id="cnSummary"></div>
 
     <div class="section-title">数据一览表<span style="font-size:12px;color:var(--sub);font-weight:400;margin-left:8px">（单位：万辆（渗透率 %）；环比/同比/累计同比：销量为 %、渗透率为 ±pp、库存变化类不显示百分比；累计同比增减值单位：万辆（渗透率 —））</span></div>
-    <div class="tablecard" id="cnTableWrap">
+    <div class="tablecard collapsed" id="cnTableWrap">
+      <button class="tc-toggle" id="tcToggleCn" type="button">展开 ▾</button>
       <table id="cnTable">
         <thead><tr>
           <th>指标</th><th>单位</th><th>最新月份</th><th>最新值</th><th>上月值</th><th>去年同期值</th><th>环比%</th><th>同比%</th><th>年初至今累计值</th><th>去年同期累计值</th><th>累计同比增减值</th><th>累计同比%</th>
@@ -1424,6 +1429,22 @@ window.CLHInit=function(){
       window.removeEventListener('mousemove', move);
     }
   });
+})();
+</script>
+<script>
+(function(){
+  function bindTc(cardId, btnId){
+    var card=document.getElementById(cardId);
+    var btn=document.getElementById(btnId);
+    if(card&&btn){
+      btn.addEventListener('click', function(){
+        var collapsed=card.classList.toggle('collapsed');
+        btn.textContent=collapsed?'展开 ▾':'折叠 ▴';
+      });
+    }
+  }
+  bindTc('overviewCardGlobal','tcToggleGlobal');
+  bindTc('cnTableWrap','tcToggleCn');
 })();
 </script>
 </body>
