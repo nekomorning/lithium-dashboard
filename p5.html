@@ -86,8 +86,13 @@ select{border:1px solid var(--border); border-radius:6px; padding:5px 8px; font-
 .grid3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px;}
 .grid3 .chart{width:100%; height:220px;}
 .grid7{display:grid; grid-template-columns:repeat(7,1fr); gap:8px;}
-.grid7 .chart{width:100%; height:150px;}
-.pctitle{font-size:11px; padding:1px 0 3px; color:#374151; text-align:center;}
+.grid7 .chart{width:100%; height:130px;}
+.pctitle{font-size:11px; padding:1px 0 2px; color:#374151; text-align:center;}
+.p4stat{font-size:10.5px; color:#6b7280; padding:1px 6px 5px; min-height:30px; line-height:1.45; display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; text-align:center;}
+.p4stat b{color:#111; font-weight:600;}
+.p4stat .sep{color:#d1d5db; font-weight:400;}
+.p4stat .up{color:var(--up); font-weight:600;}
+.p4stat .down{color:var(--down); font-weight:600;}
 .rowlabel{font-size:13px; font-weight:700; margin:12px 0 6px; padding-left:8px; border-left:4px solid var(--accent);}
 .chart.tall{width:100%; height:330px;}
 .tblwrap{background:#fff; border:1px solid var(--border); border-radius:10px; overflow:auto; max-height:78vh;}
@@ -794,15 +799,30 @@ function renderCn(){
         data:seriesByYear[y]||seriesByYear[String(y)]
       };
     });
+    var yAxisOpt={type:'value',axisLabel:{fontSize:axisSize,color:'#6b7280',formatter:opts.pct?function(v){return v.toFixed(0)+'%';}:function(v){return v>=10000?(v/10000)+'万':v}},splitLine:{lineStyle:{color:'#f0f0f0'}}};
+    if(opts.scale){
+      var vals=[];
+      series.forEach(function(s){ (s.data||[]).forEach(function(v){ if(v!=null && !isNaN(v)) vals.push(+v); }); });
+      if(vals.length){
+        var mn=Math.min.apply(null,vals), mx=Math.max.apply(null,vals);
+        var rng=mx-mn, pad=(rng===0?Math.abs(mx)*0.1||1:rng*0.08);
+        yAxisOpt.min=Math.round((mn-pad)*100)/100; yAxisOpt.max=Math.round((mx+pad)*100)/100;
+      }
+    }
     return {
       animation:false,
       tooltip:{trigger:'axis',confine:true,valueFormatter:function(v){return opts.pct?(v==null?'-':(+v).toFixed(1)+'%'):fmt(v)}},
       legend:{show:opts.legend!==false&&!sm,top:0,itemWidth:14,itemHeight:8,textStyle:{fontSize:10,color:'#6b7280'}},
       grid:{left:sm?2:6,right:sm?4:10,top:opts.legend===false?(sm?4:10):(sm?16:26),bottom:sm?0:2,containLabel:true},
       xAxis:{type:'category',data:MONTHS,axisLabel:{fontSize:axisSize,color:'#6b7280',interval:sm?2:1},axisLine:{lineStyle:{color:'#d1d5db'}},axisTick:{show:false}},
-      yAxis:{type:'value',axisLabel:{fontSize:axisSize,color:'#6b7280',formatter:opts.pct?function(v){return v.toFixed(0)+'%';}:function(v){return v>=10000?(v/10000)+'万':v}},splitLine:{lineStyle:{color:'#f0f0f0'}}},
+      yAxis:yAxisOpt,
       series:series
     };
+  }
+  function ppHtml(p){
+    if(p==null||!isFinite(p)) return '<span style="color:#9ca3af">—</span>';
+    var cls=p>=0?'up':'down', sign=p>=0?'+':'';
+    return '<span class="'+cls+'">'+sign+p.toFixed(1)+'pp</span>';
   }
   function chipGroup(container,items,current,onChange,multi,selected){
     var el=typeof container==='string'?document.getElementById(container):container;
@@ -1100,11 +1120,39 @@ function renderCn(){
       DASH.priceBands.forEach(function(band){
         var card=document.createElement('div');card.className='card';
         card.innerHTML='<div class="ct pctitle">'+band.replace('15万-20万','15-20万')+'</div>';
-        var div=document.createElement('div');div.className='chart';card.appendChild(div);
+        var stat=document.createElement('div');stat.className='p4stat';card.appendChild(stat);
+        var div=document.createElement('div');div.className='chart';div.style.height='130px';card.appendChild(div);
         grid.appendChild(card);
-        p4Charts.push({fk:row[0],band:band,chart:mkChart(div)});
+        p4Charts.push({fk:row[0],band:band,chart:mkChart(div),statEl:stat});
       });
     });
+  }
+  function p4Cum(arr,n){if(!arr)return 0;var s=0;for(var i=0;i<n;i++)s+=arr[i]||0;return s}
+  function calcP4Stat(fk,band,ps,metric){
+    var vol=(DASH.price[fk][band]||{})[ps]||{};
+    var yC=String(LY), yP=String(LY-1);
+    var curV=(vol[yC]||[])[LM-1];
+    var prevV=LM>1?(vol[yC]||[])[LM-2]:(vol[yP]||[])[11];
+    var yoyV=(vol[yP]||[])[LM-1];
+    if(metric==='pct'){
+      var gt=getGT(fk,ps);
+      function calcPct(v,y,m){ if(v==null||isNaN(v)||!gt[y]||gt[y][m]==null||gt[y][m]===0) return null; return Math.round(v/gt[y][m]*1000)/10; }
+      var curP=calcPct(curV,yC,LM-1), prevP=calcPct(prevV,(LM>1?yC:yP),(LM>1?LM-2:11)), yoyP=calcPct(yoyV,yP,LM-1);
+      return {latest:curP==null?'—':curP.toFixed(1)+'%', mom:curP==null||prevP==null?null:Math.round((curP-prevP)*10)/10, yoy:curP==null||yoyP==null?null:Math.round((curP-yoyP)*10)/10};
+    }else{
+      var cV=p4Cum(vol[yC],LM), cP=p4Cum(vol[yP],LM);
+      return {latest:curV==null||isNaN(curV)?'—':fmt(curV)+' 辆', mom:pct(curV,prevV), yoy:pct(curV,yoyV), cyoy:pct(cV,cP)};
+    }
+  }
+  function renderP4Stat(pc){
+    var s=calcP4Stat(pc.fk,pc.band,p4ps,p4metric);
+    var html='';
+    if(p4metric==='pct'){
+      html='<b>最新占比 '+s.latest+'</b><span class="sep">|</span>环比 '+ppHtml(s.mom)+'<span class="sep">|</span>同比 '+ppHtml(s.yoy);
+    }else{
+      html='<b>最新 '+s.latest+'</b><span class="sep">|</span>环比 '+pctHtml(s.mom)+'<span class="sep">|</span>同比 '+pctHtml(s.yoy)+'<span class="sep">|</span>累计同比 '+pctHtml(s.cyoy);
+    }
+    if(pc.statEl) pc.statEl.innerHTML=html;
   }
   function renderP4(){
     p4Charts.forEach(function(pc){
@@ -1112,11 +1160,12 @@ function renderCn(){
       var opt;
       if(p4metric==='pct'){
         var gt=getGT(pc.fk,p4ps);
-        opt=seasonalOption(toPct(o,gt),p4Years,{legend:false,small:true,pct:true});
+        opt=seasonalOption(toPct(o,gt),p4Years,{legend:false,small:true,scale:true,pct:true});
       }else{
-        opt=seasonalOption(o,p4Years,{legend:false,small:true});
+        opt=seasonalOption(o,p4Years,{legend:false,small:true,scale:true});
       }
       pc.chart.setOption(opt,true);
+      renderP4Stat(pc);
     });
   }
 
