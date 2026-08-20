@@ -263,8 +263,9 @@ th .arr.up{color:var(--down);}
 
   <!-- 价格带 -->
   <div id="sheetPrice" style="display:none;">
-    <div class="section-title">价格带<span style="font-size:12px;color:var(--sub);font-weight:400;margin-left:8px">（乘联会 · 3 行（总体/新能源/燃油）× 7 列价格段 · 单位：辆）</span></div>
+    <div class="section-title">价格带<span id="p4Note" style="font-size:12px;color:var(--sub);font-weight:400;margin-left:8px">（乘联会 · 3 行（总体/新能源/燃油）× 7 列价格段 · 单位：占比%）</span></div>
     <div class="toolbar">
+      <div class="grp"><label>指标：</label><span id="p4Metric"></span></div>
       <div class="grp"><label>产销类别：</label><span id="p4Ps"></span></div>
       <div class="grp"><label>年份：</label><span id="p4Years"></span></div>
     </div>
@@ -795,11 +796,11 @@ function renderCn(){
     });
     return {
       animation:false,
-      tooltip:{trigger:'axis',confine:true,valueFormatter:function(v){return fmt(v)}},
+      tooltip:{trigger:'axis',confine:true,valueFormatter:function(v){return opts.pct?(v==null?'-':(+v).toFixed(1)+'%'):fmt(v)}},
       legend:{show:opts.legend!==false&&!sm,top:0,itemWidth:14,itemHeight:8,textStyle:{fontSize:10,color:'#6b7280'}},
       grid:{left:sm?2:6,right:sm?4:10,top:opts.legend===false?(sm?4:10):(sm?16:26),bottom:sm?0:2,containLabel:true},
       xAxis:{type:'category',data:MONTHS,axisLabel:{fontSize:axisSize,color:'#6b7280',interval:sm?2:1},axisLine:{lineStyle:{color:'#d1d5db'}},axisTick:{show:false}},
-      yAxis:{type:'value',axisLabel:{fontSize:axisSize,color:'#6b7280',formatter:function(v){return v>=10000?(v/10000)+'万':v}},splitLine:{lineStyle:{color:'#f0f0f0'}}},
+      yAxis:{type:'value',axisLabel:{fontSize:axisSize,color:'#6b7280',formatter:opts.pct?function(v){return v.toFixed(0)+'%';}:function(v){return v>=10000?(v/10000)+'万':v}},splitLine:{lineStyle:{color:'#f0f0f0'}}},
       series:series
     };
   }
@@ -1056,12 +1057,39 @@ function renderCn(){
   }
 
   /* ---------- 价格带 ---------- */
-  var p4ps='零售', p4Years=[], p4Built=false, p4Charts=[];
+  var p4ps='零售', p4metric='pct', p4Years=[], p4Built=false, p4Charts=[], gtCache={};
   var ovYears=[];
+  // 各价格带销量 → 占比%：分母 = 同组(fk)同产销类别(ps)下 7 个价格带合计
+  function p4GroupTotal(fk, ps){
+    var gt={};
+    DASH.priceBands.forEach(function(band){
+      var by=(DASH.price[fk][band]||{})[ps]||{};
+      Object.keys(by).forEach(function(y){
+        var arr=by[y]||[], g=gt[y]||(gt[y]=new Array(12).fill(0));
+        for(var m=0;m<12;m++){ var v=arr[m]; if(v!=null && !isNaN(v)) g[m]+=v; }
+      });
+    });
+    Object.keys(gt).forEach(function(y){ gt[y]=gt[y].map(function(v){return Math.round(v*10)/10;}); });
+    return gt;
+  }
+  function getGT(fk, ps){ var k=fk+'|'+ps; if(!(k in gtCache)) gtCache[k]=p4GroupTotal(fk, ps); return gtCache[k]; }
+  function toPct(o, gt){
+    var out={};
+    Object.keys(o).forEach(function(y){
+      var arr=o[y]||[], garr=gt[y]||[];
+      out[y]=arr.map(function(v,m){ if(v==null||isNaN(v)||!garr[m]||garr[m]===0) return null; return Math.round(v/garr[m]*1000)/10; });
+    });
+    return out;
+  }
+  function updateP4Note(){
+    var el=document.getElementById('p4Note');
+    if(el)el.textContent='（乘联会 · 3 行（总体/新能源/燃油）× 7 列价格段 · 单位：'+(p4metric==='pct'?'占比%':'辆')+'）';
+  }
   function buildP4(){
     ovYears=Object.keys(DASH.overview.total['批发'].data).map(Number).sort(function(a,b){return a-b});
     p4Years=ovYears.filter(function(y){return y>=LY-4});
-    chipGroup('p4Ps',['生产','批发','零售','出口'].map(function(p){return{label:p,value:p}}),p4ps,function(v){p4ps=v;buildP4();renderP4()});
+    chipGroup('p4Metric',[{label:'销量',value:'vol'},{label:'占比%',value:'pct'}],p4metric,function(v){p4metric=v;gtCache={};updateP4Note();renderP4()});
+    chipGroup('p4Ps',['生产','批发','零售','出口'].map(function(p){return{label:p,value:p}}),p4ps,function(v){p4ps=v;gtCache={};buildP4();renderP4()});
     chipGroup('p4Years',ovYears.map(function(y){return{label:String(y),value:y}}),null,function(){renderP4()},true,p4Years);
     if(p4Built)return;
     p4Built=true;
@@ -1081,7 +1109,14 @@ function renderCn(){
   function renderP4(){
     p4Charts.forEach(function(pc){
       var o=(DASH.price[pc.fk][pc.band]||{})[p4ps]||{};
-      pc.chart.setOption(seasonalOption(o,p4Years,{legend:false,small:true}),true);
+      var opt;
+      if(p4metric==='pct'){
+        var gt=getGT(pc.fk,p4ps);
+        opt=seasonalOption(toPct(o,gt),p4Years,{legend:false,small:true,pct:true});
+      }else{
+        opt=seasonalOption(o,p4Years,{legend:false,small:true});
+      }
+      pc.chart.setOption(opt,true);
     });
   }
 
