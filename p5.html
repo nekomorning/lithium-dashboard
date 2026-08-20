@@ -799,7 +799,7 @@ function renderCn(){
         data:seriesByYear[y]||seriesByYear[String(y)]
       };
     });
-    var yAxisOpt={type:'value',axisLabel:{fontSize:axisSize,color:'#6b7280',formatter:opts.pct?function(v){return v.toFixed(0)+'%';}:function(v){return v>=10000?(v/10000)+'万':v}},splitLine:{lineStyle:{color:'#f0f0f0'}}};
+    var yAxisOpt={type:'value',axisLabel:{fontSize:axisSize,color:'#6b7280',formatter:opts.pct?function(v){return v.toFixed(0)+'%';}:opts.unit==='万辆'?function(v){return (v/10000).toFixed(1)+'万';}:function(v){return v>=10000?(v/10000).toFixed(1)+'万':v}},splitLine:{lineStyle:{color:'#f0f0f0'}}};
     if(opts.scale){
       var vals=[];
       series.forEach(function(s){ (s.data||[]).forEach(function(v){ if(v!=null && !isNaN(v)) vals.push(+v); }); });
@@ -811,7 +811,7 @@ function renderCn(){
     }
     return {
       animation:false,
-      tooltip:{trigger:'axis',confine:true,valueFormatter:function(v){return opts.pct?(v==null?'-':(+v).toFixed(1)+'%'):fmt(v)}},
+      tooltip:{trigger:'axis',confine:true,valueFormatter:function(v){return opts.pct?(v==null?'-':(+v).toFixed(1)+'%'):opts.unit==='万辆'?(v==null?'-':(v/10000).toFixed(1)+'万辆'):fmt(v)}},
       legend:{show:opts.legend!==false&&!sm,top:0,itemWidth:14,itemHeight:8,textStyle:{fontSize:10,color:'#6b7280'}},
       grid:{left:sm?2:6,right:sm?4:10,top:opts.legend===false?(sm?4:10):(sm?16:26),bottom:sm?0:2,containLabel:true},
       xAxis:{type:'category',data:MONTHS,axisLabel:{fontSize:axisSize,color:'#6b7280',interval:sm?2:1},axisLine:{lineStyle:{color:'#d1d5db'}},axisTick:{show:false}},
@@ -1103,7 +1103,7 @@ function renderCn(){
   }
   function updateP4Note(){
     var el=document.getElementById('p4Note');
-    if(el)el.textContent='（乘联会 · 3 行（总体/新能源/燃油）× 7 列价格段 · 单位：'+(p4metric==='pct'?'占比%':'辆')+'）';
+    if(el)el.textContent='（乘联会 · 3 行（总体/新能源/燃油）× 7 列价格段 · 单位：'+(p4metric==='pct'?'占比%':'万辆')+'）';
   }
   function buildP4(){
     ovYears=Object.keys(DASH.overview.total['批发'].data).map(Number).sort(function(a,b){return a-b});
@@ -1141,7 +1141,7 @@ function renderCn(){
       return {latest:curP==null?'—':curP.toFixed(1)+'%', mom:curP==null||prevP==null?null:Math.round((curP-prevP)*10)/10, yoy:curP==null||yoyP==null?null:Math.round((curP-yoyP)*10)/10};
     }else{
       var cV=p4Cum(vol[yC],LM), cP=p4Cum(vol[yP],LM);
-      return {latest:curV==null||isNaN(curV)?'—':fmt(curV)+' 辆', mom:pct(curV,prevV), yoy:pct(curV,yoyV), cyoy:pct(cV,cP)};
+      return {latest:curV==null||isNaN(curV)?'—':(curV/10000).toFixed(1)+'万辆', mom:pct(curV,prevV), yoy:pct(curV,yoyV), cyoy:pct(cV,cP)};
     }
   }
   function renderP4Stat(pc){
@@ -1162,7 +1162,7 @@ function renderCn(){
         var gt=getGT(pc.fk,p4ps);
         opt=seasonalOption(toPct(o,gt),p4Years,{legend:false,small:true,scale:true,pct:true});
       }else{
-        opt=seasonalOption(o,p4Years,{legend:false,small:true,scale:true});
+        opt=seasonalOption(o,p4Years,{legend:false,small:true,scale:true,unit:'万辆'});
       }
       pc.chart.setOption(opt,true);
       renderP4Stat(pc);
