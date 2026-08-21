@@ -930,7 +930,7 @@ function renderCn(){
       },true);
     });
   }
-  window.DASH_resize=function(){ rankSeaCharts.forEach(function(c){try{c.resize();}catch(e){}}); };
+  /* rankSea 小图 resize 已并入下方统一的 DASH_resize 钩子 */
   function p2fuelLabel(f){return f==='total'?'总体':(f==='nev'?'新能源车':(f==='ice'?'燃油车':f));}
   function rankVal(r,k){
     if(k==='cur')return r.cur;
@@ -1252,6 +1252,7 @@ function renderCn(){
   };
   window.DASH_resize=function(){
     charts.forEach(function(c){try{c.resize();}catch(e){}});
+    rankSeaCharts.forEach(function(c){try{c.resize();}catch(e){}});
   };
 })();
 
