@@ -189,6 +189,11 @@ function fmt(v,dec){
 }
 function chgCls(c){ if(c===null||c===undefined||c===0) return "flat"; return c>0?"up":"down"; }
 function arrow(c){ if(c===null||c===undefined||c===0) return "→"; return c>0?"▲":"▼"; }
+function dispCore(v, unit){
+  if(v===null||v===undefined||isNaN(v)) return "—";
+  if(unit==="万吨LCE") return (v/10000).toFixed(1);
+  return Number(v).toFixed(1);
+}
 function uid(){ return "c"+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36); }
 
 /* 多数据源（锂看板各页 JSON） */
@@ -377,11 +382,17 @@ function calcBalanceMeta(byYear, unit){
   var arr=byYear[String(ly)]||[];
   var li=arr.length-1; while(li>=0 && (arr[li]==null||isNaN(arr[li]))) li--;
   if(li<0) return {latest:null,unit:unit,chg:null,pct:null,date:'',cls:'flat'};
-  var latest=arr[li];
-  var prevM = li>0 ? arr[li-1] : (byYear[String(ly-1)] ? byYear[String(ly-1)][11] : null);
-  var chg=(prevM!=null&&!isNaN(prevM)) ? latest-prevM : null;
-  var pct=(prevM!=null&&prevM!==0) ? (latest-prevM)/prevM*100 : null;
-  return {latest:latest, unit:unit, chg:chg, pct:pct, date:ly+'年'+(li+1)+'月', cls:chgCls(chg)};
+  // 平衡表按「当年累计至最新月份」展示；若 12 月齐全则等价于全年累计
+  var cumThis=0, cumPrev=0, hasPrev=false;
+  for(var i=0;i<=li;i++){
+    if(arr[i]!=null && !isNaN(arr[i])) cumThis+=arr[i];
+    var pv = byYear[String(ly-1)] ? byYear[String(ly-1)][i] : null;
+    if(pv!=null && !isNaN(pv)){ cumPrev+=pv; hasPrev=true; }
+  }
+  var diff = hasPrev ? cumThis-cumPrev : null;
+  var pct = (hasPrev && cumPrev!==0) ? diff/cumPrev*100 : null;
+  var dateStr = (li===11) ? ly+'年全年累计' : ly+'年1-'+(li+1)+'月累计';
+  return {latest:cumThis, unit:unit, chg:diff, pct:pct, date:dateStr, cls:chgCls(diff), isCum:true};
 }
 
 /* ---- 图表库构建 ---- */
@@ -633,9 +644,15 @@ function makeCard(item, idx){
 
     var meta=def.meta||{};
     var m=document.createElement("div"); m.className="meta";
-    var chgTxt="";
-    if(meta.chg!=null){ var sign=meta.chg>0?"+":""; chgTxt='<span class="chg '+meta.cls+'">'+arrow(meta.chg)+' '+sign+fmt(meta.chg, meta.chg%1===0?0:2)+'（'+(meta.pct!=null?sign+meta.pct.toFixed(2)+'%':'—')+'）</span>'; }
-    m.innerHTML='<span class="val">'+(meta.latest!=null?fmt(meta.latest, meta.latest%1===0?0:2):'—')+'<span class="unit"> '+(meta.unit||'')+'</span></span>'+
+    var chgTxt="", valTxt="—";
+    if(meta.isCum){
+      valTxt = meta.latest!=null ? dispCore(meta.latest, meta.unit) : '—';
+      if(meta.chg!=null){ var sign=meta.chg>0?"+":""; chgTxt='<span class="chg '+meta.cls+'">累计同比 '+arrow(meta.chg)+' '+sign+dispCore(meta.chg, meta.unit)+'（'+(meta.pct!=null?sign+meta.pct.toFixed(2)+'%':'—')+'）</span>'; }
+    } else {
+      valTxt = meta.latest!=null ? fmt(meta.latest, meta.latest%1===0?0:2) : '—';
+      if(meta.chg!=null){ var sign=meta.chg>0?"+":""; chgTxt='<span class="chg '+meta.cls+'">'+arrow(meta.chg)+' '+sign+fmt(meta.chg, meta.chg%1===0?0:2)+'（'+(meta.pct!=null?sign+meta.pct.toFixed(2)+'%':'—')+'）</span>'; }
+    }
+    m.innerHTML='<span class="val">'+valTxt+'<span class="unit"> '+(meta.unit||'')+'</span></span>'+
       chgTxt+'<span class="dt">'+(meta.date||'')+'</span>';
     card.appendChild(m);
 
