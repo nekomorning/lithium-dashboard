@@ -59,6 +59,7 @@ th{background:#f0f4f9; color:#44506a; font-weight:600; position:sticky; top:0;}
 td:first-child, th:first-child{text-align:left;}
 tr.grp td{background:#f7f9fc; color:var(--accent); font-weight:700; text-align:left; font-size:13px;}
 td.up{color:var(--up); font-weight:600;} td.down{color:var(--down); font-weight:600;} td.flat{color:var(--flat);}
+#rankTbl td .up{color:var(--up); font-weight:600;} #rankTbl td .down{color:var(--down); font-weight:600;} #rankTbl td .flat{color:var(--flat);}
 
 /* 板块 */
 .section-title{font-size:18px; color:var(--accent); font-weight:700; margin:26px 0 4px;
@@ -235,12 +236,16 @@ th .arr.up{color:var(--down);}
 
   <!-- 车企排名（原始：燃料×类别，排名表含月份列/累计/市占率，可排序） -->
   <div id="sheetRank" style="display:none;">
-    <div class="section-title">车企排名<span style="font-size:12px;color:var(--sub);font-weight:400;margin-left:8px">（乘联会 · 点击列头排序 · 单位：辆）</span></div>
+    <div class="section-title">车企排名<span style="font-size:12px;color:var(--sub);font-weight:400;margin-left:8px">（乘联会 · 点击列头排序 · 销量单位：万辆）</span></div>
     <div class="toolbar">
       <div class="grp"><label>燃料类型：</label><span id="p2Fuel"></span></div>
       <div class="grp"><label>销量类别：</label><span id="p2Ps"></span></div>
     </div>
     <div class="tblwrap"><table id="rankTbl"><thead></thead><tbody></tbody></table></div>
+    <div class="card" style="margin-top:18px;">
+      <div class="ct">TOP20 车企销量季节图（万辆）<span id="rankSeaNote" style="font-size:12px;color:var(--sub);font-weight:400;margin-left:8px"></span></div>
+      <div class="chart" id="rankSeasonal" style="height:360px;"></div>
+    </div>
   </div>
 
   <!-- 车企细分（原始车企图表：车企/车型/批发零售出口3图 + 车型堆积图 + 车型季节图） -->
@@ -775,6 +780,7 @@ function renderCn(){
     return PALETTE[(idx>=0?idx:0)%PALETTE.length];
   }
   function fmt(v){if(v==null||isNaN(v))return '—';return Number(v).toLocaleString('zh-CN')}
+  function fmtW(v){if(v==null||isNaN(v))return '—';return (v/10000).toFixed(1)+'万';}
   function pct(cur,base){if(base==null||base===0||cur==null)return null;return (cur/base-1)*100}
   function pctHtml(p,suffix){
     suffix=suffix||'%';
@@ -875,7 +881,38 @@ function renderCn(){
     rankRows=rankRows.slice(0,20);
     renderRankHead();
     renderRankBody();
+    renderRankSeasonal();
   }
+  /* TOP20 车企销量季节图（横轴 1-12 月，纵轴万辆，折线 2023/2024/2025/2026，随筛选联动） */
+  var rankSeasonalChart=null;
+  function renderRankSeasonal(){
+    if(!rankSeasonalChart) rankSeasonalChart=mkChart(document.getElementById('rankSeasonal'));
+    var d=DASH.rank[p2fuel][p2ps]||{};
+    var topMakers=rankRows.slice(0,20).map(function(r){return r.mk;});
+    var yrs=(DASH.rankYears||[]).map(Number).sort(function(a,b){return a-b});
+    var note=document.getElementById('rankSeaNote');
+    if(note)note.textContent='（'+topMakers.length+'家 · '+p2fuelLabel(p2fuel)+' · '+p2ps+' · 单位：万辆）';
+    var series=yrs.map(function(y){
+      var arr=new Array(12).fill(null);
+      topMakers.forEach(function(mk){
+        var by=(d[mk]||{})[String(y)]||(d[mk]||{})[y];
+        if(by){ for(var m=0;m<12;m++){ var v=by[m]; if(v!=null&&!isNaN(v)) arr[m]=(arr[m]||0)+v; } }
+      });
+      return {name:String(y),type:'line',connectNulls:true,symbol:'circle',symbolSize:5,
+        lineStyle:{width:(+y===2026)?2.4:1.6,color:yearColor(y,yrs)},itemStyle:{color:yearColor(y,yrs)},
+        emphasis:{focus:'series'},data:arr};
+    });
+    rankSeasonalChart.setOption({
+      animation:false,
+      tooltip:{trigger:'axis',confine:true,valueFormatter:function(v){return v==null?'-':(v/10000).toFixed(1)+'万辆';}},
+      legend:{top:0,itemWidth:16,itemHeight:9,textStyle:{fontSize:12,color:'#6b7280'}},
+      grid:{left:12,right:18,top:36,bottom:6,containLabel:true},
+      xAxis:{type:'category',data:MONTHS,axisLabel:{fontSize:11,color:'#6b7280'},axisLine:{lineStyle:{color:'#d1d5db'}},axisTick:{show:false}},
+      yAxis:{type:'value',axisLabel:{fontSize:11,color:'#6b7280',formatter:function(v){return (v/10000).toFixed(0)+'万';}},splitLine:{lineStyle:{color:'#f0f0f0'}}},
+      series:series
+    },true);
+  }
+  function p2fuelLabel(f){return f==='total'?'总体':(f==='nev'?'新能源车':(f==='ice'?'燃油车':f));}
   function rankVal(r,k){
     if(k==='cur')return r.cur;
     if(k==='yoy')return r.yoy;
@@ -891,10 +928,13 @@ function renderCn(){
     var mCols='';
     for(var m=1;m<=LM;m++)mCols+='<th class="sortable" data-k="m'+m+'">'+LY+'.'+m+'<span class="arr">'+rankArr('m'+m)+'</span></th>';
     document.querySelector('#rankTbl thead').innerHTML=
-      '<tr><th>排名</th><th>车企</th><th class="sortable" data-k="cur">'+LY+'年'+LM+'月销量'+rankArr('cur')+'</th>'+
-      '<th class="sortable" data-k="yoy">同比'+rankArr('yoy')+'</th><th class="sortable" data-k="mom">环比'+rankArr('mom')+'</th>'+mCols+
-      '<th class="sortable" data-k="cum">1-'+LM+'月累计'+rankArr('cum')+'</th><th class="sortable" data-k="cyoy">累计同比'+rankArr('cyoy')+'</th>'+
-      '<th class="sortable" data-k="share">累计市占率'+rankArr('share')+'</th><th class="sortable" data-k="shareChg">市占率同比变化'+rankArr('shareChg')+'</th></tr>';
+      '<tr><th>排名</th><th>车企</th>'+mCols+
+      '<th class="sortable" data-k="mom">环比%'+rankArr('mom')+'</th>'+
+      '<th class="sortable" data-k="yoy">同比%'+rankArr('yoy')+'</th>'+
+      '<th class="sortable" data-k="cum">26年累计'+rankArr('cum')+'</th>'+
+      '<th class="sortable" data-k="cyoy">累计同比%'+rankArr('cyoy')+'</th>'+
+      '<th class="sortable" data-k="share">累计市占率'+rankArr('share')+'</th>'+
+      '<th class="sortable" data-k="shareChg">市占率同比变化'+rankArr('shareChg')+'</th></tr>';
   }
   function rankArr(k){
     if(rankKey!==k)return '';
@@ -910,9 +950,11 @@ function renderCn(){
     var tb='';
     sorted.forEach(function(r,i){
       var mtd='';
-      for(var m=1;m<=LM;m++)mtd+='<td>'+fmt(r.months[m-1]||0)+'</td>';
-      tb+='<tr><td>'+(i+1)+'</td><td><b>'+r.mk+'</b></td><td><b>'+fmt(r.cur)+'</b></td><td>'+pctHtml(r.yoy)+'</td><td>'+pctHtml(r.mom)+'</td>'+mtd+
-        '<td>'+fmt(r.cum)+'</td><td>'+pctHtml(r.cyoy)+'</td><td>'+(r.share!=null?r.share.toFixed(1)+'%':'—')+'</td><td>'+pctHtml(r.shareChg,'pp')+'</td></tr>';
+      for(var m=1;m<=LM;m++)mtd+='<td>'+fmtW(r.months[m-1])+'</td>';
+      tb+='<tr><td>'+(i+1)+'</td><td><b>'+r.mk+'</b></td>'+mtd+
+        '<td>'+pctHtml(r.mom)+'</td><td>'+pctHtml(r.yoy)+'</td>'+
+        '<td>'+fmtW(r.cum)+'</td><td>'+pctHtml(r.cyoy)+'</td>'+
+        '<td>'+(r.share!=null?r.share.toFixed(1)+'%':'—')+'</td><td>'+pctHtml(r.shareChg,'pp')+'</td></tr>';
     });
     document.querySelector('#rankTbl tbody').innerHTML=tb;
   }
