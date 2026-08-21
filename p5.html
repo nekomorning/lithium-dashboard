@@ -88,6 +88,13 @@ select{border:1px solid var(--border); border-radius:6px; padding:5px 8px; font-
 .grid3 .chart{width:100%; height:220px;}
 .grid7{display:grid; grid-template-columns:repeat(7,1fr); gap:8px;}
 .grid7 .chart{width:100%; height:130px;}
+.rank-sea-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:12px 14px; margin-top:10px;}
+.rank-sea-cell{border:1px solid #eef0f3; border-radius:8px; padding:6px 8px 4px; background:#fff;}
+.rank-sea-ttl{font-size:13px; font-weight:600; color:#1f2937; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.rank-sea-chart{width:100%; height:160px;}
+@media (max-width:1400px){ .rank-sea-grid{grid-template-columns:repeat(3,1fr);} }
+@media (max-width:1100px){ .rank-sea-grid{grid-template-columns:repeat(2,1fr);} }
+@media (max-width:640px){ .rank-sea-grid{grid-template-columns:1fr;} }
 .pctitle{font-size:11px; padding:1px 0 2px; color:#374151; text-align:center;}
 .p4stat{font-size:10.5px; color:#6b7280; padding:1px 6px 5px; min-height:30px; line-height:1.45; display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; text-align:center;}
 .p4stat b{color:#111; font-weight:600;}
@@ -244,7 +251,7 @@ th .arr.up{color:var(--down);}
     <div class="tblwrap"><table id="rankTbl"><thead></thead><tbody></tbody></table></div>
     <div class="card" style="margin-top:18px;">
       <div class="ct">TOP20 车企销量季节图（万辆）<span id="rankSeaNote" style="font-size:12px;color:var(--sub);font-weight:400;margin-left:8px"></span></div>
-      <div class="chart" id="rankSeasonal" style="height:360px;"></div>
+      <div id="rankSeaGrid" class="rank-sea-grid"></div>
     </div>
   </div>
 
@@ -884,34 +891,46 @@ function renderCn(){
     renderRankSeasonal();
   }
   /* TOP20 车企销量季节图（横轴 1-12 月，纵轴万辆，折线 2023/2024/2025/2026，随筛选联动） */
-  var rankSeasonalChart=null;
+  var rankSeaCharts=[];
   function renderRankSeasonal(){
-    if(!rankSeasonalChart) rankSeasonalChart=mkChart(document.getElementById('rankSeasonal'));
+    rankSeaCharts.forEach(function(c){try{c.dispose();}catch(e){}});
+    rankSeaCharts=[];
+    var grid=document.getElementById('rankSeaGrid');
+    if(!grid)return;
     var d=DASH.rank[p2fuel][p2ps]||{};
     var topMakers=rankRows.slice(0,20).map(function(r){return r.mk;});
     var yrs=(DASH.rankYears||[]).map(Number).sort(function(a,b){return a-b});
     var note=document.getElementById('rankSeaNote');
     if(note)note.textContent='（'+topMakers.length+'家 · '+p2fuelLabel(p2fuel)+' · '+p2ps+' · 单位：万辆）';
-    var series=yrs.map(function(y){
-      var arr=new Array(12).fill(null);
-      topMakers.forEach(function(mk){
-        var by=(d[mk]||{})[String(y)]||(d[mk]||{})[y];
-        if(by){ for(var m=0;m<12;m++){ var v=by[m]; if(v!=null&&!isNaN(v)) arr[m]=(arr[m]||0)+v; } }
-      });
-      return {name:String(y),type:'line',connectNulls:true,symbol:'circle',symbolSize:5,
-        lineStyle:{width:(+y===2026)?2.4:1.6,color:yearColor(y,yrs)},itemStyle:{color:yearColor(y,yrs)},
-        emphasis:{focus:'series'},data:arr};
+    var html='';
+    topMakers.forEach(function(mk,idx){
+      html+='<div class="rank-sea-cell"><div class="rank-sea-ttl">'+(idx+1)+'. '+mk+'</div><div class="rank-sea-chart" id="rankSea_'+idx+'"></div></div>';
     });
-    rankSeasonalChart.setOption({
-      animation:false,
-      tooltip:{trigger:'axis',confine:true,valueFormatter:function(v){return v==null?'-':(v/10000).toFixed(1)+'万辆';}},
-      legend:{top:0,itemWidth:16,itemHeight:9,textStyle:{fontSize:12,color:'#6b7280'}},
-      grid:{left:12,right:18,top:36,bottom:6,containLabel:true},
-      xAxis:{type:'category',data:MONTHS,axisLabel:{fontSize:11,color:'#6b7280'},axisLine:{lineStyle:{color:'#d1d5db'}},axisTick:{show:false}},
-      yAxis:{type:'value',axisLabel:{fontSize:11,color:'#6b7280',formatter:function(v){return (v/10000).toFixed(0)+'万';}},splitLine:{lineStyle:{color:'#f0f0f0'}}},
-      series:series
-    },true);
+    grid.innerHTML=html;
+    topMakers.forEach(function(mk,idx){
+      var byMk=d[mk]||{};
+      var series=yrs.map(function(y){
+        var src=(byMk[String(y)]||byMk[y]||[]);
+        var arr=new Array(12).fill(null);
+        for(var m=0;m<12;m++){ var v=src[m]; arr[m]=(v==null||isNaN(v))?null:v; }
+        return {name:String(y),type:'line',connectNulls:true,symbol:'circle',symbolSize:4,
+          lineStyle:{width:(+y===2026)?2.2:1.3,color:yearColor(y,yrs)},itemStyle:{color:yearColor(y,yrs)},
+          emphasis:{focus:'series'},data:arr};
+      });
+      var c=echarts.init(document.getElementById('rankSea_'+idx));
+      rankSeaCharts.push(c);
+      c.setOption({
+        animation:false,
+        tooltip:{trigger:'axis',confine:true,valueFormatter:function(v){return v==null?'-':(v/10000).toFixed(1)+'万辆';}},
+        legend:{show:true,top:0,itemWidth:14,itemHeight:8,type:'scroll',textStyle:{fontSize:10,color:'#6b7280'}},
+        grid:{left:4,right:8,top:28,bottom:2,containLabel:true},
+        xAxis:{type:'category',data:MONTHS,axisLabel:{fontSize:9,color:'#9ca3af'},axisLine:{lineStyle:{color:'#e5e7eb'}},axisTick:{show:false}},
+        yAxis:{type:'value',axisLabel:{fontSize:9,color:'#9ca3af',formatter:function(v){return (v/10000).toFixed(0)+'万';}},splitLine:{lineStyle:{color:'#f5f5f5'}}},
+        series:series
+      },true);
+    });
   }
+  window.DASH_resize=function(){ rankSeaCharts.forEach(function(c){try{c.resize();}catch(e){}}); };
   function p2fuelLabel(f){return f==='total'?'总体':(f==='nev'?'新能源车':(f==='ice'?'燃油车':f));}
   function rankVal(r,k){
     if(k==='cur')return r.cur;
