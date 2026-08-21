@@ -120,7 +120,7 @@ body{background:var(--bg); color:var(--text);
 
   <h2 class="sec-title">核心数据跟踪图表</h2>
   <div class="topbar">
-    <span class="sec-sub">数据来源于各看板页（日度价格 / 产量开工利润 / 产业链库存 / 全球汽车 / 全球锂资源），跟随每日刷新同步更新 · 点卡片右上角按钮可自定义（✎选择 / ∅清空 / ↑↓排序 / ☆关注蓝框 / ✕删除），卡片可拖拽排序</span>
+    <span class="sec-sub">数据来源于各看板页（日度价格 / 产量开工利润 / 产业链库存 / 中国锂产业链平衡 / 全球锂资源），跟随每日刷新同步更新 · 点卡片右上角按钮可自定义（✎选择 / ∅清空 / ↑↓排序 / ☆关注蓝框 / ✕删除），卡片可拖拽排序</span>
     <button class="abtn" id="addCard">＋ 新增卡片</button>
     <button class="abtn" id="saveLayout">💾 保存布局</button>
     <button class="abtn" id="saveContent">💾 保存内容</button>
@@ -196,8 +196,8 @@ var SRC={
   p1:{label:"日度价格", url:"data.json", indicators:null, xlabels:null, years:null, date:null},
   p2:{label:"产量开工利润", url:"p2.json", indicators:null, xlabels:null, years:null, date:null},
   p3:{label:"产业链库存", url:"p3.json", indicators:null, xlabels:null, years:null, date:null},
-  p5:{label:"全球汽车", url:"p5.json", dash:null},
-  p6:{label:"全球锂资源", url:"p6.json", rows:null, years:null, demand:null}
+  p6:{label:"全球锂资源", url:"p6.json", rows:null, years:null, demand:null},
+  p7:{label:"中国锂产业链平衡", url:"p7.json", sheets:null}
 };
 
 var allYears=[], yearVisible={}, charts=[], layout=[], dragFrom=null, currentPickIdx=null;
@@ -225,8 +225,8 @@ var DEFAULT_ITEMS=[
   {src:'p1', key:'总成交量'},
   {src:'p2', key:'碳酸锂总产量'},
   {src:'p3', key:'锂矿库存：锂盐厂原料库存（吨LCE）'},
-  {src:'p5', key:'band::total::5万以下'},
-  {src:'p5', key:'band::nev::5-10万'}
+  {src:'p7', key:'bal::锂矿::prod'},
+  {src:'p7', key:'bal::碳酸锂::carb_prod'}
 ];
 function defaultLayout(){
   return DEFAULT_ITEMS.map(function(it){ return {id:uid(), src:it.src, key:it.key, focus:false}; });
@@ -356,7 +356,7 @@ function computeStatMeta(ind){
   var pct=st.pct!=null?st.pct:null;
   return {latest:latest, unit:ind.unit||'', chg:chg, pct:pct, date:st.latestDate||'', cls:chgCls(chg)};
 }
-/* 月轴最新统计（p5 价格带 / 排名） */
+/* 月轴最新统计（平衡表等，可指定单位） */
 function calcMonthMeta(byYear){
   var years=Object.keys(byYear).map(Number).sort();
   if(!years.length) return {latest:null,unit:'辆',chg:null,pct:null,date:'',cls:'flat'};
@@ -369,6 +369,19 @@ function calcMonthMeta(byYear){
   var chg=(prevM!=null&&!isNaN(prevM)) ? latest-prevM : null;
   var pct=(prevM!=null&&prevM!==0) ? (latest-prevM)/prevM*100 : null;
   return {latest:latest, unit:'辆', chg:chg, pct:pct, date:ly+'年'+(li+1)+'月', cls:chgCls(chg)};
+}
+function calcBalanceMeta(byYear, unit){
+  var years=Object.keys(byYear).map(Number).sort();
+  if(!years.length) return {latest:null,unit:unit,chg:null,pct:null,date:'',cls:'flat'};
+  var ly=years[years.length-1];
+  var arr=byYear[String(ly)]||[];
+  var li=arr.length-1; while(li>=0 && (arr[li]==null||isNaN(arr[li]))) li--;
+  if(li<0) return {latest:null,unit:unit,chg:null,pct:null,date:'',cls:'flat'};
+  var latest=arr[li];
+  var prevM = li>0 ? arr[li-1] : (byYear[String(ly-1)] ? byYear[String(ly-1)][11] : null);
+  var chg=(prevM!=null&&!isNaN(prevM)) ? latest-prevM : null;
+  var pct=(prevM!=null&&prevM!==0) ? (latest-prevM)/prevM*100 : null;
+  return {latest:latest, unit:unit, chg:chg, pct:pct, date:ly+'年'+(li+1)+'月', cls:chgCls(chg)};
 }
 
 /* ---- 图表库构建 ---- */
@@ -391,50 +404,26 @@ function buildLibrary(){
   groupFromIndicators('产量开工利润','p2', SRC.p2.indicators, SRC.p2.xlabels, SRC.p2.years);
   groupFromIndicators('产业链库存','p3', SRC.p3.indicators, SRC.p3.xlabels, SRC.p3.years);
 
-  /* p5：价格带（批发，4 年齐全）+ 车企排名（总体·批发 TOP20） */
-  if(SRC.p5.dash){
-    var dash=SRC.p5.dash;
-    var price=dash.price||{}, rank=dash.rank||{};
-    var bands=dash.priceBands||[];
-    var fkLabel={total:'总体',nev:'新能源',ice:'燃油'};
-    // 价格带
-    var bandItems=[];
-    ['total','nev','ice'].forEach(function(fk){
-      bands.forEach(function(band){
+  /* p7：中国锂产业链平衡表（各 sheet 季节图，横轴 1–12 月，年份 2023–2026） */
+  if(SRC.p7.sheets){
+    Object.keys(SRC.p7.sheets).forEach(function(sheetName){
+      var sh=SRC.p7.sheets[sheetName];
+      var sea=sh.seasonal||{};
+      var cols=sh.seasonalCols||[];
+      if(!cols.length) return;
+      var items=cols.map(function(sc){
+        var seaObj=sea[sc.key]||{};
         var byYear={};
-        ['2023','2024','2025','2026'].forEach(function(y){
-          var ps=(price[fk]&&price[fk][band]) ? (price[fk][band]['批发']||{}) : {};
-          byYear[y]=(ps&&ps[y]) ? ps[y].slice(0,12) : null;
-        });
-        bandItems.push({
-          src:'p5', key:'band::'+fk+'::'+band,
-          title:fkLabel[fk]+'·'+band+'（批发·辆）',
-          meta:calcMonthMeta(byYear),
-          draw:function(div){ drawMonthSeason(div, byYear); }
-        });
-      });
-    });
-    GROUPS.push({label:'全球汽车·价格带（批发·辆）', items:bandItems});
-
-    // 车企排名 TOP20（总体·批发）
-    var rk=rank['total'] ? rank['total']['批发'] : null;
-    if(rk){
-      var makers=Object.keys(rk).map(function(mk){
-        var cy=rk[mk]['2026']||[]; var s=0; for(var i=0;i<cy.length;i++){ if(cy[i]!=null&&!isNaN(cy[i])) s+=cy[i]; }
-        return {mk:mk, s:s};
-      }).sort(function(a,b){return b.s-a.s;}).slice(0,20);
-      var rankItems=makers.map(function(o){
-        var byYear={};
-        ['2023','2024','2025','2026'].forEach(function(y){ byYear[y]=(rk[o.mk]&&rk[o.mk][y])?rk[o.mk][y].slice(0,12):null; });
+        ['2023','2024','2025','2026'].forEach(function(y){ byYear[y]=(seaObj[y]?seaObj[y].slice(0,12):null); });
         return {
-          src:'p5', key:'rank::total::批发::'+o.mk,
-          title:'排名·'+o.mk+'（总体·批发·辆）',
-          meta:calcMonthMeta(byYear),
-          draw:function(div){ drawMonthSeason(div, byYear); }
+          src:'p7', key:'bal::'+sheetName+'::'+sc.key,
+          title:(sc.title||sc.label)+'（'+sheetName+'）',
+          meta:calcBalanceMeta(byYear, sc.unit),
+          draw:function(div){ drawMonthSeason(div, byYear, 2); }
         };
       });
-      GROUPS.push({label:'全球汽车·车企排名（总体·批发·辆）', items:rankItems});
-    }
+      GROUPS.push({label:'平衡表·'+sheetName, items:items});
+    });
   }
 
   /* p6：分地区年度产量折线 */
@@ -507,8 +496,8 @@ function MONTH_TICK(v, xlabels){
   if(lab.slice(3)==="01") return parseInt(lab.slice(0,2),10)+"月";
   return "";
 }
-/* ---- 渲染：月轴季节图（p5 价格带 / 排名） ---- */
-function drawMonthSeason(div, byYear){
+/* ---- 渲染：月轴季节图（平衡表等，dec=小数位） ---- */
+function drawMonthSeason(div, byYear, dec){
   var c=echarts.init(div);
   var years=Object.keys(byYear).map(Number).sort();
   var legend=[], series=[];
@@ -528,7 +517,7 @@ function drawMonthSeason(div, byYear){
       if(!ps.length) return "";
       var s=ps[0].axisValue;
       ps.sort(function(a,b){return Number(b.seriesName)-Number(a.seriesName);});
-      ps.forEach(function(p){ s+="<br>"+p.marker+p.seriesName+"年： <b>"+fmt(p.value, 0)+"</b>"; });
+      ps.forEach(function(p){ s+="<br>"+p.marker+p.seriesName+"年： <b>"+fmt(p.value, dec||0)+"</b>"; });
       return s;
     }},
     xAxis:{type:"category", data:MONTHS, axisLabel:{fontSize:10,color:"#8a93a3"}, axisLine:{lineStyle:{color:"#dde3ec"}}, axisTick:{show:false}},
@@ -537,7 +526,6 @@ function drawMonthSeason(div, byYear){
   });
   charts.push(c);
 }
-/* ---- 渲染：年轴折线（p6 分地区） ---- */
 function drawLine(div, years, seriesList){
   var c=echarts.init(div);
   var series=seriesList.map(function(s){
@@ -563,17 +551,17 @@ function drawLine(div, years, seriesList){
 }
 
 function init(){
-  Promise.allSettled([ fetchJson(SRC.p1.url), fetchJson(SRC.p2.url), fetchJson(SRC.p3.url), fetchJson(SRC.p5.url), fetchJson(SRC.p6.url) ])
+  Promise.allSettled([ fetchJson(SRC.p1.url), fetchJson(SRC.p2.url), fetchJson(SRC.p3.url), fetchJson(SRC.p6.url), fetchJson(SRC.p7.url) ])
     .then(function(res){
       if(res[0].status==="fulfilled"){ var d=res[0].value; SRC.p1.indicators=d.indicators; SRC.p1.xlabels=d.xlabels; SRC.p1.years=d.years; SRC.p1.date=d.latestDataDate; }
       if(res[1].status==="fulfilled"){ var d2=res[1].value; SRC.p2.indicators=d2.indicators; SRC.p2.xlabels=d2.xlabels; SRC.p2.years=d2.years; SRC.p2.date=d2.latestDataDate; }
       if(res[2].status==="fulfilled"){ var d3=res[2].value; SRC.p3.indicators=d3.indicators; SRC.p3.xlabels=d3.xlabels; SRC.p3.years=d3.years; SRC.p3.date=d3.latestDataDate; }
-      if(res[3].status==="fulfilled"){ var d5=res[3].value; SRC.p5.dash=d5.dash; }
-      if(res[4].status==="fulfilled"){ var d6=res[4].value; SRC.p6.rows=d6.rows; SRC.p6.years=d6.years; SRC.p6.demand=d6.demand; }
+      if(res[3].status==="fulfilled"){ var d6=res[3].value; SRC.p6.rows=d6.rows; SRC.p6.years=d6.years; SRC.p6.demand=d6.demand; }
+      if(res[4].status==="fulfilled"){ var d7=res[4].value; SRC.p7.sheets=d7.sheets; }
       var ys=new Set();
       [SRC.p1.years, SRC.p2.years, SRC.p3.years].forEach(function(arr){ (arr||[]).forEach(function(y){ ys.add(String(y)); }); });
       if(SRC.p6.years) SRC.p6.years.forEach(function(y){ ys.add(String(y)); });
-      if(SRC.p5.dash&&SRC.p5.dash.rankYears) SRC.p5.dash.rankYears.forEach(function(y){ ys.add(String(y)); });
+      if(SRC.p7.sheets){ ['2023','2024','2025','2026'].forEach(function(y){ ys.add(String(y)); }); }
       allYears=Array.from(ys).sort();
       allYears.forEach(function(y){ yearVisible[y]=(y>='2023' && y<='2026'); });
       document.getElementById("dataDate").textContent="数据截至 "+(SRC.p1.date||SRC.p2.date||SRC.p3.date||"");
