@@ -180,14 +180,8 @@ body{background:var(--bg); color:var(--text);
 
 var MONTHS=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
 var PALETTE=['#5B8FF9','#61C6B5','#F6BD16','#9661BC','#78D3F8','#F08BB4','#65789B','#7cb305','#d48265','#E60000'];
-function yearColor(y, years){
-  var ys=(years||[]).map(String).slice().sort();
-  var n=ys.length;
-  if(n && String(y)===ys[n-1]) return '#000000';
-  if(n>=2 && String(y)===ys[n-2]) return '#E60000';
-  var idx=ys.indexOf(String(y));
-  return PALETTE[((idx%PALETTE.length)+PALETTE.length)%PALETTE.length];
-}
+var YEAR_COLORS={"2016":"#94a3b8","2017":"#60a5fa","2018":"#34d399","2019":"#fbbf24","2020":"#f472b6","2021":"#12B5A6","2022":"#8B5CF6","2023":"#1E6FFF","2024":"#F59A23","2025":"#E60000","2026":"#1A1A1A"};
+function yearColor(y){ return YEAR_COLORS[String(y)] || "#888888"; }
 function fmt(v,dec){
   if(v===null||v===undefined||isNaN(v)) return "—";
   if(dec===0||dec===undefined||dec===null) return Math.round(v).toLocaleString('zh-CN');
@@ -484,9 +478,9 @@ function drawSeason(div, ind, xlabels, years){
     var isLatest=(String(y)===String(years[n-1]));
     series.push({
       name:String(y), type:"line", showSymbol:false, connectNulls:true, data:pts,
-      lineStyle:{width:isLatest?2.2:1.4, color:yearColor(y, years)},
-      itemStyle:{color:yearColor(y, years)}, emphasis:{focus:"series"}, z:isLatest?10:5,
-      endLabel:{show:isLatest, fontSize:10, color:yearColor(y, years), formatter:function(p){ return fmt(p.value[1], ind.dec); }}
+      lineStyle:{width:isLatest?2.2:1.4, color:yearColor(y)},
+      itemStyle:{color:yearColor(y)}, emphasis:{focus:"series"}, z:isLatest?10:5,
+      endLabel:{show:isLatest, fontSize:10, color:yearColor(y), formatter:function(p){ return fmt(p.value[1], ind.dec); }}
     });
   });
   c.setOption({
@@ -524,7 +518,7 @@ function drawMonthSeason(div, byYear){
     legend.push(String(y));
     var isLast=String(y)===String(years[years.length-1]);
     series.push({name:String(y), type:"line", connectNulls:true, symbol:"circle", symbolSize:4,
-      data:arr, lineStyle:{width:isLast?2.2:1.4, color:yearColor(y, years)}, itemStyle:{color:yearColor(y, years)}, emphasis:{focus:"series"}});
+      data:arr, lineStyle:{width:isLast?2.2:1.4, color:yearColor(y)}, itemStyle:{color:yearColor(y)}, emphasis:{focus:"series"}});
   });
   c.setOption({
     animation:false,
@@ -581,7 +575,7 @@ function init(){
       if(SRC.p6.years) SRC.p6.years.forEach(function(y){ ys.add(String(y)); });
       if(SRC.p5.dash&&SRC.p5.dash.rankYears) SRC.p5.dash.rankYears.forEach(function(y){ ys.add(String(y)); });
       allYears=Array.from(ys).sort();
-      allYears.forEach(function(y){ yearVisible[y]=true; });
+      allYears.forEach(function(y){ yearVisible[y]=(y>='2023' && y<='2026'); });
       document.getElementById("dataDate").textContent="数据截至 "+(SRC.p1.date||SRC.p2.date||SRC.p3.date||"");
       buildLibrary();
       buildYearBar();
@@ -739,7 +733,7 @@ function buildYearBar(){
   allYears.forEach(function(y){
     var b=document.createElement("button");
     b.className="ybtn"+(yearVisible[y]?"":" off");
-    b.innerHTML='<span class="dot" style="background:'+yearColor(y, allYears)+'"></span>'+y+'年';
+    b.innerHTML='<span class="dot" style="background:'+yearColor(y)+'"></span>'+y+'年';
     b.onclick=function(){
       yearVisible[y]=!yearVisible[y];
       b.classList.toggle("off",!yearVisible[y]);
