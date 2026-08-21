@@ -84,6 +84,13 @@ td.up{color:var(--up); font-weight:600;} td.down{color:var(--down); font-weight:
 .chip{border:1px solid var(--border); background:#fff; border-radius:14px; padding:3px 10px; font-size:12px; cursor:pointer; user-select:none; color:var(--text);}
 .chip.on{background:var(--accent); color:#fff; border-color:var(--accent);}
 select{border:1px solid var(--border); border-radius:6px; padding:5px 8px; font-size:13px; background:#fff; max-width:220px; color:var(--text);}
+.mk-search{position:relative; display:inline-block;}
+#p3MakerSearch{border:1px solid var(--border); border-radius:6px; padding:5px 8px; font-size:13px; background:#fff; width:180px; color:var(--text); box-sizing:border-box;}
+.mk-search-drop{position:absolute; top:100%; left:0; margin-top:4px; width:180px; max-height:240px; overflow-y:auto; background:#fff; border:1px solid var(--border); border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,.12); z-index:100; box-sizing:border-box;}
+.mk-search-item{padding:7px 10px; font-size:13px; cursor:pointer; color:var(--text);}
+.mk-search-item:hover{background:#f3f4f6;}
+.mk-search-item.active{background:var(--accent); color:#fff;}
+.mk-search-empty{padding:8px 10px; font-size:12px; color:var(--sub);}
 .grid3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px;}
 .grid3 .chart{width:100%; height:220px;}
 .grid7{display:grid; grid-template-columns:repeat(7,1fr); gap:8px;}
@@ -259,7 +266,7 @@ th .arr.up{color:var(--down);}
   <div id="sheetMaker" style="display:none;">
     <div class="section-title">车企细分<span style="font-size:12px;color:var(--sub);font-weight:400;margin-left:8px">（乘联会 · 数据截至 <span id="mkSubDate"></span> · 单位：辆）</span></div>
     <div class="toolbar">
-      <div class="grp"><label>车企：</label><select id="p3Maker"></select></div>
+      <div class="grp mk-search"><label>车企：</label><input id="p3MakerSearch" type="text" autocomplete="off" placeholder="搜索车企"><div id="p3MakerDrop" class="mk-search-drop" style="display:none"></div></div>
       <div class="grp"><label>燃料类型：</label><span id="p3Fuel"></span></div>
       <div class="grp"><label>车型：</label><select id="p3Model"></select></div>
       <div class="grp"><label>年份：</label><span id="p3Years"></span></div>
@@ -1029,13 +1036,56 @@ function renderCn(){
     });
     return out;
   }
-  function buildP3Controls(){
-    var sel=document.getElementById('p3Maker');
-    if(sel&&!sel.options.length){
-      DASH.makerList.forEach(function(mk){var o=document.createElement('option');o.value=mk;o.textContent=mk;sel.appendChild(o)});
-      sel.value=p3maker;
-      sel.onchange=function(){p3maker=sel.value;p3model='__ALL__';fillModels();renderP3()};
+  function initMakerSearch(){
+    var input=document.getElementById('p3MakerSearch');
+    var drop=document.getElementById('p3MakerDrop');
+    if(!input||input._inited) return;
+    input.value=p3maker||'';
+    input._inited=true;
+    function show(list){
+      drop.innerHTML='';
+      if(!list.length){ drop.style.display='none'; return; }
+      list.forEach(function(mk){
+        var div=document.createElement('div');
+        div.className='mk-search-item'+(mk===p3maker?' active':'');
+        div.textContent=mk;
+        div.onclick=function(e){ e.stopPropagation(); input.value=mk; p3maker=mk; p3model='__ALL__'; drop.style.display='none'; fillModels(); renderP3(); };
+        drop.appendChild(div);
+      });
+      drop.style.display='block';
     }
+    input.onfocus=function(){ show(DASH.makerList.slice(0,50)); };
+    input.oninput=function(){
+      var v=input.value.trim().toLowerCase();
+      var list=v?DASH.makerList.filter(function(m){return m.toLowerCase().indexOf(v)>=0;}):DASH.makerList.slice(0,50);
+      show(list);
+    };
+    input.onkeydown=function(e){
+      var items=drop.querySelectorAll('.mk-search-item');
+      var idx=-1;
+      for(var i=0;i<items.length;i++){ if(items[i].classList.contains('active')){ idx=i; break; } }
+      if(e.key==='Escape'){ drop.style.display='none'; return; }
+      if(e.key==='ArrowDown'){ e.preventDefault(); idx=Math.min(idx+1,items.length-1); }
+      else if(e.key==='ArrowUp'){ e.preventDefault(); idx=Math.max(idx-1,-1); }
+      else if(e.key==='Enter'){
+        e.preventDefault();
+        if(idx>=0&&items[idx]){ items[idx].click(); return; }
+        var v=input.value.trim();
+        var found=null;
+        DASH.makerList.forEach(function(m){ if(!found && m.toLowerCase()===v.toLowerCase()) found=m; });
+        if(!found && v){
+          DASH.makerList.forEach(function(m){ if(!found && m.toLowerCase().indexOf(v.toLowerCase())>=0) found=m; });
+        }
+        if(found){ input.value=found; p3maker=found; p3model='__ALL__'; drop.style.display='none'; fillModels(); renderP3(); }
+        return;
+      }
+      items.forEach(function(it){it.classList.remove('active');});
+      if(idx>=0&&items[idx]){ items[idx].classList.add('active'); }
+    };
+    document.addEventListener('click',function(e){ if(!input.contains(e.target)&&!drop.contains(e.target)) drop.style.display='none'; });
+  }
+  function buildP3Controls(){
+    initMakerSearch();
     chipGroup('p3Fuel',[{label:'总体',value:'total'},{label:'新能源车',value:'nev'},{label:'燃油车',value:'ice'}],p3fuel,function(v){p3fuel=v;p3model='__ALL__';fillModels();buildP3Controls();renderP3()});
     chipGroup('p3Years',DASH.p3Years.map(function(y){return{label:String(y),value:y}}),null,function(){renderP3()},true,p3Visible);
     chipGroup('p3StackPs',[{label:'批发',value:'批发'},{label:'零售',value:'零售'},{label:'出口',value:'出口'}],p3stackPs,function(v){p3stackPs=v;buildP3Controls();renderStack()});
