@@ -427,6 +427,20 @@ function loadECharts(){
     var wrap=document.getElementById("seasonalWrap");
     wrap.innerHTML="";
     var curGroup=null, gridEl=null, cntInGroup=0;
+    var NOW=new Date(); var CUR_Y=NOW.getFullYear(); var CUR_M=NOW.getMonth()+1;
+    function seasonalTip(params){
+      if(!params || !params.length) return '';
+      var seen={}, rows=[];
+      params.forEach(function(p){
+        if(p.value==null || p.value==='' || (typeof p.value==='number' && isNaN(p.value))) return;
+        if(seen[p.seriesName]) return;
+        seen[p.seriesName]=true;
+        var n=+p.value;
+        var txt = (Number.isInteger(n)) ? String(n) : (Math.round(n*100)/100).toString();
+        rows.push(p.marker + p.seriesName + '：' + txt);
+      });
+      return rows.length ? rows.join('<br>') : '无数据';
+    }
     D.seasonalCols.forEach(function(sc){
       if(sc.group !== curGroup){
         // 上一组补足 4 列空位
@@ -481,19 +495,33 @@ function loadECharts(){
         return;
       }
       var chart=echarts.init(ech); seasonalCharts.push(chart);
-      var series=years.map(function(y){
-        return {name:y, type:"line", data:ser[y], showSymbol:false,
-          lineStyle:{width:1.6}, itemStyle:{color:YEAR_COLORS[y]||"#888888"}};
+      var seriesArr=[];
+      years.forEach(function(y){
+        var yi=+y, arr=ser[y]||[];
+        // 预测起点：过去年份=13（全实线）；当年=当前月（当前月及之后虚线）；未来年份=1（全虚线）
+        var predStart = (yi<CUR_Y) ? 13 : (yi===CUR_Y ? CUR_M : 1);
+        var actual=[], pred=[];
+        for(var mi2=0; mi2<12; mi2++){
+          var v=arr[mi2], mnum=mi2+1;
+          actual.push(mnum <= predStart-1 ? v : null);
+          pred.push(mnum >= predStart-1 ? v : null);
+        }
+        var col=YEAR_COLORS[y]||"#888888";
+        seriesArr.push({name:y, type:"line", showSymbol:false, connectNulls:false,
+          data:actual, lineStyle:{width:1.6, color:col}, itemStyle:{color:col}});
+        if(pred.some(function(v){ return v!=null; })){
+          seriesArr.push({name:y, type:"line", showSymbol:false, connectNulls:false,
+            data:pred, lineStyle:{width:1.6, type:"dashed", color:col}, itemStyle:{color:col}});
+        }
       });
       chart.setOption({
-        color: years.map(function(y){ return YEAR_COLORS[y]||"#888888"; }),
-        tooltip:{trigger:"axis"},
+        tooltip:{trigger:"axis", confine:true, formatter:seasonalTip},
         legend:{data:years, type:"scroll", top:0, textStyle:{fontSize:9}},
         grid:{left:46, right:10, top:26, bottom:22},
         xAxis:{type:"category", data:["1","2","3","4","5","6","7","8","9","10","11","12"],
           axisLabel:{fontSize:9}},
         yAxis:{type:"value", axisLabel:{fontSize:9}, scale:true},
-        series:series
+        series:seriesArr
       });
     });
     if(gridEl) padGrid(gridEl, cntInGroup);
@@ -527,7 +555,7 @@ function loadECharts(){
     document.getElementById("filterSub").textContent="同比对照 · 累计值/同比增减值单位："+D.unit+" · 列结构与月度表一致";
     try{ renderSeasonal(); }catch(e){ console.error("seasonal error",e); }
     document.getElementById("seasonalSub").textContent=
-      "月度数据表全部指标（共 "+(D.seasonalCols||[]).length+" 个）· 按一级列标题分 "+(D.groups||[]).length+" 个板块 · 每板块一行 4 个 · 横轴 1–12 月 · 图例 "+(D.annualYears||[]).join("、");
+      "月度数据表全部指标（共 "+(D.seasonalCols||[]).length+" 个）· 按一级列标题分 "+(D.groups||[]).length+" 个板块 · 每板块一行 4 个 · 横轴 1–12 月 · 图例 "+(D.annualYears||[]).join("、")+" · 实线为已发生月份，虚线为预测（当前月及之后）";
     renderConclusion();
   }
 
