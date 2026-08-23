@@ -318,6 +318,10 @@ function loadECharts(){
     if(prev){ applyRange(prev); }
     else {
       var latest=D.latestDate.split("-"); var ey=+latest[0], em=+latest[1];
+      var ac=D.actualCutoff ? D.actualCutoff.split("-") : null;
+      if(ac && +ac[0]===ey){
+        em=+ac[1];
+      }
       fY.value=ey; tY.value=ey;
       document.getElementById("fM").value=1;
       document.getElementById("tM").value=em;
@@ -387,10 +391,11 @@ function loadECharts(){
     body+=row("同比增减%", pct, "pct", function(v){ return signStyle(v); }, "none");
     body+="</tbody>";
     document.getElementById("filterWrap").innerHTML="<table class='data'>"+head+body+"</table>";
-    document.getElementById("filterNote").textContent=
-      "区间 "+sy+"年"+sm+"月 至 "+ey+"年"+em+"月 · 累计值/同比增减值单位："+(D.unit==="GWh" ? "GWh（原值加总，不折算）" : "万吨 LCE（吨÷10000，四舍五入取整）")+";"+
+    var note = "区间 "+sy+"年"+sm+"月 至 "+ey+"年"+em+"月 · 累计值/同比增减值单位："+(D.unit==="GWh" ? "GWh（原值加总，不折算）" : "万吨 LCE（吨÷10000，四舍五入取整）")+";"+
       "锂矿进口依赖度按区间内 进口累计÷总供给累计 计算（同比增减值 ±pp，无需同比增减%）；"+
       "天数列不参与区间累计；同比增减% 保留 1 位小数";
+    if(D.actualCutoff) note += " · 实际数据截至 "+D.actualCutoff;
+    document.getElementById("filterNote").textContent = note;
   }
 
   /* ---------- 年度数据汇总 ---------- */
