@@ -301,9 +301,10 @@ th .arr.up{color:var(--down);}
     <div class="caliber"><span class="ico">ℹ</span><span>中国整车出口（海关 HS8703 乘用车 / HS8704 货车；按商品名称含「驱动电动机」区分新能源/燃油）· 单位：万辆 · 最新年黑线、前一年红线 · 大洲由出口目的国映射（底稿「贸易大洲」列空缺）</span></div>
 
     <div class="filterbar" id="exportFilterbar">
-      <span class="lbl">车型：</span><select id="expVt"></select>
-      <span class="lbl">大洲：</span><select id="expCont"></select>
+      <span class="lbl">车辆类别：</span><select id="expCat"></select>
+      <span class="lbl">能源类型：</span><select id="expEnergy"></select>
       <span class="lbl">国家：</span><select id="expCtry"></select>
+      <span class="lbl">大洲：</span><select id="expCont"></select>
     </div>
     <div class="filterbar" id="exportYearbar"><span class="lbl">年份：</span></div>
 
@@ -1610,14 +1611,15 @@ window.CLHInit=function(){
 };
 })();
 
-/* ================= 中国出口（海关 HS8703/8704 · 分车型/大洲/国家 季节图） ================= */
+/* ================= 中国出口（海关 HS8703/8704 · 分车辆类别/能源/大洲/国家 季节图） ================= */
 (function(){
   var EXP=null;
   var MONTHS=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
   var PALETTE=['#5B8FF9','#61C6B5','#F6BD16','#9661BC','#78D3F8','#F08BB4','#65789B','#7cb305','#d48265'];
-  var VTYPES=['乘用车-燃油','乘用车-新能源','货车-燃油','货车-新能源'];
+  var CATEGORIES=['乘用车','货车'];
+  var ENERGIES=['燃油','新能源'];
   function yearColor(y, years){
-    var ys=years.slice().sort(), latest=ys[ys.length-1], prev=ys[ys.length-2];
+    var ys=years.slice().sort(function(a,b){return a-b;}), latest=ys[ys.length-1], prev=ys[ys.length-2];
     if(+y===+latest)return '#000000';
     if(+y===+prev)return '#E60000';
     var idx=ys.indexOf(+y); if(idx<0)idx=ys.indexOf(String(y));
@@ -1628,22 +1630,35 @@ window.CLHInit=function(){
   function pctHtml(p){ if(p==null||!isFinite(p)) return '<span style="color:#9ca3af">—</span>'; var cls=p>=0?'up':'down', s=p>=0?'+':''; return '<span class="'+cls+'">'+s+p.toFixed(1)+'%</span>'; }
   var expCharts=[];
   var expYears=[]; var yearVisible={};
-  var curVt='', curCont='', curCtry='', curGroups=[];
+  var curCat='', curEnergy='', curCont='', curCtry='', curGroups=[];
+  var ALL_COUNTRIES=[]; var COUNTRY_TO_CONT={};
   var inited=false;
 
-  // 聚合：cont/ctry/vt 为 null 表示「全部」；返回 {year: [12个月·万辆]}
-  function aggSeries(cont, ctry, vt){
+  function vehicleMatch(vt, cat, energy){
+    var parts=(vt||'').split('-');
+    if(cat && parts[0]!==cat) return false;
+    if(energy && parts[1]!==energy) return false;
+    return true;
+  }
+
+  // 聚合：cont/ctry 为 null 表示「全部」；cat/energy 为 null 表示「全部」；返回 {year: [12个月·万辆]}
+  function aggSeries(cont, ctry, cat, energy){
     var out={};
     Object.keys(EXP.series).forEach(function(k){
       var p=k.split('||');
       if(cont && p[0]!==cont) return;
       if(ctry && p[1]!==ctry) return;
-      if(vt && p[2]!==vt) return;
+      if(!vehicleMatch(p[2], cat, energy)) return;
       var ymap=EXP.series[k];
       Object.keys(ymap).forEach(function(y){
-        if(!out[y]) out[y]=[0,0,0,0,0,0,0,0,0,0,0,0];
+        if(!out[y]) out[y]=[null,null,null,null,null,null,null,null,null,null,null,null];
         var arr=ymap[y];
-        for(var i=0;i<12;i++){ var v=arr[i]; if(v!=null) out[y][i]+=v; }
+        for(var i=0;i<12;i++){
+          var v=arr[i];
+          if(v!=null && !isNaN(v)){
+            out[y][i] = (out[y][i] || 0) + v;
+          }
+        }
       });
     });
     return out;
@@ -1679,39 +1694,84 @@ window.CLHInit=function(){
       bar.appendChild(b);
     });
   }
+  function allCountriesList(){
+    if(!curCont) return ALL_COUNTRIES.slice();
+    return (EXP.continentCountries[curCont]||[]).slice();
+  }
+  function renderCountryOptions(){
+    var tsel=document.getElementById('expCtry');
+    var list=allCountriesList();
+    tsel.innerHTML='<option value="">全部国家</option>'+list.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');
+    if(curCtry && list.indexOf(curCtry)<0){ curCtry=''; }
+    tsel.value=curCtry||'';
+  }
   function buildSelects(){
-    var vsel=document.getElementById('expVt');
-    vsel.innerHTML='<option value="">全部车型</option>'+VTYPES.map(function(v){return '<option value="'+v+'">'+v+'</option>';}).join('');
-    vsel.onchange=function(){ curVt=vsel.value; renderExport(); };
-    var csel=document.getElementById('expCont');
-    csel.innerHTML='<option value="">全部大洲</option>'+EXP.continents.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');
-    csel.onchange=function(){
-      curCont=csel.value; curCtry='';
-      var tsel=document.getElementById('expCtry');
-      if(curCont){ tsel.disabled=false; tsel.innerHTML='<option value="">全部国家</option>'+(EXP.continentCountries[curCont]||[]).map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join(''); }
-      else { tsel.disabled=true; tsel.innerHTML='<option value="">（先选大洲）</option>'; }
+    var csel=document.getElementById('expCat');
+    csel.innerHTML='<option value="">全部</option>'+CATEGORIES.map(function(v){return '<option value="'+v+'">'+v+'</option>';}).join('');
+    csel.onchange=function(){ curCat=csel.value; renderExport(); };
+
+    var esel=document.getElementById('expEnergy');
+    esel.innerHTML='<option value="">全部</option>'+ENERGIES.map(function(v){return '<option value="'+v+'">'+v+'</option>';}).join('');
+    esel.onchange=function(){ curEnergy=esel.value; renderExport(); };
+
+    var ctsel=document.getElementById('expCont');
+    ctsel.innerHTML='<option value="">全部大洲</option>'+EXP.continents.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');
+    ctsel.value=curCont||'';
+    ctsel.onchange=function(){
+      curCont=ctsel.value;
+      if(curCtry){
+        var contOfCtry=COUNTRY_TO_CONT[curCtry];
+        if(curCont && contOfCtry!==curCont){ curCtry=''; }
+      }
+      renderCountryOptions();
       renderExport();
     };
+
     var tsel=document.getElementById('expCtry');
-    tsel.disabled=true; tsel.innerHTML='<option value="">（先选大洲）</option>';
-    tsel.onchange=function(){ curCtry=tsel.value; renderExport(); };
+    renderCountryOptions();
+    tsel.onchange=function(){
+      curCtry=tsel.value;
+      if(curCtry){
+        var contOfCtry=COUNTRY_TO_CONT[curCtry];
+        if(contOfCtry){ curCont=contOfCtry; ctsel.value=curCont; }
+      }
+      renderExport();
+    };
+  }
+  function titleSuffix(){
+    var parts=[];
+    if(curCat) parts.push(curCat);
+    if(curEnergy) parts.push(curEnergy);
+    return parts.length ? ' · '+parts.join('-') : '';
   }
   function computeGroups(){
     var groups=[];
-    var vt=curVt||null;
     if(!curCont && !curCtry){
-      EXP.continents.filter(function(c){return c!=='地区不详';}).forEach(function(c){ groups.push({title: c+(curVt?(' · '+curVt):''), ser:aggSeries(c,null,vt)}); });
+      // 默认：全球总出口 + 各大洲
+      groups.push({title: '全球'+titleSuffix(), ser:aggSeries(null,null,curCat||null,curEnergy||null)});
+      EXP.continents.filter(function(c){return c!=='地区不详';}).forEach(function(c){
+        groups.push({title: c+titleSuffix(), ser:aggSeries(c,null,curCat||null,curEnergy||null)});
+      });
     } else if(curCont && !curCtry){
-      (EXP.continentCountries[curCont]||[]).forEach(function(ctry){ groups.push({title: ctry+(curVt?(' · '+curVt):''), ser:aggSeries(curCont,ctry,vt)}); });
-    } else if(curCont && curCtry){
-      var vts = curVt ? [curVt] : VTYPES;
-      vts.forEach(function(v){ groups.push({title: curCtry+' · '+v, ser:aggSeries(curCont,curCtry,v)}); });
+      (EXP.continentCountries[curCont]||[]).forEach(function(ctry){
+        groups.push({title: ctry+titleSuffix(), ser:aggSeries(curCont,ctry,curCat||null,curEnergy||null)});
+      });
+    } else if(curCtry){
+      // 当国家已选：显示该国家下 4 车型季节图（除非已限定车类/能源）
+      var cats=curCat ? [curCat] : CATEGORIES;
+      var ens=curEnergy ? [curEnergy] : ENERGIES;
+      cats.forEach(function(cat){
+        ens.forEach(function(en){
+          var vt=cat+'-'+en;
+          groups.push({title: curCtry+' · '+vt, ser:aggSeries(COUNTRY_TO_CONT[curCtry],curCtry,cat,en)});
+        });
+      });
     }
     return groups;
   }
   function renderSummary(){
     var el=document.getElementById('exportSummary'); if(!el) return;
-    var ser=aggSeries(curCont||null, curCtry||null, curVt||null);
+    var ser=aggSeries(curCont||null, curCtry||null, curCat||null, curEnergy||null);
     var LM=+EXP.latestDate.slice(5,7), LY=+EXP.latestDate.slice(0,4), PY=LY-1;
     var cur=ser[String(LY)]||[], prevY=ser[String(PY)]||[];
     var lv=cur[LM-1], lvPrev=prevY[LM-1];
@@ -1721,8 +1781,14 @@ window.CLHInit=function(){
     var ytdC=0,ytdP=0;
     for(var i=0;i<LM;i++){ ytdC+=(cur[i]||0); ytdP+=(prevY[i]||0); }
     var ytdYoY=pct(ytdC,ytdP);
+    var filterTxt='';
+    if(curCat || curEnergy){ filterTxt+='（车型：'+(curCat||'全部')+' / '+(curEnergy||'全部')+'）'; }
+    else { filterTxt+='（车型：全部）'; }
+    if(curCtry){ filterTxt+='（市场：'+COUNTRY_TO_CONT[curCtry]+' / '+curCtry+'）'; }
+    else if(curCont){ filterTxt+='（市场：'+curCont+' / 全部国家）'; }
+    else { filterTxt+='（市场：全球）'; }
     el.style.display='';
-    el.innerHTML='<h2>中国出口 · 当前筛选概览</h2><div>最新月份（'+LY+'-'+LM+'）出口 <b>'+wan(lv)+'</b>，环比 '+pctHtml(mom)+'、同比 '+pctHtml(yoy)+'；'+LY+'年1-'+LM+'月累计 <b>'+wan(ytdC)+'</b>，累计同比 '+pctHtml(ytdYoY)+'。'+(curVt?'（车型：'+curVt+'）':'（车型：全部）')+(curCont?('（大洲：'+curCont+(curCtry?(' / '+curCtry):' / 全部国家')+'）'):'（大洲：全部）')+'</div>';
+    el.innerHTML='<h2>中国出口 · 当前筛选概览</h2><div>最新月份（'+LY+'-'+LM+'）出口 <b>'+wan(lv)+'</b>，环比 '+pctHtml(mom)+'、同比 '+pctHtml(yoy)+'；'+LY+'年1-'+LM+'月累计 <b>'+wan(ytdC)+'</b>，累计同比 '+pctHtml(ytdYoY)+'。'+filterTxt+'</div>';
   }
   function renderExport(){
     curGroups=computeGroups();
@@ -1752,6 +1818,15 @@ window.CLHInit=function(){
     expYears=EXP.years.slice();
     var hide=['2019','2020'];
     expYears.forEach(function(y){ yearVisible[y]=hide.indexOf(String(y))===-1; });
+    // 构建国家→大洲映射与全部国家列表
+    ALL_COUNTRIES=[]; COUNTRY_TO_CONT={};
+    EXP.continents.forEach(function(cont){
+      (EXP.continentCountries[cont]||[]).forEach(function(c){
+        COUNTRY_TO_CONT[c]=cont;
+        ALL_COUNTRIES.push(c);
+      });
+    });
+    ALL_COUNTRIES.sort();
     if(inited) return;
     inited=true;
     buildSelects();
