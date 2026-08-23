@@ -144,7 +144,6 @@ body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple
     <span style="flex:1"></span>
     <button class="btn primary" onclick="saveLayout()">保存布局</button>
     <button class="btn primary" onclick="exportPDF()">导出周报 PDF</button>
-    <button class="btn warn" onclick="clearWeeklyStorage()">清理本地缓存</button>
   </div>
 
   <div class="ybar" id="yearBar">
@@ -1041,20 +1040,6 @@ function saveLayout(){
     }else{
       alert(failMsg(e));
     }
-  }
-}
-
-/* 清理周报本地缓存 */
-function clearWeeklyStorage(){
-  if(!confirm('确定清空周报保存的布局、笔记等本地缓存？清空后无法恢复。')) return;
-  try{
-    localStorage.removeItem('lc_weekly_payload');
-    localStorage.removeItem('lc_weekly_note');
-    localStorage.removeItem('lc_weekly_layout');
-    alert('本地缓存已清空，请刷新页面后重新配置布局。');
-    location.reload();
-  }catch(e){
-    alert('清理失败：'+e.message);
   }
 }
 
