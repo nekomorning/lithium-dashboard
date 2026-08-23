@@ -51,6 +51,7 @@ td .pos{color:var(--up);} td .neg{color:var(--down);}
   border-radius:3px; background:rgba(255,255,255,.88); color:#0f4c81; font-weight:700;
   font-size:11px; text-align:center; cursor:pointer; user-select:none; vertical-align:middle;}
 .fold-btn:hover{background:#fff;}
+.badge-forecast{display:inline-block; margin-left:4px; padding:1px 5px; border-radius:4px; background:#f59e0b; color:#fff; font-size:10px; font-weight:600; line-height:1.2; vertical-align:middle;}
 
 .filter-bar{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px; padding:10px 12px;
   background:var(--card); border:1px solid var(--border); border-radius:8px;}
@@ -263,9 +264,11 @@ function loadECharts(){
     var G=getCols(); G.firstCol="月份";
     var head="<thead>"+headCells(G)+"</thead>";
     var body="<tbody>";
+    var actualCutoff = D.actualCutoff || "";
     D.months.forEach(function(mo){
       var end = mo.slice(5,7)==="12" ? " class='year-end'" : "";
-      body+="<tr"+end+"><td class='date-col'>"+mo+"</td>";
+      var forecastBadge = (actualCutoff && mo > actualCutoff) ? " <span class='badge-forecast'>预</span>" : "";
+      body+="<tr"+end+"><td class='date-col'>"+mo+forecastBadge+"</td>";
       G.cols.forEach(function(col){
         var v=D.series[col.key][mo];
         var sty=(col.sign)?signStyle(v):"";
@@ -464,17 +467,20 @@ function loadECharts(){
       var yN = years.length ? +years[years.length-1] : 0;
       var arrN = ser[yN]||[], arrP = ser[yN-1]||[];
       function chgColor(v){ return (v>0)?'#d8392b':((v<0)?'#1a8a4a':'#8a93a3'); }
+      var cutoffM = D.actualCutoff ? +D.actualCutoff.split("-")[1] : 12;
+      var cutoffIdx = cutoffM - 1;
       if(sc.type === "num"){
-        var mLast=-1;
-        for(var mi=11;mi>=0;mi--){ if(arrN[mi]!=null){ mLast=mi; break; } }
-        if(mLast>=0){
-          var sN=0, sP=0;
-          for(var sj=0;sj<=mLast;sj++){ if(arrN[sj]!=null) sN+=arrN[sj]; if(arrP[sj]!=null) sP+=arrP[sj]; }
+        var sN=0, sP=0, hasN=false, hasP=false;
+        for(var sj=0;sj<=cutoffIdx;sj++){
+          if(arrN[sj]!=null){ sN+=arrN[sj]; hasN=true; }
+          if(arrP[sj]!=null){ sP+=arrP[sj]; hasP=true; }
+        }
+        if(hasN || hasP){
           var diff = sP>0 ? sN-sP : null;
           var pct = (diff!==null && sP>0) ? diff/sP*100 : null;
           var u = sc.unit;
           meta.innerHTML =
-            "累计 <b>"+dispSum(sN, u)+"</b> "+u+" · 同比 "+
+            "累计（1-"+cutoffM+"月） <b>"+dispSum(sN, u)+"</b> "+u+" · 同比 "+
             "<span style='color:"+chgColor(diff)+"'>"+(diff==null?"—":((diff>0?"+":"")+dispSum(diff, u)))+"</span>"+
             " <span style='color:"+chgColor(diff)+"'>("+(pct==null?"—":((pct>0?"+":"")+pct.toFixed(1)+"%"))+")</span>";
         }
@@ -543,7 +549,7 @@ function loadECharts(){
   /* ---------- orchestration ---------- */
   function renderAll(){
     document.getElementById("pageTitle").textContent = ALL.pageTitle || "中国锂产业链平衡";
-    document.getElementById("pageSub").textContent = (D.pageSub||"") + " · 数据截至 " + (D.latestDate||"");
+    document.getElementById("pageSub").textContent = (D.pageSub||"") + " · 数据截至 " + (D.latestDate||"") + " · 实际数据截至 " + (D.actualCutoff||D.latestDate||"");
     buildBalanceTabs();
     var ftr = document.querySelector(".footer");
     if(ftr) ftr.textContent = "碳酸锂数据看板 · 中国锂产业链平衡 · 数据来源：SMM / 海关（底稿《碳酸锂产业链平衡表.xlsx》） · 单位：" + D.unit;
@@ -551,11 +557,11 @@ function loadECharts(){
     renderFilterBar();
     renderAnnual();
     document.getElementById("monthlySub").textContent=
-      "只显示原始数据（不含环比/同比） · 数值保留整数（"+D.unit+"）· 点击列头「+」可展开/折叠分项列 · 默认滚动到最新月份，向上滚动查看更早年份；横向滚动查看全部指标";
+      "只显示原始数据（不含环比/同比） · 数值保留整数（"+D.unit+"）· 点击列头「+」可展开/折叠分项列 · 默认滚动到最新月份，向上滚动查看更早年份；横向滚动查看全部指标 · 月份旁带 <span class='badge-forecast' style='margin-left:0'>预</span> 为预测值";
     document.getElementById("filterSub").textContent="同比对照 · 累计值/同比增减值单位："+D.unit+" · 列结构与月度表一致";
     try{ renderSeasonal(); }catch(e){ console.error("seasonal error",e); }
     document.getElementById("seasonalSub").textContent=
-      "月度数据表全部指标（共 "+(D.seasonalCols||[]).length+" 个）· 按一级列标题分 "+(D.groups||[]).length+" 个板块 · 每板块一行 4 个 · 横轴 1–12 月 · 图例 "+(D.annualYears||[]).join("、")+" · 实线为已发生月份，虚线为预测（当前月及之后）";
+      "月度数据表全部指标（共 "+(D.seasonalCols||[]).length+" 个）· 按一级列标题分 "+(D.groups||[]).length+" 个板块 · 每板块一行 4 个 · 横轴 1–12 月 · 图例 "+(D.annualYears||[]).join("、")+" · 实线为已发生月份，虚线为预测（当前月及之后） · 图表下方累计值统计至 "+(D.actualCutoff||"年末")+"";
     renderConclusion();
   }
 
