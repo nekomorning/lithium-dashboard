@@ -142,8 +142,9 @@ body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple
     <div class="title">周报</div>
     <span style="font-size:12px;color:var(--sub)">数据截止：<span id="latestDate"></span></span>
     <span style="flex:1"></span>
-    <button class="btn primary" onclick="saveLayout()">💾 保存布局</button>
-    <button class="btn primary" onclick="exportPDF()">📄 导出周报 PDF</button>
+    <button class="btn primary" onclick="saveLayout()">保存布局</button>
+    <button class="btn primary" onclick="exportPDF()">导出周报 PDF</button>
+    <button class="btn warn" onclick="clearWeeklyStorage()">清理本地缓存</button>
   </div>
 
   <div class="ybar" id="yearBar">
@@ -942,6 +943,16 @@ async function exportPDF(){
   }
 }
 
+/* ===== localStorage 已用空间估算（字符数） ===== */
+function usedStorage(){
+  var total = 0;
+  for(var i=0;i<localStorage.length;i++){
+    var k = localStorage.key(i);
+    if(k) total += (localStorage.getItem(k)||'').length + k.length;
+  }
+  return total;
+}
+
 /* ===== 保存当前布局 ===== */
 function saveLayout(){
   var note = document.getElementById('noteInput').value;
@@ -965,29 +976,85 @@ function saveLayout(){
     localStorage.setItem('lc_weekly_note', note);
     document.getElementById('saveStatus').textContent = '✓ 布局已保存到本地（'+new Date().toLocaleString()+'），下次打开自动恢复';
   }
-  try{
-    doSave(buildPayload());
-  }catch(e){
-    // 若容量超限，尝试压缩所有自定义板块截图后重存
-    var imageCount=0;
-    selected.forEach(function(s){ if(String(s.id).indexOf('custom_')===0 && s.images && s.images.length) imageCount+=s.images.length; });
-    if(imageCount>0){
-      document.getElementById('saveStatus').textContent = '保存空间不足，正在压缩 '+imageCount+' 张截图…';
-      var tasks=[];
-      selected.forEach(function(s){
-        if(String(s.id).indexOf('custom_')===0 && s.images && s.images.length){
-          s.images.forEach(function(url, i){
-            tasks.push(compressDataURL(url, 1200, 0.85).then(function(u){ s.images[i]=u; }));
-          });
-        }
-      });
-      Promise.all(tasks).then(function(){
+  function customImageCount(){
+    var n=0;
+    selected.forEach(function(s){ if(String(s.id).indexOf('custom_')===0 && s.images && s.images.length) n+=s.images.length; });
+    return n;
+  }
+  function compressAll(maxW, q){
+    var tasks=[];
+    selected.forEach(function(s){
+      if(String(s.id).indexOf('custom_')===0 && s.images && s.images.length){
+        s.images.forEach(function(url, i){
+          tasks.push(compressDataURL(url, maxW, q).then(function(u){ s.images[i]=u; }));
+        });
+      }
+    });
+    return Promise.all(tasks);
+  }
+  function failMsg(e){
+    var used = Math.round(usedStorage()/1024);
+    var payload = 0;
+    try{ payload = Math.round(JSON.stringify(buildPayload()).length/1024); }catch(_){}
+    return '保存失败：'+e.message+'\n当前本站点已用 localStorage 约 '+used+' KB，本次布局约 '+payload+' KB。\n建议：减少自定义板块截图、或点击下方「清理本地缓存」按钮清空历史布局后重试。';
+  }
+
+  // 预检查：若 payload 超过 4MB，直接走压缩
+  var pl = buildPayload();
+  var str = JSON.stringify(pl);
+  if(str.length > 4*1024*1024){
+    var n = customImageCount();
+    if(n>0){
+      document.getElementById('saveStatus').textContent = '布局数据 '+Math.round(str.length/1024)+' KB，超过 4MB，正在压缩 '+n+' 张截图…';
+      compressAll(1000, 0.8).then(function(){
         try{ doSave(buildPayload()); }
-        catch(e2){ alert('保存失败：'+e2.message+'\n建议减少自定义板块截图数量或清空历史布局后重试。'); }
-      }).catch(function(){ alert('保存失败：'+e.message); });
-    }else{
-      alert('保存失败：'+e.message);
+        catch(e2){
+          document.getElementById('saveStatus').textContent = '空间仍不足，进一步压缩中…';
+          compressAll(600, 0.65).then(function(){
+            try{ doSave(buildPayload()); }
+            catch(e3){ alert(failMsg(e3)); }
+          }).catch(function(){ alert(failMsg(e2)); });
+        }
+      }).catch(function(e){ alert(failMsg(e)); });
+      return;
     }
+  }
+
+  try{
+    doSave(pl);
+  }catch(e){
+    // 首次失败：压缩到 1000/0.8 重试
+    var n = customImageCount();
+    if(n>0){
+      document.getElementById('saveStatus').textContent = '保存空间不足，正在压缩 '+n+' 张截图…';
+      compressAll(1000, 0.8).then(function(){
+        try{ doSave(buildPayload()); }
+        catch(e2){
+          // 第二次失败：进一步压缩到 600/0.65
+          document.getElementById('saveStatus').textContent = '空间仍不足，进一步压缩中…';
+          compressAll(600, 0.65).then(function(){
+            try{ doSave(buildPayload()); }
+            catch(e3){ alert(failMsg(e3)); }
+          }).catch(function(){ alert(failMsg(e2)); });
+        }
+      }).catch(function(){ alert(failMsg(e)); });
+    }else{
+      alert(failMsg(e));
+    }
+  }
+}
+
+/* 清理周报本地缓存 */
+function clearWeeklyStorage(){
+  if(!confirm('确定清空周报保存的布局、笔记等本地缓存？清空后无法恢复。')) return;
+  try{
+    localStorage.removeItem('lc_weekly_payload');
+    localStorage.removeItem('lc_weekly_note');
+    localStorage.removeItem('lc_weekly_layout');
+    alert('本地缓存已清空，请刷新页面后重新配置布局。');
+    location.reload();
+  }catch(e){
+    alert('清理失败：'+e.message);
   }
 }
 
@@ -1067,7 +1134,7 @@ document.addEventListener('paste', function(e){
       var reader = new FileReader();
       reader.onload = function(ev){
         // 自定义板块只保留一张截图：新粘贴覆盖旧图，并压缩避免 localStorage 超限
-        compressDataURL(ev.target.result, 1200, 0.85).then(function(url){
+        compressDataURL(ev.target.result, 1000, 0.8).then(function(url){
           selected[idx].images = [url];
           renderCanvas();
         });
