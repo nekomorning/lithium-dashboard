@@ -1022,8 +1022,8 @@ document.addEventListener('paste', function(e){
       var blob = items[i].getAsFile();
       var reader = new FileReader();
       reader.onload = function(ev){
-        selected[idx].images = selected[idx].images || [];
-        selected[idx].images.push(ev.target.result);
+        // 自定义板块只保留一张截图：新粘贴覆盖旧图
+        selected[idx].images = [ev.target.result];
         renderCanvas();
       };
       reader.readAsDataURL(blob);
