@@ -945,25 +945,49 @@ async function exportPDF(){
 /* ===== 保存当前布局 ===== */
 function saveLayout(){
   var note = document.getElementById('noteInput').value;
-  var payload = {
-    note: note,
-    layout: selected.map(function(s){
-      return {
-        id:s.id, title:s.title, analysis:s.analysis,
-        name:s.name, desc:s.desc,
-        chart_ids:s.chart_ids.slice(), tables:(s.tables||[]).slice(),
-        images:(s.images||[]).slice(),
-        rows:(s.rows&&s.rows.length)?s.rows.map(function(r){return {label:r.label||'', chart_ids:(r.chart_ids||[]).slice()};}):[]
-      };
-    }),
-    updatedAt: new Date().toISOString(),
-  };
-  try{
-    localStorage.setItem('lc_weekly_payload', JSON.stringify(payload));
+  function buildPayload(){
+    return {
+      note: note,
+      layout: selected.map(function(s){
+        return {
+          id:s.id, title:s.title, analysis:s.analysis,
+          name:s.name, desc:s.desc,
+          chart_ids:s.chart_ids.slice(), tables:(s.tables||[]).slice(),
+          images:(s.images||[]).slice(),
+          rows:(s.rows&&s.rows.length)?s.rows.map(function(r){return {label:r.label||'', chart_ids:(r.chart_ids||[]).slice()};}):[]
+        };
+      }),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+  function doSave(pl){
+    localStorage.setItem('lc_weekly_payload', JSON.stringify(pl));
     localStorage.setItem('lc_weekly_note', note);
     document.getElementById('saveStatus').textContent = '✓ 布局已保存到本地（'+new Date().toLocaleString()+'），下次打开自动恢复';
+  }
+  try{
+    doSave(buildPayload());
   }catch(e){
-    alert('保存失败：'+e.message);
+    // 若容量超限，尝试压缩所有自定义板块截图后重存
+    var imageCount=0;
+    selected.forEach(function(s){ if(String(s.id).indexOf('custom_')===0 && s.images && s.images.length) imageCount+=s.images.length; });
+    if(imageCount>0){
+      document.getElementById('saveStatus').textContent = '保存空间不足，正在压缩 '+imageCount+' 张截图…';
+      var tasks=[];
+      selected.forEach(function(s){
+        if(String(s.id).indexOf('custom_')===0 && s.images && s.images.length){
+          s.images.forEach(function(url, i){
+            tasks.push(compressDataURL(url, 1200, 0.85).then(function(u){ s.images[i]=u; }));
+          });
+        }
+      });
+      Promise.all(tasks).then(function(){
+        try{ doSave(buildPayload()); }
+        catch(e2){ alert('保存失败：'+e2.message+'\n建议减少自定义板块截图数量或清空历史布局后重试。'); }
+      }).catch(function(){ alert('保存失败：'+e.message); });
+    }else{
+      alert('保存失败：'+e.message);
+    }
   }
 }
 
@@ -1007,6 +1031,26 @@ function init(){
   renderLib(); renderCanvas();
 }
 
+/* 将 base64 图片压缩，避免 localStorage 超限；返回 Promise<dataURL> */
+function compressDataURL(dataURL, maxWidth, quality){
+  maxWidth = maxWidth || 1200; quality = quality || 0.85;
+  return new Promise(function(resolve, reject){
+    var img = new Image();
+    img.onload = function(){
+      var w = img.width, h = img.height;
+      if(w > maxWidth){ h = Math.round(h * maxWidth / w); w = maxWidth; }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0,0,w,h);
+      ctx.drawImage(img,0,0,w,h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = function(){ resolve(dataURL); };
+    img.src = dataURL;
+  });
+}
+
 /* 粘贴截图到当前自定义板块 */
 document.addEventListener('paste', function(e){
   if(!e.clipboardData || !e.clipboardData.items) return;
@@ -1022,9 +1066,11 @@ document.addEventListener('paste', function(e){
       var blob = items[i].getAsFile();
       var reader = new FileReader();
       reader.onload = function(ev){
-        // 自定义板块只保留一张截图：新粘贴覆盖旧图
-        selected[idx].images = [ev.target.result];
-        renderCanvas();
+        // 自定义板块只保留一张截图：新粘贴覆盖旧图，并压缩避免 localStorage 超限
+        compressDataURL(ev.target.result, 1200, 0.85).then(function(url){
+          selected[idx].images = [url];
+          renderCanvas();
+        });
       };
       reader.readAsDataURL(blob);
       break;
