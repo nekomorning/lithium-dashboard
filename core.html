@@ -507,30 +507,51 @@ function MONTH_TICK(v, xlabels){
   if(lab.slice(3)==="01") return parseInt(lab.slice(0,2),10)+"月";
   return "";
 }
-/* ---- 渲染：月轴季节图（平衡表等，dec=小数位） ---- */
+/* ---- 渲染：月轴季节图（平衡表等，dec=小数位） ----
+   实线/虚线规则：当年已过月份实线，当前月及之后虚线；未来年份全虚线；过去年份全实线。
+   同 p7 平衡表季节图一致。 ---- */
 function drawMonthSeason(div, byYear, dec){
   var c=echarts.init(div);
   var years=Object.keys(byYear).map(Number).sort();
   var legend=[], series=[];
+  var NOW=new Date(); var CUR_Y=NOW.getFullYear(); var CUR_M=NOW.getMonth()+1;
   years.forEach(function(y){
     if(!yearVisible[String(y)]) return;
     var arr=byYear[String(y)]||[];
     legend.push(String(y));
     var isLast=String(y)===String(years[years.length-1]);
-    series.push({name:String(y), type:"line", connectNulls:true, symbol:"circle", symbolSize:4,
-      data:arr, lineStyle:{width:isLast?2.2:1.4, color:yearColor(y)}, itemStyle:{color:yearColor(y)}, emphasis:{focus:"series"}});
+    var col=yearColor(y);
+    // 预测起点：过去年份=13（全实线）；当年=当前月（当前月及之后虚线）；未来年份=1（全虚线）
+    var predStart=(y<CUR_Y)?13:((y===CUR_Y)?CUR_M:1);
+    var actual=[], pred=[];
+    for(var mi=0; mi<12; mi++){
+      var v=arr[mi], mnum=mi+1;
+      actual.push(mnum <= predStart-1 ? v : null);
+      pred.push(mnum >= predStart-1 ? v : null);
+    }
+    series.push({name:String(y), type:"line", connectNulls:false, symbol:"circle", symbolSize:4,
+      data:actual, lineStyle:{width:isLast?2.2:1.4, color:col}, itemStyle:{color:col}, emphasis:{focus:"series"}});
+    if(pred.some(function(v){ return v!=null; })){
+      series.push({name:String(y), type:"line", connectNulls:false, symbol:"circle", symbolSize:4,
+        data:pred, lineStyle:{width:isLast?2.2:1.4, type:"dashed", color:col}, itemStyle:{color:col}, emphasis:{focus:"series"}});
+    }
   });
+  function tip(ps){
+    if(!ps.length) return "";
+    var seen={};
+    ps.forEach(function(p){ if(p.seriesName && p.value!=null && !(typeof p.value==='number' && isNaN(p.value))) seen[p.seriesName]=p; });
+    var s=ps[0].axisValue;
+    Object.keys(seen).sort(function(a,b){return Number(b)-Number(a);}).forEach(function(name){
+      var p=seen[name];
+      s+="<br>"+p.marker+name+"年： <b>"+fmt(p.value, dec||0)+"</b>";
+    });
+    return s;
+  }
   c.setOption({
     animation:false,
     grid:{left:8,right:14,top:26,bottom:6,containLabel:true},
     legend:{show:true, top:0, right:0, itemWidth:14, itemHeight:2, icon:"rect", textStyle:{fontSize:11,color:"#6b7686"}, data:legend},
-    tooltip:{trigger:"axis", confine:true, formatter:function(ps){
-      if(!ps.length) return "";
-      var s=ps[0].axisValue;
-      ps.sort(function(a,b){return Number(b.seriesName)-Number(a.seriesName);});
-      ps.forEach(function(p){ s+="<br>"+p.marker+p.seriesName+"年： <b>"+fmt(p.value, dec||0)+"</b>"; });
-      return s;
-    }},
+    tooltip:{trigger:"axis", confine:true, formatter:tip},
     xAxis:{type:"category", data:MONTHS, axisLabel:{fontSize:10,color:"#8a93a3"}, axisLine:{lineStyle:{color:"#dde3ec"}}, axisTick:{show:false}},
     yAxis:{type:"value", scale:true, axisLabel:{fontSize:10,color:"#8a93a3"}, splitLine:{lineStyle:{color:"#eef1f6"}}},
     series:series
