@@ -824,6 +824,7 @@ function buildOption(c){
   var series = [], legend = [];
   var xData = c.bar ? (c.xlabels || years) : (c.xlabels || []);
   var ticks = c.bar ? {} : monthTicks(xData);
+  var isMonthly = !!c.monthly;
   years.forEach(function(y){
     var pts = c.data[y];
     if(!pts) return;
@@ -833,6 +834,16 @@ function buildOption(c){
       series.push({
         name:y, type:'bar', data:pts.map(function(p){return (p&&p.y!==undefined)?p.y:null;}),
         itemStyle:{color:yearColor(y)}, barWidth:'50%', label:{show:false},
+      });
+    } else if(isMonthly){
+      // 月度季节图：data = [1月值, 2月值, ..., 12月值]
+      series.push({
+        name:y, type:'line', showSymbol:false, connectNulls:true,
+        data:pts,
+        lineStyle:{width:isLast?2.2:1.4, color:yearColor(y)},
+        itemStyle:{color:yearColor(y)},
+        emphasis:{focus:'series'}, z:isLast?10:5,
+        endLabel:{show:isLast, fontSize:10, color:yearColor(y), formatter:function(p){ return fmt(p.value, c.dec); }}
       });
     } else {
       series.push({
@@ -845,14 +856,23 @@ function buildOption(c){
       });
     }
   });
-  if(c.bar){
+  if(c.bar || isMonthly){
     return {
       animation:false,
       grid:{left:'1%',right:'1%',top:26,bottom:4,containLabel:true},
       legend:{show:true, top:0, right:0, itemWidth:14, itemHeight:2, icon:'rect', textStyle:{fontSize:11,color:'#6b7686'}, data:legend},
-      tooltip:{trigger:'axis', confine:true, valueFormatter:function(v){ return v===null?'—':v; }},
+      tooltip:{trigger:'axis', confine:true,
+        formatter:function(ps){
+          if(!ps.length) return '';
+          var s = xData[ps[0].dataIndex] || '';
+          ps.sort(function(a,b){return Number(b.seriesName)-Number(a.seriesName);});
+          ps.forEach(function(p){
+            s += '<br>'+p.marker+p.seriesName+'年： <b>'+fmt(p.value,c.dec)+'</b>';
+          });
+          return s;
+        }},
       xAxis:{type:'category', data:xData, axisLabel:{fontSize:10,color:'#8a93a3'}, axisTick:{show:false}, axisLine:{lineStyle:{color:'#dde3ec'}}},
-      yAxis:{type:'value', scale:true, axisLabel:{fontSize:10,color:'#8a93a3'}, splitLine:{lineStyle:{color:'#eef1f6'}}},
+      yAxis:{type:'value', scale:true, axisLabel:{fontSize:10,color:'#8a93a3', formatter:function(v){ return Math.abs(v)>=10000?(v/10000)+'万':(Math.abs(v)>=1000?(v/1000)+'k':v); }}, splitLine:{lineStyle:{color:'#eef1f6'}}},
       series:series,
     };
   }
