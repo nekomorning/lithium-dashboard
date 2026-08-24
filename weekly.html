@@ -692,10 +692,63 @@ function fmt(v,dec){
 }
 function chgCls(c){ if(c===null||c===undefined||c===0) return 'flat'; return c>0?'up':'down'; }
 function arrow(c){ if(c===null||c===undefined||c===0) return '→'; return c>0?'▲':'▼'; }
+function isNum(v){ return v!==null && v!==undefined && !isNaN(v); }
+/* 计算图表实际数据累计值与累计同比（参考 p7 平衡表排版）
+   - 月度图：按 latestDate(YYYY-MM) 取 cutoff 月，汇总当年与上年 1~cutoff 月
+   - 日/周频图：按当年最后数据点 dayIndex 为 cutoff，汇总当年与上年同口径 dayIndex 范围 */
+function cumulativeStats(c){
+  if(!c || !c.data || !c.years || !c.years.length || !c.stat || !c.stat.latestDate) return null;
+  var years = c.years.slice().sort();
+  var curY = years[years.length-1];
+  var prevY = String(+curY - 1);
+  var ld = c.stat.latestDate;
+  var unit = c.unit || '';
+  var dec = c.dec === undefined ? 1 : c.dec;
+  if(c.monthly){
+    var parts = ld.split('-');
+    if(parts.length < 2) return null;
+    var cy = +parts[0], cm = +parts[1];
+    if(String(cy) !== curY) return null;
+    var arrCur = c.data[curY] || [];
+    var arrPrev = c.data[prevY] || [];
+    var sCur=0, sPrev=0, hasCur=false, hasPrev=false;
+    for(var i=0; i<cm && i<12; i++){
+      if(isNum(arrCur[i])){ sCur += arrCur[i]; hasCur = true; }
+      if(isNum(arrPrev[i])){ sPrev += arrPrev[i]; hasPrev = true; }
+    }
+    if(!hasCur) return null;
+    return {val:sCur, prev:hasPrev?sPrev:null, label:'累计（1-'+cm+'月）', unit:unit, dec:dec};
+  }
+  // 日/周频：data[y] = [[dayIndex, value], ...]
+  var curPts = c.data[curY] || [];
+  if(!curPts.length) return null;
+  var maxDay = 0;
+  curPts.forEach(function(p){ if(p && p[0] > maxDay) maxDay = p[0]; });
+  if(maxDay <= 0) return null;
+  var prevPts = c.data[prevY] || [];
+  var sCur=0, sPrev=0, hasCur=false, hasPrev=false;
+  curPts.forEach(function(p){ if(p && p[0] <= maxDay && isNum(p[1])){ sCur += p[1]; hasCur = true; }});
+  prevPts.forEach(function(p){ if(p && p[0] <= maxDay && isNum(p[1])){ sPrev += p[1]; hasPrev = true; }});
+  if(!hasCur) return null;
+  var d = new Date(+curY, 0, maxDay);
+  var endLabel = (d.getMonth()+1)+'月'+d.getDate()+'日';
+  return {val:sCur, prev:hasPrev?sPrev:null, label:'累计（1月1日-'+endLabel+'）', unit:unit, dec:dec};
+}
 function statsHtml(c){
   if(!c.stat) return '<span class="dt">暂无数据</span>';
+  var cs = cumulativeStats(c);
+  if(cs){
+    var diff = cs.prev !== null ? cs.val - cs.prev : null;
+    var pct = (diff !== null && cs.prev !== 0) ? diff / Math.abs(cs.prev) * 100 : null;
+    var cls = chgCls(diff);
+    var wc = diff === null ? '—' : ((diff>0?'+':'')+fmt(diff, cs.dec));
+    var wp = pct === null ? '—' : ((pct>0?'+':'')+pct.toFixed(1)+'%');
+    return '<span class="dt">'+esc(cs.label)+'</span>'+
+      '<span class="val">'+fmt(cs.val,cs.dec)+'<span class="unit"> '+esc(cs.unit)+'</span></span>'+
+      '<span class="chg '+cls+'">同比 '+arrow(diff)+' '+wc+'（'+wp+'）</span>';
+  }
+  // fallback（无累计数据时保留原最新值+环比）
   var st = c.stat;
-  // 与日度价格页保持一致：month 显示月环比，其余显示周环比（周报场景下日/周频数据均看周度变化）
   var isMonth = (st.freq === 'month');
   var dChg = isMonth ? st.chg : st.weekChg;
   var dPct = isMonth ? st.pct : st.weekPct;
@@ -825,35 +878,57 @@ function buildOption(c){
   var xData = c.bar ? (c.xlabels || years) : (c.xlabels || []);
   var ticks = c.bar ? {} : monthTicks(xData);
   var isMonthly = !!c.monthly;
+  var now = new Date();
+  var CUR_Y = now.getFullYear();
+  var CUR_M = now.getMonth() + 1;
+  var CUR_DOY = Math.floor((now - new Date(CUR_Y,0,0)) / 86400000);
+  /* tooltip 去重：同年份的 actual/pred 两个 series 同名，只保留一条 */
+  function dedupTooltip(ps){
+    var seen = {}, out = [];
+    ps.forEach(function(p){ if(!seen[p.seriesName]){ seen[p.seriesName] = true; out.push(p); } });
+    return out;
+  }
   years.forEach(function(y){
     var pts = c.data[y];
     if(!pts) return;
     legend.push(y);
     var isLast = (y === years[years.length-1]);
+    var yi = +y, col = yearColor(y);
     if(c.bar){
       series.push({
         name:y, type:'bar', data:pts.map(function(p){return (p&&p.y!==undefined)?p.y:null;}),
-        itemStyle:{color:yearColor(y)}, barWidth:'50%', label:{show:false},
+        itemStyle:{color:col}, barWidth:'50%', label:{show:false},
       });
     } else if(isMonthly){
-      // 月度季节图：data = [1月值, 2月值, ..., 12月值]
-      series.push({
-        name:y, type:'line', showSymbol:false, connectNulls:true,
-        data:pts,
-        lineStyle:{width:isLast?2.2:1.4, color:yearColor(y)},
-        itemStyle:{color:yearColor(y)},
-        emphasis:{focus:'series'}, z:isLast?10:5,
-        endLabel:{show:isLast, fontSize:10, color:yearColor(y), formatter:function(p){ return fmt(p.value, c.dec); }}
-      });
+      // 月度季节图：data = [1月值, ..., 12月值]；当年当前月及之后为预测（虚线）
+      var predStart = yi < CUR_Y ? 13 : (yi === CUR_Y ? CUR_M : 1);
+      var actual = [], pred = [];
+      for(var mi=0; mi<12; mi++){
+        var mnum = mi + 1;
+        actual.push(mnum <= predStart - 1 ? pts[mi] : null);
+        pred.push(mnum >= predStart - 1 ? pts[mi] : null);
+      }
+      series.push({name:y, type:'line', showSymbol:false, connectNulls:false, data:actual,
+        lineStyle:{width:isLast?2.2:1.4, color:col}, itemStyle:{color:col}, z:isLast?10:5});
+      if(pred.some(function(v){ return v!==null && v!==undefined; })){
+        series.push({name:y, type:'line', showSymbol:false, connectNulls:false, data:pred,
+          lineStyle:{width:isLast?2.2:1.4, type:'dashed', color:col}, itemStyle:{color:col}, z:isLast?10:5});
+      }
     } else {
-      series.push({
-        name:y, type:'line', showSymbol:false, connectNulls:true,
-        data:pts,
-        lineStyle:{width:isLast?2.2:1.4, color:yearColor(y)},
-        itemStyle:{color:yearColor(y)},
-        emphasis:{focus:'series'}, z:isLast?10:5,
-        endLabel:{show:isLast, fontSize:10, color:yearColor(y), formatter:function(p){ return fmt(p.value[1], c.dec); }}
+      // 日/周频季节图：当年当前日期及之后为预测（虚线），过往年份全实线，未来年份全虚线
+      var predStartDOY = yi < CUR_Y ? 366 : (yi === CUR_Y ? CUR_DOY : 1);
+      var actual = [], pred = [];
+      pts.forEach(function(p){
+        if(!p) return;
+        if(p[0] <= predStartDOY - 1) actual.push(p);
+        if(p[0] >= predStartDOY - 1) pred.push(p);
       });
+      series.push({name:y, type:'line', showSymbol:false, connectNulls:false, data:actual,
+        lineStyle:{width:isLast?2.2:1.4, color:col}, itemStyle:{color:col}, z:isLast?10:5});
+      if(pred.length){
+        series.push({name:y, type:'line', showSymbol:false, connectNulls:false, data:pred,
+          lineStyle:{width:isLast?2.2:1.4, type:'dashed', color:col}, itemStyle:{color:col}, z:isLast?10:5});
+      }
     }
   });
   if(c.bar || isMonthly){
@@ -864,6 +939,7 @@ function buildOption(c){
       tooltip:{trigger:'axis', confine:true,
         formatter:function(ps){
           if(!ps.length) return '';
+          ps = dedupTooltip(ps);
           var s = xData[ps[0].dataIndex] || '';
           ps.sort(function(a,b){return Number(b.seriesName)-Number(a.seriesName);});
           ps.forEach(function(p){
@@ -883,6 +959,7 @@ function buildOption(c){
     tooltip:{trigger:'axis', confine:true,
       formatter:function(ps){
         if(!ps.length) return '';
+        ps = dedupTooltip(ps);
         var lab = xData[ps[0].value[0]] || '';
         var s = lab ? (parseInt(lab.slice(0,2),10)+'月'+parseInt(lab.slice(3),10)+'日') : '';
         ps.sort(function(a,b){return Number(b.seriesName)-Number(a.seriesName);});
