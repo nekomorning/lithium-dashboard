@@ -600,7 +600,7 @@ function renderCanvas(){
           chartBox.appendChild(sub);
         }
         var grid = document.createElement('div');
-        var colCnt = bestGrid(row.chart_ids.length);
+        var colCnt = row.colCnt || bestGrid(row.chart_ids.length);
         grid.className = 'sec--charts c' + colCnt;
         grid.style.marginTop = '4px';
         chartBox.appendChild(grid);
