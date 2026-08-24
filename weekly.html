@@ -201,7 +201,7 @@ window.__DATA__ = /*DATA*/null/*DATA_END*/;
 </script>
 <script>
 (function(){
-  Promise.all([fetch('weekly.json').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('weekly.json?v=1787555052').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -708,13 +708,19 @@ function cumulativeStats(c){
     if(String(cy) !== curY) return null;
     var arrCur = c.data[curY] || [];
     var arrPrev = c.data[prevY] || [];
+    // 找到实际有数据的最后一个月（不超过 latestDate），避免 latestDate 所在月数据缺失导致标签误导
+    var actualCm = cm;
+    while(actualCm > 0 && !isNum(arrCur[actualCm-1])){
+      actualCm--;
+    }
+    if(actualCm <= 0) return null;
     var sCur=0, sPrev=0, hasCur=false, hasPrev=false;
-    for(var i=0; i<cm && i<12; i++){
+    for(var i=0; i<actualCm && i<12; i++){
       if(isNum(arrCur[i])){ sCur += arrCur[i]; hasCur = true; }
       if(isNum(arrPrev[i])){ sPrev += arrPrev[i]; hasPrev = true; }
     }
     if(!hasCur) return null;
-    return {val:sCur, prev:hasPrev?sPrev:null, label:'累计（1-'+cm+'月）', unit:unit, dec:dec};
+    return {val:sCur, prev:hasPrev?sPrev:null, label:'累计（1-'+actualCm+'月）', unit:unit, dec:dec};
   }
   // 日/周频：data[y] = [[dayIndex, value], ...]
   var curPts = c.data[curY] || [];
@@ -750,6 +756,17 @@ function statsHtml(c){
     }
     // 累计无法计算时降级
     type = st.freq === 'month' ? 'latest_mom' : 'latest_wow';
+  }
+  if(type === 'latest_pen'){
+    // 渗透率类：最新值 + 环比pp + 同比pp
+    var dChg = st.chg, yChg = st.yoyChg;
+    var cls = chgCls(dChg);
+    var wc = (dChg===null||dChg===undefined) ? '—' : ((dChg>0?'+':'')+fmt(dChg,c.dec)+'pp');
+    var yc = (yChg===null||yChg===undefined) ? '—' : ((yChg>0?'+':'')+fmt(yChg,c.dec)+'pp');
+    return '<span class="val">'+fmt(st.latest,c.dec)+'<span class="unit"> '+esc(c.unit)+'</span></span>'+
+      '<span class="chg '+cls+'">环比 '+arrow(dChg)+' '+wc+'</span>'+
+      '<span class="chg '+chgCls(yChg)+'">同比 '+arrow(yChg)+' '+yc+'</span>'+
+      '<span class="dt">'+(st.latestDate||'')+'</span>';
   }
   if(type === 'latest_mom_yoy'){
     // 库存/库存天数类：最新值 + 环比 + 同比（平衡表月度数据）
