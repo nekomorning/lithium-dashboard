@@ -584,7 +584,7 @@ function renderCanvas(){
       });
       mergeCards.forEach(function(o){
         var el = o.card.querySelector('.chart');
-        var ch = echarts.init(el);
+        var ch = mkChart(el);
         ch.setOption(buildOption(o.c));
         hideHiddenYears(ch);
         ch.resize();
@@ -618,7 +618,7 @@ function renderCanvas(){
         });
         rowCards.forEach(function(o){
           var el = o.card.querySelector('.chart');
-          var ch = echarts.init(el);
+          var ch = mkChart(el);
           ch.setOption(buildOption(o.c));
           hideHiddenYears(ch);
           ch.resize();
@@ -642,7 +642,7 @@ function renderCanvas(){
       });
       flatCards.forEach(function(o){
         var el = o.card.querySelector('.chart');
-        var ch = echarts.init(el);
+        var ch = mkChart(el);
         ch.setOption(buildOption(o.c));
         hideHiddenYears(ch);
         ch.resize();
@@ -775,6 +775,11 @@ function renderBalanceTable(tbl){
 }
 
 /* ===== ECharts ===== */
+function mkChart(el){
+  // 显式提高 devicePixelRatio 上限，避免高 DPI 屏或容器非整数尺寸导致折线/文字发虚
+  var dpr = window.devicePixelRatio || 1;
+  return echarts.init(el, null, {renderer:'canvas', devicePixelRatio: Math.min(dpr * 1.25, 2.5)});
+}
 function yearColor(y){
   var ys = WEEKLY.years || [];
   var n = ys.length, idx = ys.indexOf(y);
@@ -902,19 +907,20 @@ async function exportPDF(){
       '<div style="font-size:14px;font-weight:700;color:#1f2733;margin-bottom:8px;">本周核心变化</div>'+
       '<div style="line-height:2;font-size:13px;color:#1f2733;background:#f8fafd;border-radius:6px;padding:10px 12px;">'+noteHtml+'</div>';
     document.body.appendChild(cover);
-    var coverCanvas = await html2canvas(cover, {backgroundColor:'#fff', scale:2, useCORS:true});
+    var coverCanvas = await html2canvas(cover, {backgroundColor:'#fff', scale:2.5, useCORS:true});
     document.body.removeChild(cover);
     /* 一个板块就放在一页里：不拆页。内容能放下则按自然比例；放不下就把高度压低、宽度仍撑满整页 */
     var availH = pageH - margin*2;
-    function placeImage(doc, canvas, firstPage){
+    function placeImage(doc, canvas, firstPage, quality){
+      quality = quality === undefined ? 0.88 : quality;
       var w = pageW - margin*2;
       var h = canvas.height * w / canvas.width;
       if(!firstPage) doc.addPage();
       if(h > availH + 0.5){ h = availH; }   // 高度压到一页内，宽度不变
-      doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, w, h);
+      doc.addImage(canvas.toDataURL('image/jpeg', quality), 'JPEG', margin, margin, w, h);
     }
 
-    placeImage(doc, coverCanvas, true);
+    placeImage(doc, coverCanvas, true, 0.92);
 
     var secEls = document.querySelectorAll('.sec');
     // PDF 导出前强制所有图表按当前容器尺寸重绘，避免 ECharts canvas 与容器宽度不一致导致窄边
@@ -929,9 +935,9 @@ async function exportPDF(){
       charts.forEach(function(ch){ if(ch && ch.resize) ch.resize(); });
       await new Promise(function(r){ setTimeout(r, 60); });
       var restore = replaceDescForExport(secEls[i]);
-      var canvas = await html2canvas(secEls[i], {backgroundColor:'#fff', scale:2, useCORS:true});
+      var canvas = await html2canvas(secEls[i], {backgroundColor:'#fff', scale:2.5, useCORS:true});
       restore();
-      placeImage(doc, canvas, false);
+      placeImage(doc, canvas, false, 0.88);
     }
     doc.save(titleText+'.pdf');
   }catch(e){
