@@ -586,7 +586,6 @@ function renderCanvas(){
         var el = o.card.querySelector('.chart');
         var ch = mkChart(el);
         ch.setOption(buildOption(o.c));
-        hideHiddenYears(ch);
         ch.resize();
         charts.push(ch);
       });
@@ -620,7 +619,6 @@ function renderCanvas(){
           var el = o.card.querySelector('.chart');
           var ch = mkChart(el);
           ch.setOption(buildOption(o.c));
-          hideHiddenYears(ch);
           ch.resize();
           charts.push(ch);
         });
@@ -644,7 +642,6 @@ function renderCanvas(){
         var el = o.card.querySelector('.chart');
         var ch = mkChart(el);
         ch.setOption(buildOption(o.c));
-        hideHiddenYears(ch);
         ch.resize();
         charts.push(ch);
       });
@@ -859,14 +856,6 @@ function toggleYear(y){
   buildYearBar();
   renderCanvas();
 }
-/* 隐藏被关闭年份的图例项（与日度价格页 legendToggleSelect 逻辑一致） */
-function hideHiddenYears(ch){
-  (WEEKLY.years || []).forEach(function(y){
-    if(yearVisible[String(y)] === false){
-      try{ ch.dispatchAction({type:"legendToggleSelect", name:String(y)}); }catch(e){}
-    }
-  });
-}
 function monthTicks(xlabels){
   var idx={};
   (xlabels||[]).forEach(function(l,i){ if(l.slice(3)==='01') idx[i]=parseInt(l.slice(0,2),10)+'月'; });
@@ -931,11 +920,13 @@ function buildOption(c){
       }
     }
   });
+  var selected = {};
+  legend.forEach(function(y){ selected[y] = yearVisible[y] !== false; });
   if(c.bar || isMonthly){
     return {
       animation:false,
       grid:{left:'1%',right:'1%',top:26,bottom:4,containLabel:true},
-      legend:{show:true, top:0, right:0, itemWidth:14, itemHeight:2, icon:'rect', textStyle:{fontSize:11,color:'#6b7686'}, data:legend},
+      legend:{show:true, top:0, right:0, itemWidth:14, itemHeight:2, icon:'rect', textStyle:{fontSize:11,color:'#6b7686'}, data:legend, selected:selected},
       tooltip:{trigger:'axis', confine:true,
         formatter:function(ps){
           if(!ps.length) return '';
@@ -955,7 +946,7 @@ function buildOption(c){
   return {
     animation:false,
     grid:{left:'1%',right:'1%',top:26,bottom:4,containLabel:true},
-    legend:{show:true, top:0, right:0, itemWidth:14, itemHeight:2, icon:'rect', textStyle:{fontSize:11,color:'#6b7686'}, data:legend},
+    legend:{show:true, top:0, right:0, itemWidth:14, itemHeight:2, icon:'rect', textStyle:{fontSize:11,color:'#6b7686'}, data:legend, selected:selected},
     tooltip:{trigger:'axis', confine:true,
       formatter:function(ps){
         if(!ps.length) return '';
@@ -1150,8 +1141,8 @@ function saveLayout(){
 function init(){
   WEEKLY = window.__DATA__;
   if(!WEEKLY || !WEEKLY.sections) return;
-  // 年份默认可见性：隐藏 2023（与日度价格页一致）
-  (WEEKLY.years || []).forEach(function(y){ yearVisible[String(y)] = (String(y) !== "2023"); });
+  // 年份默认可见性：周报场景关注近年趋势，默认只显示 2024 年及之后，隐藏 2017-2023
+  (WEEKLY.years || []).forEach(function(y){ yearVisible[String(y)] = (parseInt(y,10) >= 2024); });
   renderNav();
   document.getElementById('latestDate').textContent = WEEKLY.latestDataDate || '';
   buildYearBar();
