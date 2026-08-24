@@ -110,6 +110,15 @@ body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple
 .citem .chart{width:100%;display:block;aspect-ratio:16 / 10;height:auto;min-width:0;}
 .sec--charts.c4 .chart{aspect-ratio:16 / 10.5;}
 .sec--charts.c5 .chart{aspect-ratio:16 / 11;}
+/* p5 汽车板块紧凑样式：图表更扁、字号更小，避免图例/标题遮挡 */
+.p5-compact .citem{padding:8px 10px 4px;}
+.p5-compact .citem .ttl{font-size:12px;}
+.p5-compact .citem .val{font-size:16px;}
+.p5-compact .citem .unit{font-size:10px;}
+.p5-compact .citem .chg{font-size:11px;}
+.p5-compact .citem .dt{font-size:10px;}
+.p5-compact .citem .chart{aspect-ratio:16 / 7;}
+.p5-compact.sec--charts.c4 .chart,.p5-compact.sec--charts.c5 .chart{aspect-ratio:16 / 7;}
 .sec--tables{margin-top:12px;}
 .sec--row-label{font-size:12px;color:var(--accent);font-weight:700;margin:8px 0 4px;padding-left:2px;}
 .sec--tables table{width:100%;border-collapse:collapse;font-size:12px;}
@@ -201,7 +210,7 @@ window.__DATA__ = /*DATA*/null/*DATA_END*/;
 </script>
 <script>
 (function(){
-  Promise.all([fetch('weekly.json?v=1787556579').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('weekly.json?v=1787557358').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -538,7 +547,7 @@ function renderCanvas(){
   wrap.innerHTML = '';
   selected.forEach(function(sec, idx){
     var div = document.createElement('div');
-    div.className = 'sec';
+    div.className = 'sec' + ((sec.id === 'sec_p5_中国汽车' || sec.id === 'sec_p5_全球新能源') ? ' p5-compact' : '');
     div.setAttribute('data-idx', idx);
     div.innerHTML =
       '<div class="sec-hd"><input class="sec--ttl" value="'+esc(sec.title)+'"></div>'+
@@ -888,6 +897,7 @@ function buildYearBar(){
   if(!bar) return;
   var html = '<span class="ylab">显示年份：</span>';
   (WEEKLY.years || []).forEach(function(y){
+    if(parseInt(y,10) < 2024) return; // 周报默认只展示 2024 年及之后，旧年份不进入图例条
     var on = yearVisible[String(y)] !== false;
     html += '<span class="ybtn'+(on?'':' off')+'" data-year="'+esc(y)+'" onclick="toggleYear(this.dataset.year)">'+
       '<span class="dot" style="background:'+yearColor(y)+'"></span>'+esc(y)+'年</span>';
@@ -965,6 +975,8 @@ function buildOption(c){
     }
   });
   var selected = {};
+  // 周报图例只展示 2024 年及之后，旧年份不进入 legend/data，避免占用图表顶部空间
+  legend = legend.filter(function(y){ return parseInt(y,10) >= 2024; });
   legend.forEach(function(y){ selected[y] = yearVisible[y] !== false; });
   if(c.bar || isMonthly){
     return {
