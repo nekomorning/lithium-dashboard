@@ -1011,7 +1011,7 @@ async function exportPDF(){
     var pxPerMm = 3.7795;
     var today = new Date();
     var exportDate = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
-    var titleText = '碳酸锂行业周报_' + exportDate;
+    var titleText = '碳酸锂周报_' + exportDate;
 
     var cover = document.createElement('div');
     cover.style.cssText = 'position:fixed;left:-9999px;top:0;width:'+((pageW-margin*2)*pxPerMm)+'px;background:#fff;padding:20px;font-family:"Microsoft YaHei",PingFang SC,sans-serif;box-sizing:border-box;';
