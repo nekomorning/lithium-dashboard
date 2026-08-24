@@ -110,15 +110,16 @@ body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple
 .citem .chart{width:100%;display:block;aspect-ratio:16 / 10;height:auto;min-width:0;}
 .sec--charts.c4 .chart{aspect-ratio:16 / 10.5;}
 .sec--charts.c5 .chart{aspect-ratio:16 / 11;}
-/* p5 汽车板块紧凑样式：图表更扁、字号更小，避免图例/标题遮挡 */
-.p5-compact .citem{padding:8px 10px 4px;}
-.p5-compact .citem .ttl{font-size:12px;}
-.p5-compact .citem .val{font-size:16px;}
-.p5-compact .citem .unit{font-size:10px;}
-.p5-compact .citem .chg{font-size:11px;}
-.p5-compact .citem .dt{font-size:10px;}
-.p5-compact .citem .chart{aspect-ratio:16 / 7;}
-.p5-compact.sec--charts.c4 .chart,.p5-compact.sec--charts.c5 .chart{aspect-ratio:16 / 7;}
+/* p5 汽车板块紧凑样式：标题/统计区更窄、折线图区域更大 */
+.p5-compact .citem{padding:6px 8px 4px;}
+.p5-compact .citem .ttl{font-size:11px;margin-bottom:2px;line-height:1.25;}
+.p5-compact .citem .meta{margin:2px 0 2px;gap:6px;}
+.p5-compact .citem .val{font-size:14px;}
+.p5-compact .citem .unit{font-size:9px;}
+.p5-compact .citem .chg{font-size:10px;}
+.p5-compact .citem .dt{font-size:9px;}
+.p5-compact .citem .chart{aspect-ratio:16 / 8.5;}
+.p5-compact.sec--charts.c4 .chart,.p5-compact.sec--charts.c5 .chart{aspect-ratio:16 / 8.5;}
 .sec--tables{margin-top:12px;}
 .sec--row-label{font-size:12px;color:var(--accent);font-weight:700;margin:8px 0 4px;padding-left:2px;}
 .sec--tables table{width:100%;border-collapse:collapse;font-size:12px;}
@@ -210,7 +211,7 @@ window.__DATA__ = /*DATA*/null/*DATA_END*/;
 </script>
 <script>
 (function(){
-  Promise.all([fetch('weekly.json?v=1787557358').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('weekly.json?v=1787559019').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -238,7 +239,7 @@ function loadECharts(){
 var WEEKLY = null;
 var echarts;
 var PALETTE=["#1E6FFF","#F59A23","#8B5CF6","#0FB5AE","#D63FA6","#7A6A53"];
-/* 年份可见性：默认隐藏 2023（与日度价格页一致），可点击年份条切换 */
+/* 年份可见性：默认展示 2023 年起近年份（p5 汽车板块需看 2023-2026），可点击年份条切换 */
 var yearVisible = {};
 
 /* ===== 导航 ===== */
@@ -897,7 +898,7 @@ function buildYearBar(){
   if(!bar) return;
   var html = '<span class="ylab">显示年份：</span>';
   (WEEKLY.years || []).forEach(function(y){
-    if(parseInt(y,10) < 2024) return; // 周报默认只展示 2024 年及之后，旧年份不进入图例条
+    if(parseInt(y,10) < 2023) return; // 图例条展示 2023 年起年份，p5 汽车板块同步显示 2023-2026
     var on = yearVisible[String(y)] !== false;
     html += '<span class="ybtn'+(on?'':' off')+'" data-year="'+esc(y)+'" onclick="toggleYear(this.dataset.year)">'+
       '<span class="dot" style="background:'+yearColor(y)+'"></span>'+esc(y)+'年</span>';
@@ -916,7 +917,9 @@ function monthTicks(xlabels){
   return idx;
 }
 function buildOption(c){
-  var years = Object.keys(c.data || {}).sort();
+  var isP5 = String(c.id).indexOf('p5_') === 0;
+  var minYear = isP5 ? 2023 : 2024;
+  var years = Object.keys(c.data || {}).sort().filter(function(y){ return parseInt(y,10) >= minYear; });
   var series = [], legend = [];
   var xData = c.bar ? (c.xlabels || years) : (c.xlabels || []);
   var ticks = c.bar ? {} : monthTicks(xData);
@@ -975,8 +978,8 @@ function buildOption(c){
     }
   });
   var selected = {};
-  // 周报图例只展示 2024 年及之后，旧年份不进入 legend/data，避免占用图表顶部空间
-  legend = legend.filter(function(y){ return parseInt(y,10) >= 2024; });
+  // 图例/数据按板块类型过滤：p5 汽车展示 2023 年起，其他板块 2024 年起
+  legend = legend.filter(function(y){ return parseInt(y,10) >= minYear; });
   legend.forEach(function(y){ selected[y] = yearVisible[y] !== false; });
   if(c.bar || isMonthly){
     return {
@@ -1197,8 +1200,8 @@ function saveLayout(){
 function init(){
   WEEKLY = window.__DATA__;
   if(!WEEKLY || !WEEKLY.sections) return;
-  // 年份默认可见性：周报场景关注近年趋势，默认只显示 2024 年及之后，隐藏 2017-2023
-  (WEEKLY.years || []).forEach(function(y){ yearVisible[String(y)] = (parseInt(y,10) >= 2024); });
+  // 年份默认可见性：p5 汽车板块展示 2023-2026，其他板块展示 2024 年起
+  (WEEKLY.years || []).forEach(function(y){ yearVisible[String(y)] = (parseInt(y,10) >= 2023); });
   renderNav();
   document.getElementById('latestDate').textContent = WEEKLY.latestDataDate || '';
   buildYearBar();
