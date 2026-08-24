@@ -733,28 +733,55 @@ function cumulativeStats(c){
 }
 function statsHtml(c){
   if(!c.stat) return '<span class="dt">暂无数据</span>';
-  var cs = cumulativeStats(c);
-  if(cs){
-    var diff = cs.prev !== null ? cs.val - cs.prev : null;
-    var pct = (diff !== null && cs.prev !== 0) ? diff / Math.abs(cs.prev) * 100 : null;
-    var cls = chgCls(diff);
-    var wc = diff === null ? '—' : ((diff>0?'+':'')+fmt(diff, cs.dec));
-    var wp = pct === null ? '—' : ((pct>0?'+':'')+pct.toFixed(1)+'%');
-    return '<span class="dt">'+esc(cs.label)+'</span>'+
-      '<span class="val">'+fmt(cs.val,cs.dec)+'<span class="unit"> '+esc(cs.unit)+'</span></span>'+
-      '<span class="chg '+cls+'">同比 '+arrow(diff)+' '+wc+'（'+wp+'）</span>';
-  }
-  // fallback（无累计数据时保留原最新值+环比）
   var st = c.stat;
-  var isMonth = (st.freq === 'month');
-  var dChg = isMonth ? st.chg : st.weekChg;
-  var dPct = isMonth ? st.pct : st.weekPct;
-  var cyc = isMonth ? '月环比' : '周环比';
+  // 按数据源/业务类型决定展示口径
+  var type = c.statType || (st.freq === 'month' ? 'latest_mom' : 'latest_wow');
+  if(type === 'ytd'){
+    var cs = cumulativeStats(c);
+    if(cs){
+      var diff = cs.prev !== null ? cs.val - cs.prev : null;
+      var pct = (diff !== null && cs.prev !== 0) ? diff / Math.abs(cs.prev) * 100 : null;
+      var cls = chgCls(diff);
+      var wc = diff === null ? '—' : ((diff>0?'+':'')+fmt(diff, cs.dec));
+      var wp = pct === null ? '—' : ((pct>0?'+':'')+pct.toFixed(1)+'%');
+      return '<span class="dt">'+esc(cs.label)+'</span>'+
+        '<span class="val">'+fmt(cs.val,cs.dec)+'<span class="unit"> '+esc(cs.unit)+'</span></span>'+
+        '<span class="chg '+cls+'">同比 '+arrow(diff)+' '+wc+'（'+wp+'）</span>';
+    }
+    // 累计无法计算时降级
+    type = st.freq === 'month' ? 'latest_mom' : 'latest_wow';
+  }
+  if(type === 'latest_mom_yoy'){
+    // 库存/库存天数类：最新值 + 环比 + 同比（平衡表月度数据）
+    var dChg = st.chg, dPct = st.pct;
+    var yChg = st.yoyChg, yPct = st.yoyPct;
+    var cls = chgCls(dChg);
+    var wc = (dChg===null||dChg===undefined) ? '—' : ((dChg>0?'+':'')+fmt(dChg,c.dec));
+    var wp = (dPct===null||dPct===undefined) ? '—' : ((dPct>0?'+':'')+dPct.toFixed(2)+'%');
+    var yc = (yChg===null||yChg===undefined) ? '—' : ((yChg>0?'+':'')+fmt(yChg,c.dec));
+    var yp = (yPct===null||yPct===undefined) ? '—' : ((yPct>0?'+':'')+yPct.toFixed(2)+'%');
+    return '<span class="val">'+fmt(st.latest,c.dec)+'<span class="unit"> '+esc(c.unit)+'</span></span>'+
+      '<span class="chg '+cls+'">环比 '+arrow(dChg)+' '+wc+'（'+wp+'）</span>'+
+      '<span class="chg '+chgCls(yChg)+'">同比 '+arrow(yChg)+' '+yc+'（'+yp+'）</span>'+
+      '<span class="dt">'+(st.latestDate||'')+'</span>';
+  }
+  if(type === 'latest_mom'){
+    // 月度频率数据：最新值 + 月环比
+    var dChg = st.chg, dPct = st.pct;
+    var cls = chgCls(dChg);
+    var wc = (dChg===null||dChg===undefined) ? '—' : ((dChg>0?'+':'')+fmt(dChg,c.dec));
+    var wp = (dPct===null||dPct===undefined) ? '—' : ((dPct>0?'+':'')+dPct.toFixed(2)+'%');
+    return '<span class="val">'+fmt(st.latest,c.dec)+'<span class="unit"> '+esc(c.unit)+'</span></span>'+
+      '<span class="chg '+cls+'">'+arrow(dChg)+' '+wc+'（'+wp+' 月环比）</span>'+
+      '<span class="dt">'+(st.latestDate||'')+'</span>';
+  }
+  // 日/周频数据：最新值 + 周环比
+  var dChg = st.weekChg, dPct = st.weekPct;
   var cls = chgCls(dChg);
   var wc = (dChg===null||dChg===undefined) ? '—' : ((dChg>0?'+':'')+fmt(dChg,c.dec));
   var wp = (dPct===null||dPct===undefined) ? '—' : ((dPct>0?'+':'')+dPct.toFixed(2)+'%');
   return '<span class="val">'+fmt(st.latest,c.dec)+'<span class="unit"> '+esc(c.unit)+'</span></span>'+
-    '<span class="chg '+cls+'">'+arrow(dChg)+' '+wc+'（'+wp+' '+cyc+'）</span>'+
+    '<span class="chg '+cls+'">'+arrow(dChg)+' '+wc+'（'+wp+' 周环比）</span>'+
     '<span class="dt">'+(st.latestDate||'')+'</span>';
 }
 
