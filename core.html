@@ -401,10 +401,13 @@ function groupFromIndicators(label, src, inds, xlabels, years){
   var items=[];
   Object.keys(inds).forEach(function(k){
     var ind=inds[k];
+    // 月差类图表默认不显示 2023 年，避免主力合约切换导致早期走势干扰
+    var hideYears = (src==='p1' && k.indexOf('月差')>=0) ? ['2023'] : null;
     items.push({
       src:src, key:k, title:ind.title||k,
       meta:computeStatMeta(ind),
-      draw:function(div){ drawSeason(div, ind, xlabels, years); }
+      hideYears:hideYears,
+      draw:function(div){ drawSeason(div, ind, xlabels, years, hideYears); }
     });
   });
   GROUPS.push({label:label, items:items});
@@ -467,11 +470,12 @@ function buildLibrary(){
 function yearColor2(i){ return PALETTE[((i%PALETTE.length)+PALETTE.length)%PALETTE.length]; }
 
 /* ---- 渲染：日序季节图（p1/p2/p3） ---- */
-function drawSeason(div, ind, xlabels, years){
+function drawSeason(div, ind, xlabels, years, hideYears){
   var c=echarts.init(div);
   var n=years.length, series=[], legend=[];
   years.forEach(function(y){
     if(!yearVisible[String(y)]) return;
+    if(hideYears && hideYears.indexOf(String(y))>=0) return;
     var pts=ind.series[String(y)];
     if(!pts||!pts.length) return;
     legend.push(String(y));
