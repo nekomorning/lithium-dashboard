@@ -144,7 +144,7 @@ td .pos{color:var(--up);} td .neg{color:var(--down);}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 <script>
 (function(){
-  Promise.all([fetch('p7.json?v=1787627822').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('p7.json?v=1787629216').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -330,8 +330,8 @@ function loadECharts(){
     renderFilterTable();
   }
   function aggRange(sy,sm,ey,em,col){
-    // 百分比/天数类列不参与区间累计
-    if(col.type==="pct" || col.type==="days") return null;
+    // 百分比/天数/库存及库存天数类列不参与区间累计
+    if(col.type==="pct" || col.type==="days" || col.statType==="latest_mom_yoy") return null;
     var vals=[];
     D.months.forEach(function(mo){
       var y=+mo.slice(0,4), m=+mo.slice(5,7);
@@ -393,7 +393,7 @@ function loadECharts(){
     document.getElementById("filterWrap").innerHTML="<table class='data'>"+head+body+"</table>";
     var note = "区间 "+sy+"年"+sm+"月 至 "+ey+"年"+em+"月 · 累计值/同比增减值单位："+(D.unit==="GWh" ? "GWh（原值加总，不折算）" : "万吨 LCE（吨÷10000，四舍五入取整）")+";"+
       "锂矿进口依赖度按区间内 进口累计÷总供给累计 计算（同比增减值 ±pp，无需同比增减%）；"+
-      "天数列不参与区间累计；同比增减% 保留 1 位小数";
+      "库存、库存天数列为时点值，不参与区间累计；同比增减% 保留 1 位小数";
     if(D.actualCutoff) note += " · 实际数据截至 "+D.actualCutoff;
     document.getElementById("filterNote").textContent = note;
   }
@@ -420,7 +420,7 @@ function loadECharts(){
     document.getElementById("annualWrap").innerHTML="<table class='data'>"+head+body+"</table>";
     var lastM=+D.latestDate.split("-")[1];
     document.getElementById("annualNote").textContent=
-      "列结构与月度表一致 · 单位："+(D.unit==="GWh" ? "GWh（原值加总，不折算）" : "万吨 LCE（吨÷10000，四舍五入取整）")+"· 占比/天数列保持原口径 · 最新年份 "+ys[ys.length-1]+" 含预测值，为不完整年（已公布 1–"+lastM+"月）";
+      "列结构与月度表一致 · 单位："+(D.unit==="GWh" ? "GWh（原值加总，不折算）" : "万吨 LCE（吨÷10000，四舍五入取整）")+"· 库存/库存天数类列显示当年最新值（不累计），占比/天数列保持原口径 · 最新年份 "+ys[ys.length-1]+" 含预测值，为不完整年（已公布 1–"+lastM+"月）";
   }
 
   /* ---------- 季节图（全部指标，按一级列标题分板块，参考页面一排版：标题 + 卡片网格，一行 4 图） ---------- */
@@ -429,6 +429,9 @@ function loadECharts(){
     var rem = (4 - (n % 4)) % 4;
     for(var k=0;k<rem;k++){ var ph=document.createElement("div"); ph.className="grid-blank"; g.appendChild(ph); }
   }
+  function getMonthlyVal(key, m){ return (D.series[key]||{})[m]; }
+  function prevMonth(m){ var idx=D.months.indexOf(m); return idx>0 ? D.months[idx-1] : null; }
+  function sameMonthLastYear(m){ var p=m.split("-"), y=+p[0]-1, mo=p[1], t=y+"-"+mo; return D.months.indexOf(t)>=0 ? t : null; }
   function renderSeasonal(){
     seasonalCharts.forEach(function(c){ try{c.dispose();}catch(e){} });
     seasonalCharts=[];
@@ -467,14 +470,15 @@ function loadECharts(){
       var ech=document.createElement("div"); ech.className="ech";
       cell.appendChild(cap); cell.appendChild(meta); cell.appendChild(ech); gridEl.appendChild(cell);
       cntInGroup++;
-      /* 标题下方：当年累计值 + 累计同比增减量 + 累计同比% */
+      /* 标题下方：按统计口径展示（ytd=累计+累计同比；latest_mom_yoy=最新值+环比+同比；pct=最新值+同比pp） */
       var years=Object.keys(ser).sort();
       var yN = years.length ? +years[years.length-1] : 0;
       var arrN = ser[yN]||[], arrP = ser[yN-1]||[];
       function chgColor(v){ return (v>0)?'#d8392b':((v<0)?'#1a8a4a':'#8a93a3'); }
       var cutoffM = D.actualCutoff ? +D.actualCutoff.split("-")[1] : 12;
       var cutoffIdx = cutoffM - 1;
-      if(sc.type === "num"){
+      var st = sc.statType || (sc.type==="pct" ? "pct" : (sc.type==="days" ? "latest_mom_yoy" : "ytd"));
+      if(st === "ytd"){
         var sN=0, sP=0, hasN=false, hasP=false;
         for(var sj=0;sj<=cutoffIdx;sj++){
           if(arrN[sj]!=null){ sN+=arrN[sj]; hasN=true; }
@@ -489,14 +493,29 @@ function loadECharts(){
             "<span style='color:"+chgColor(diff)+"'>"+(diff==null?"—":((diff>0?"+":"")+dispSum(diff, u)))+"</span>"+
             " <span style='color:"+chgColor(diff)+"'>("+(pct==null?"—":((pct>0?"+":"")+pct.toFixed(1)+"%"))+")</span>";
         }
-      } else if(sc.type === "pct" || sc.type === "days"){
+      } else if(st === "latest_mom_yoy"){
+        var latestM = D.actualCutoff || D.months[D.months.length-1];
+        var vN = getMonthlyVal(sc.key, latestM);
+        var prevM = prevMonth(latestM), vP = getMonthlyVal(sc.key, prevM);
+        var yoyM = sameMonthLastYear(latestM), vY = getMonthlyVal(sc.key, yoyM);
+        if(vN!==null && vN!==undefined){
+          var mom = (vP!==null && vP!==undefined) ? vN-vP : null;
+          var yoy = (vY!==null && vY!==undefined) ? vN-vY : null;
+          var isDays = sc.type==="days";
+          var unit = isDays ? "天" : sc.unit;
+          var fmt = isDays ? function(x){ return Math.round(x); } : function(x){ return dispVal(x, unit); };
+          meta.innerHTML =
+            "当年 <b>"+fmt(vN)+"</b> "+unit+" · 环比 "+
+            "<span style='color:"+chgColor(mom)+"'>"+(mom==null?"—":((mom>0?"+":"")+fmt(mom)+unit))+"</span> · 同比 "+
+            "<span style='color:"+chgColor(yoy)+"'>"+(yoy==null?"—":((yoy>0?"+":"")+fmt(yoy)+unit))+"</span>";
+        }
+      } else if(st === "pct"){
         var aN = (D.annual[yN]||{})[sc.key], aP = (D.annual[yN-1]||{})[sc.key];
         if(aN!==null && aN!==undefined){
           var dd = (aP!=null&&aP!==undefined) ? aN-aP : null;
-          var unit = sc.type==="pct" ? "%" : "天";
           meta.innerHTML =
-            "当年 <b>"+(sc.type==="pct"?Math.round(aN):Math.round(aN))+"</b> "+unit+" · 同比 "+
-            "<span style='color:"+chgColor(dd)+"'>"+(dd==null?"—":((dd>0?"+":"")+(sc.type==="pct"?Math.round(dd)+"pp":Math.round(dd)+unit)))+"</span>";
+            "当年 <b>"+Math.round(aN)+"</b> % · 同比 "+
+            "<span style='color:"+chgColor(dd)+"'>"+(dd==null?"—":((dd>0?"+":"")+Math.round(dd)+"pp"))+"</span>";
         }
       }
       var hasAny=false;
@@ -566,7 +585,7 @@ function loadECharts(){
     document.getElementById("filterSub").textContent="同比对照 · 累计值/同比增减值单位："+D.unit+" · 列结构与月度表一致";
     try{ renderSeasonal(); }catch(e){ console.error("seasonal error",e); }
     document.getElementById("seasonalSub").textContent=
-      "月度数据表全部指标（共 "+(D.seasonalCols||[]).length+" 个）· 按一级列标题分 "+(D.groups||[]).length+" 个板块 · 每板块一行 4 个 · 横轴 1–12 月 · 图例 "+(D.annualYears||[]).join("、")+" · 实线为已发生月份，虚线为预测（当前月及之后） · 图表下方累计值统计至 "+(D.actualCutoff||"年末")+"";
+      "月度数据表全部指标（共 "+(D.seasonalCols||[]).length+" 个）· 按一级列标题分 "+(D.groups||[]).length+" 个板块 · 每板块一行 4 个 · 横轴 1–12 月 · 图例 "+(D.annualYears||[]).join("、")+" · 实线为已发生月份，虚线为预测（当前月及之后） · 图表下方：流量/产量类显示累计至 "+(D.actualCutoff||"年末")+"，库存/库存天数类显示最新值+环比+同比" ;
     renderConclusion();
   }
 
