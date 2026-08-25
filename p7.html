@@ -144,7 +144,7 @@ td .pos{color:var(--up);} td .neg{color:var(--down);}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 <script>
 (function(){
-  Promise.all([fetch('p7.json?v=1787631424').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('p7.json?v=1787631792').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -510,12 +510,17 @@ function loadECharts(){
             "<span style='color:"+chgColor(yoy)+"'>"+(yoy==null?"—":((yoy>0?"+":"")+fmt(yoy)+unit))+"</span>";
         }
       } else if(st === "pct"){
-        var aN = (D.annual[yN]||{})[sc.key], aP = (D.annual[yN-1]||{})[sc.key];
-        if(aN!==null && aN!==undefined){
-          var dd = (aP!=null&&aP!==undefined) ? aN-aP : null;
+        var latestM = D.actualCutoff || D.months[D.months.length-1];
+        var vN = getMonthlyVal(sc.key, latestM);
+        var prevM = prevMonth(latestM), vP = getMonthlyVal(sc.key, prevM);
+        var yoyM = sameMonthLastYear(latestM), vY = getMonthlyVal(sc.key, yoyM);
+        if(vN!==null && vN!==undefined){
+          var momPct = (vP!==null && vP!==undefined && vP!==0) ? (vN-vP)/vP*100 : null;
+          var yoyPct = (vY!==null && vY!==undefined && vY!==0) ? (vN-vY)/vY*100 : null;
           meta.innerHTML =
-            "当年 <b>"+Math.round(aN)+"</b> % · 同比 "+
-            "<span style='color:"+chgColor(dd)+"'>"+(dd==null?"—":((dd>0?"+":"")+Math.round(dd)+"pp"))+"</span>";
+            "最新 <b>"+Math.round(vN)+"</b> % · 环比 "+
+            "<span style='color:"+chgColor(momPct)+"'>"+(momPct==null?"—":((momPct>0?"+":"")+momPct.toFixed(1)+"%"))+"</span> · 同比 "+
+            "<span style='color:"+chgColor(yoyPct)+"'>"+(yoyPct==null?"—":((yoyPct>0?"+":"")+yoyPct.toFixed(1)+"%"))+"</span>";
         }
       }
       var hasAny=false;
