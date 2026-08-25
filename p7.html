@@ -144,7 +144,7 @@ td .pos{color:var(--up);} td .neg{color:var(--down);}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 <script>
 (function(){
-  Promise.all([fetch('p7.json?v=1787629763').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('p7.json?v=1787631424').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -505,7 +505,7 @@ function loadECharts(){
           var unit = isDays ? "天" : sc.unit;
           var fmt = isDays ? function(x){ return Math.round(x); } : function(x){ return dispSum(x, unit); };
           meta.innerHTML =
-            "当年 <b>"+fmt(vN)+"</b> "+unit+" · 环比 "+
+            "最新 <b>"+fmt(vN)+"</b> "+unit+" · 环比 "+
             "<span style='color:"+chgColor(mom)+"'>"+(mom==null?"—":((mom>0?"+":"")+fmt(mom)+unit))+"</span> · 同比 "+
             "<span style='color:"+chgColor(yoy)+"'>"+(yoy==null?"—":((yoy>0?"+":"")+fmt(yoy)+unit))+"</span>";
         }
