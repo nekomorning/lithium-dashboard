@@ -116,13 +116,12 @@ tr.abn td{background:#fff7f0;}
   </div>
   <div class="tabs">
     <a class="tab" href="core.html">核心逻辑</a>
-    <div class="tab active">日度价格</div>
-    <a class="tab" href="p2.html">产量开工利润</a>
-    <a class="tab" href="p3.html">产业链库存</a>
-    <a class="tab" href="p5.html">全球汽车</a>
-    <a class="tab" href="p6.html">全球年度平衡</a>
     <a class="tab" href="p7.html">中国锂产业链平衡</a>
-    <a class="tab" href="p4.html">数据对比</a>
+    <a class="tab" href="p6.html">全球年度平衡</a>
+    <a class="tab" href="p5.html">全球汽车</a>
+    <a class="tab" href="p3.html">产业链库存</a>
+    <a class="tab" href="p2.html">产量开工利润</a>
+    <div class="tab active">日度价格</div>
     <a class="tab" href="weekly.html">周报</a>
   </div>
 
@@ -181,7 +180,7 @@ tr.abn td{background:#fff7f0;}
 
 <script>
 (function(){
-  Promise.all([fetch('data.json?v=1787717864').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('data.json?v=1787724007').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
