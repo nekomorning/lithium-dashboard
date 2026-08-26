@@ -198,13 +198,12 @@ table.t18 td{text-align:right;}
   </div>
   <div class="tabs">
     <a class="tab" href="core.html">核心逻辑</a>
-    <a class="tab" href="p1.html">日度价格</a>
-    <a class="tab" href="p2.html">产量开工利润</a>
-    <a class="tab" href="p3.html">产业链库存</a>
-    <a class="tab" href="p5.html">全球汽车</a>
-    <div class="tab active">全球年度平衡</div>
     <a class="tab" href="p7.html">中国锂产业链平衡</a>
-    <a class="tab" href="p4.html">数据对比</a>
+    <div class="tab active">全球年度平衡</div>
+    <a class="tab" href="p5.html">全球汽车</a>
+    <a class="tab" href="p3.html">产业链库存</a>
+    <a class="tab" href="p2.html">产量开工利润</a>
+    <a class="tab" href="p1.html">日度价格</a>
     <a class="tab" href="weekly.html">周报</a>
   </div>
 
@@ -304,7 +303,7 @@ table.t18 td{text-align:right;}
 
 <script>
 (function(){
-  Promise.all([fetch('p6.json?v=1787717865').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('p6.json?v=1787724009').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
