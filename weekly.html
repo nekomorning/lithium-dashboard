@@ -211,7 +211,7 @@ window.__DATA__ = /*DATA*/null/*DATA_END*/;
 </script>
 <script>
 (function(){
-  Promise.all([fetch('weekly.json?v=1787717866').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('weekly.json?v=1787724009').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -245,9 +245,9 @@ var yearVisible = {};
 /* ===== 导航 ===== */
 function renderNav(){
   var navs=[
-    ['core.html','核心逻辑'],['p1.html','日度价格'],['p2.html','产量开工利润'],
-    ['p3.html','产业链库存'],['p5.html','全球汽车'],['p6.html','全球年度平衡'],
-    ['p7.html','中国锂产业链平衡'],['p4.html','数据对比'],['weekly.html','周报']
+    ['core.html','核心逻辑'],['p7.html','中国锂产业链平衡'],['p6.html','全球年度平衡'],
+    ['p5.html','全球汽车'],['p3.html','产业链库存'],['p2.html','产量开工利润'],
+    ['p1.html','日度价格'],['weekly.html','周报']
   ];
   document.getElementById('navTabs').innerHTML = navs.map(function(n){
     return '<a class="'+(n[0]==='weekly.html'?'active':'')+'" href="'+n[0]+'">'+n[1]+'</a>';
