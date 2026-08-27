@@ -321,7 +321,7 @@ th .arr.up{color:var(--down);}
 
 <script>
 (function(){
-  Promise.all([fetch('p5.json?v=1787802944').then(function(r){return r.json();}),fetch('clh.json?v=1787802944').then(function(r){return r.json();}),fetch('export.json?v=1787802944').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('p5.json?v=1787803773').then(function(r){return r.json();}),fetch('clh.json?v=1787803773').then(function(r){return r.json();}),fetch('export.json?v=1787803773').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; window.CLH=rs[1]; window.EXPORT=rs[2]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -355,6 +355,7 @@ var MONTHS=["1月","2月","3月","4月","5月","6月","7月","8月","9月","10�
 var PALETTE=["#1E6FFF","#F59A23","#8B5CF6","#0FB5AE","#D63FA6","#7A6A53"];
 
 function yearColor(y){
+  if(+y===2024) return "#F6BD16";
   var n=YEARS.length, idx=YEARS.indexOf(y);
   if(idx===n-1) return "#000000";
   if(idx===n-2) return "#E60000";
@@ -552,7 +553,7 @@ var CN = {};
 var cnYears = [];
 var cnCharts = [];
 function cnPad(m){ return (m<10?"0":"")+m; }
-function cnYearColor(y){ var n=cnYears.length, idx=cnYears.indexOf(y); if(idx===n-1) return "#000000"; if(idx===n-2) return "#E60000"; return PALETTE[idx % PALETTE.length]; }
+function cnYearColor(y){ if(+y===2024) return "#F6BD16"; var n=cnYears.length, idx=cnYears.indexOf(y); if(idx===n-1) return "#000000"; if(idx===n-2) return "#E60000"; return PALETTE[idx % PALETTE.length]; }
 function cnStat(key, isPct){
   var ser = CN.series[key]; if(!ser) return null;
   var ms = Object.keys(ser).filter(function(m){ return ser[m]!==null && ser[m]!==undefined; }).sort();
@@ -814,6 +815,7 @@ function renderCn(){
     var yi=+y;
     if(yi===2026)return '#000000';
     if(yi===2025)return '#E60000';
+    if(yi===2024)return '#F6BD16';
     return PALETTE[Math.abs(yi)%PALETTE.length];
   }
   function fmt(v){if(v==null||isNaN(v))return '—';return Number(v).toLocaleString('zh-CN')}
@@ -1377,6 +1379,7 @@ var CLH_PALETTE=['#5B8FF9','#61C6B5','#F6BD16','#9661BC','#78D3F8','#F08BB4','#6
 window.CLH_makerCharts=[]; window.CLH_priceCharts=[]; window.CLH_priceChartObjs=[]; window.CLH_stackChart=null;
 
 function CLHYearColor(y, years){
+  if(+y===2024)return '#F6BD16';
   var ys=years.slice().sort();
   var latest=ys[ys.length-1], prev=ys[ys.length-2];
   if(+y===+latest)return '#000000';
@@ -1669,6 +1672,7 @@ window.CLHInit=function(){
   var CATEGORIES=['乘用车','货车'];
   var ENERGIES=['燃油','新能源'];
   function yearColor(y, years){
+    if(+y===2024)return '#F6BD16';
     var ys=years.slice().sort(function(a,b){return a-b;}), latest=ys[ys.length-1], prev=ys[ys.length-2];
     if(+y===+latest)return '#000000';
     if(+y===+prev)return '#E60000';
