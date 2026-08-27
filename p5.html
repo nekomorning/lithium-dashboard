@@ -321,7 +321,7 @@ th .arr.up{color:var(--down);}
 
 <script>
 (function(){
-  Promise.all([fetch('p5.json?v=1787750920').then(function(r){return r.json();}),fetch('clh.json?v=1787750920').then(function(r){return r.json();}),fetch('export.json?v=1787750920').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('p5.json?v=1787796572').then(function(r){return r.json();}),fetch('clh.json?v=1787796572').then(function(r){return r.json();}),fetch('export.json?v=1787796572').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; window.CLH=rs[1]; window.EXPORT=rs[2]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -810,13 +810,11 @@ function renderCn(){
   var MONTHS=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
   var FUELKEYS={total:'乘用车总体',nev:'新能源车',ice:'燃油车'};
   var PALETTE=['#5B8FF9','#61C6B5','#F6BD16','#9661BC','#78D3F8','#F08BB4','#65789B','#7cb305','#d48265'];
-  function yearColor(y, years){
-    var ys=years.slice().sort();
-    var latest=ys[ys.length-1], prev=ys[ys.length-2];
-    if(+y===+latest)return '#000000';
-    if(+y===+prev)return '#E60000';
-    var idx=ys.indexOf(+y); if(idx<0)idx=ys.indexOf(String(y));
-    return PALETTE[(idx>=0?idx:0)%PALETTE.length];
+  function yearColor(y){
+    var yi=+y;
+    if(yi===2026)return '#000000';
+    if(yi===2025)return '#E60000';
+    return PALETTE[Math.abs(yi)%PALETTE.length];
   }
   function fmt(v){if(v==null||isNaN(v))return '—';return Number(v).toLocaleString('zh-CN')}
   function fmtW(v){if(v==null||isNaN(v))return '—';return (v/10000).toFixed(1)+'万';}
@@ -835,11 +833,10 @@ function renderCn(){
     var axisSize=sm?8:10;
     var years=Object.keys(seriesByYear).map(Number).sort(function(a,b){return a-b});
     var series=years.filter(function(y){return visibleYears.indexOf(y)>=0}).map(function(y){
-      var latest=Math.max.apply(null,years);
       return {
         name:String(y),type:'line',connectNulls:true,symbol:'circle',symbolSize:sm?2:3,
-        lineStyle:{width:(y===latest||y===latest-1)?(sm?1.6:2.2):(sm?1:1.3),color:yearColor(y,years)},
-        itemStyle:{color:yearColor(y,years)},
+        lineStyle:{width:(+y===2026||+y===2025)?(sm?1.6:2.2):(sm?1:1.3),color:yearColor(y)},
+        itemStyle:{color:yearColor(y)},
         emphasis:{focus:'series'},
         data:seriesByYear[y]||seriesByYear[String(y)]
       };
@@ -947,7 +944,7 @@ function renderCn(){
         var arr=new Array(12).fill(null);
         for(var m=0;m<12;m++){ var v=src[m]; arr[m]=(v==null||isNaN(v))?null:v; }
         return {name:String(y),type:'line',connectNulls:true,symbol:'circle',symbolSize:4,
-          lineStyle:{width:(+y===2026)?2.2:1.3,color:yearColor(y,yrs)},itemStyle:{color:yearColor(y,yrs)},
+          lineStyle:{width:(+y===2026||+y===2025)?2.2:1.3,color:yearColor(y)},itemStyle:{color:yearColor(y)},
           emphasis:{focus:'series'},data:arr};
       });
       var c=echarts.init(document.getElementById('rankSea_'+idx));
@@ -1204,19 +1201,25 @@ function renderCn(){
         });
       });
       var card=document.createElement('div');card.className='card';
-      card.innerHTML='<div class="ct">'+m+'</div>';
+      var band=(md[m]||{}).priceBand;
+      card.innerHTML='<div class="ct">'+m+(band?' · '+band:'')+'</div>';
       // 标题下方：最新月度 / 当年累计 / 环比% / 同比% / 累计同比%
-      var LYv=byYear[LY]||byYear[String(LY)]||[];
-      var PYv=byYear[LY-1]||byYear[String(LY-1)]||[];
+      // 使用该车型的实际最新年份/月份（停售车型不再被强制套用全局 LY/LM）
+      var modelYears=Object.keys(byYear).map(Number).sort(function(a,b){return a-b});
+      var mLatestY=modelYears[modelYears.length-1]||LY;
+      var mPrevY=mLatestY-1;
+      var LYv=byYear[mLatestY]||byYear[String(mLatestY)]||[];
+      var PYv=byYear[mPrevY]||byYear[String(mPrevY)]||[];
       var lat=null,latMi=-1;
-      for(var mi=LM-1;mi>=0;mi--){if(LYv[mi]!=null){lat=LYv[mi];latMi=mi;break;}}
+      for(var mi=11;mi>=0;mi--){if(LYv[mi]!=null){lat=LYv[mi];latMi=mi;break;}}
+      var metaLM=(latMi>=0?latMi+1:LM);
       var mom=null;
       if(latMi>0&&LYv[latMi-1]!=null)mom=pct(lat,LYv[latMi-1]);
       else if(latMi===0&&PYv[11]!=null)mom=pct(lat,PYv[11]);
       var yoy=null;
       if(latMi>=0&&PYv[latMi]!=null)yoy=pct(lat,PYv[latMi]);
       var cum=0,cumHas=false,cumP=0,cumPHas=false;
-      for(var ci=0;ci<LM;ci++){if(LYv[ci]!=null){cum+=LYv[ci];cumHas=true;}if(PYv[ci]!=null){cumP+=PYv[ci];cumPHas=true;}}
+      for(var ci=0;ci<metaLM;ci++){if(LYv[ci]!=null){cum+=LYv[ci];cumHas=true;}if(PYv[ci]!=null){cumP+=PYv[ci];cumPHas=true;}}
       var cumYoy=(cumHas&&cumPHas)?pct(cum,cumP):null;
       var meta='<div class="mstat">'
         +'<span>最新 <b>'+(lat==null?'—':fmtW(lat))+'</b></span>'
