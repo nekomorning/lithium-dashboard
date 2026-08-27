@@ -284,6 +284,9 @@ th .arr.up{color:var(--down);}
     <div class="card"><div class="ct" id="p3StackTitle">车型销量结构（堆积）</div><div class="chart tall" id="p3stack"></div></div>
 
     <div class="section-title">车型季节图<span style="font-size:12px;color:var(--sub);font-weight:400;margin-left:8px">（跟随上方筛选 · 堆积图 全部车型 · 一行 4 图）</span></div>
+    <div class="toolbar" style="margin-top:-2px;margin-bottom:10px;">
+      <div class="grp"><label>车型排序：</label><span id="p3SeasonSort"></span></div>
+    </div>
     <div id="p3ModelSeasonal"></div>
   </div>
 
@@ -321,7 +324,7 @@ th .arr.up{color:var(--down);}
 
 <script>
 (function(){
-  Promise.all([fetch('p5.json?v=1787804395').then(function(r){return r.json();}),fetch('clh.json?v=1787804395').then(function(r){return r.json();}),fetch('export.json?v=1787804395').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('p5.json?v=1787807941').then(function(r){return r.json();}),fetch('clh.json?v=1787807941').then(function(r){return r.json();}),fetch('export.json?v=1787807941').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; window.CLH=rs[1]; window.EXPORT=rs[2]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -1026,7 +1029,55 @@ function renderCn(){
   var p3Visible=[];
   var p3ChartObjs=null, stackChart=null;
   var modelCharts=[];
+  var p3SeasonSort='sales';
   var NEVSET={'纯电动':1,'插混':1,'混合动力':1},ICESET={'常规':1};
+  function modelBase(m){ var r=/^([\u4e00-\u9fa5]+)/.exec(m||''); return r?r[1]:(m||''); }
+  function parsePriceBand(b){
+    if(!b) return -999;
+    var range=(b||'').match(/(\d+(?:\.\d+)?)\s*万?\s*[-~]\s*(\d+(?:\.\d+)?)\s*万?/);
+    if(range) return +range[2];
+    var above=(b||'').match(/(\d+(?:\.\d+)?)\s*万?\s*以上/);
+    if(above) return +above[1];
+    var below=(b||'').match(/(\d+(?:\.\d+)?)\s*万?\s*以下/);
+    if(below) return +below[1];
+    return -999;
+  }
+  function sortModels(models, sortMode){
+    var md=DASH.makers[p3maker]||{};
+    function calcTot(m){
+      var tot=0;
+      Object.keys(md[m]||{}).forEach(function(f){
+        if(!fuelMatch(f,p3fuel))return;
+        var fobj=md[m][f];
+        if(!fobj||typeof fobj!=='object'||Array.isArray(fobj))return;
+        Object.keys(fobj).forEach(function(ps){
+          Object.keys(fobj[ps]||{}).forEach(function(y){
+            var arr12=fobj[ps][y];
+            if(Array.isArray(arr12)) arr12.forEach(function(v){tot+=v||0;});
+          });
+        });
+      });
+      return tot;
+    }
+    var arr=models.map(function(m){
+      var band=(md[m]||{}).priceBand||'';
+      return {m:m, base:modelBase(m), band:band, bandUpper:parsePriceBand(band), tot:calcTot(m)};
+    });
+    if(sortMode==='price'){
+      arr.sort(function(a,b){
+        if(b.bandUpper!==a.bandUpper) return b.bandUpper-a.bandUpper;
+        if(a.base!==b.base) return a.base.localeCompare(b.base,'zh');
+        return a.m.localeCompare(b.m,'zh');
+      });
+    }else{
+      arr.sort(function(a,b){
+        if(b.tot!==a.tot) return b.tot-a.tot;
+        if(a.base!==b.base) return a.base.localeCompare(b.base,'zh');
+        return a.m.localeCompare(b.m,'zh');
+      });
+    }
+    return arr.map(function(x){return x.m;});
+  }
   function fuelMatch(f,fk){if(fk==='total')return true;if(fk==='nev')return !!NEVSET[f];if(fk==='ice')return !!ICESET[f];return true}
   function p3Models(){
     var md=DASH.makers[p3maker]||{};
@@ -1121,6 +1172,7 @@ function renderCn(){
     chipGroup('p3Fuel',[{label:'总体',value:'total'},{label:'新能源车',value:'nev'},{label:'燃油车',value:'ice'}],p3fuel,function(v){p3fuel=v;p3model='__ALL__';fillModels();buildP3Controls();renderP3()});
     chipGroup('p3Years',DASH.p3Years.map(function(y){return{label:String(y),value:y}}),null,function(){renderP3()},true,p3Visible);
     chipGroup('p3StackPs',[{label:'批发',value:'批发'},{label:'零售',value:'零售'},{label:'出口',value:'出口'}],p3stackPs,function(v){p3stackPs=v;buildP3Controls();renderStack()});
+    chipGroup('p3SeasonSort',[{label:'销量从高到低',value:'sales'},{label:'价格段从高到低',value:'price'}],p3SeasonSort,function(v){p3SeasonSort=v;renderModelSeasonal(p3Models())});
     fillModels();
   }
   function fillModels(){
@@ -1195,6 +1247,7 @@ function renderCn(){
   function renderModelSeasonal(top){
     var root=document.getElementById('p3ModelSeasonal');
     if(!root)return;
+    top=sortModels(top.slice(),p3SeasonSort);
     root.innerHTML='';
     modelCharts.forEach(function(c){try{c.dispose();}catch(e){}});modelCharts=[];
     var grid=document.createElement('div');grid.className='grid4';grid.style.gridTemplateColumns='repeat(4,minmax(0,1fr))';
