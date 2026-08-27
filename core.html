@@ -105,6 +105,10 @@ body{background:var(--bg); color:var(--text);
 .review-chart{flex:1; min-height:0; border:1px solid var(--border); border-radius:8px; background:#fff; margin-top:4px;}
 .review-text{flex:1; display:flex; flex-direction:column;}
 .review-text .logic{flex:1; margin:0; min-height:0; overflow:auto;}
+.review-grid-bottom{margin-top:16px;}
+.review-card .card-head .ttl[contenteditable="true"]{cursor:text; outline:none; border-radius:4px; padding:1px 5px; transition:background .15s, box-shadow .15s;}
+.review-card .card-head .ttl[contenteditable="true"]:hover{background:#f0f3f8;}
+.review-card .card-head .ttl[contenteditable="true"]:focus{background:#eef4ff; box-shadow:0 0 0 1px var(--accent);}
 @media (max-width:1100px){ .review-grid{grid-template-columns:1fr;} }
 </style>
 </head>
@@ -149,28 +153,8 @@ body{background:var(--bg); color:var(--text);
   <!-- 复盘板块 -->
   <section class="review-section">
     <h2 class="sec-title">复盘</h2>
-    <div class="review-grid">
-      <div class="review-card">
-        <div class="card-head"><span class="ttl">跨页数据对比</span>
-          <div class="actions">
-            <button class="abtn" id="reviewSave">保存</button>
-            <button class="abtn" id="reviewClearSel">清空</button>
-          </div>
-        </div>
-        <div class="review-selectors">
-          <select id="reviewSel0" class="review-sel"></select>
-          <select id="reviewSel1" class="review-sel"></select>
-          <select id="reviewSel2" class="review-sel"></select>
-        </div>
-        <div id="reviewChart" class="review-chart"></div>
-      </div>
-      <div class="review-card">
-        <div class="card-head"><span class="ttl">复盘笔记</span>
-          <button class="abtn" id="reviewNoteEdit">编辑</button>
-        </div>
-        <div class="review-text"><div class="logic" id="reviewNoteBox"><ul id="reviewNoteList"></ul></div></div>
-      </div>
-    </div>
+    <div class="review-grid" id="reviewGridTop"></div>
+    <div class="review-grid review-grid-bottom" id="reviewGridBottom"></div>
   </section>
 
   <div class="modal" id="modal">
@@ -322,7 +306,7 @@ function fetchJson(u){
 /* ---- 定价逻辑 / 行标题 / 保存内容 ---- */
 function esc(s){ var d=document.createElement("div"); d.textContent=(s==null?"":String(s)); return d.innerHTML; }
 function logicLineToHtml(line){
-  var s=esc(line);
+  var s=esc((line||"").trim());
   s=s.replace(/^([供应需求核心价格供需]+\s*[:：])/, '<b>$1</b>');
   s=s.replace(/\*\*([^*]+)\*\*/g, '<span style="color:#e0301e;font-weight:700">$1</span>');
   s=s.replace(/@@([^@]+)@@/g, '<span style="color:#0f4c81;font-weight:700">$1</span>');
@@ -351,7 +335,7 @@ function setRowNote(cardId, text){
 }
 function contentPayload(){
   return {logic: logicText||DEFAULT_LOGIC, rowNotes: rowNotes, history: logicHistory,
-          reviewText: reviewText||DEFAULT_REVIEW, reviewSel: reviewSel,
+          reviewText: reviewText||DEFAULT_REVIEW, reviewCards: reviewCards.map(function(c){ return {title:c.title, sel:c.sel.slice()}; }),
           savedAt: new Date().toLocaleString('zh-CN')};
 }
 function saveContentAuto(){ try{ localStorage.setItem(CONTENT_KEY, JSON.stringify(contentPayload())); }catch(e){} }
@@ -364,7 +348,16 @@ function loadContent(){
     if(Array.isArray(data.rowNotes)) rowNotes=data.rowNotes;
     if(Array.isArray(data.history)) logicHistory=data.history;
     if(Array.isArray(data.reviewText)&&data.reviewText.length) reviewText=data.reviewText;
-    if(Array.isArray(data.reviewSel)){ reviewSel=data.reviewSel.slice(0,3); for(var i=reviewSel.length;i<3;i++) reviewSel.push(""); }
+    if(Array.isArray(data.reviewCards)){
+      data.reviewCards.slice(0, reviewCards.length).forEach(function(rc, i){
+        if(rc && typeof rc==="object"){
+          if(typeof rc.title==="string" && rc.title.trim()) reviewCards[i].title=rc.title.trim();
+          if(Array.isArray(rc.sel)){ reviewCards[i].sel=rc.sel.slice(0,3); for(var k=reviewCards[i].sel.length;k<3;k++) reviewCards[i].sel.push(""); }
+        }
+      });
+    } else if(Array.isArray(data.reviewSel)){
+      reviewCards[0].sel=data.reviewSel.slice(0,3); for(var k=reviewCards[0].sel.length;k<3;k++) reviewCards[0].sel.push("");
+    }
   }
   renderLogic();
   renderReviewNoteBox();
@@ -660,8 +653,7 @@ function init(){
       loadContent();
       layout=loadLayout();
       renderAll();
-      populateReviewSelects();
-      drawReviewChartFromSel();
+      renderReviewCards();
     })
     .catch(function(e){ document.getElementById("charts").innerHTML="<div style='padding:20px;color:#c00'>初始化失败："+e.message+"</div>"; });
 }
@@ -907,7 +899,13 @@ function buildYearBar(){
 /* ============ 复盘板块 ============ */
 var REVIEW_CATALOG=[], reviewCatalogMap={};
 var REVIEW_PALETTE=["#1E6FFF","#E0301E","#2a3345","#0a9a5c","#8B5CF6","#F59A23"];
-var reviewText=null, reviewSel=["","",""], reviewChart=null;
+var reviewText=null;
+/* 复盘对比图实例改由各卡片 reviewCards[i].chart 管理，不再用全局 reviewChart */
+var reviewCards=[
+  {title:"跨页数据对比", sel:["","",""], chart:null},
+  {title:"跨页数据对比 二", sel:["","",""], chart:null},
+  {title:"跨页数据对比 三", sel:["","",""], chart:null}
+];
 var DEFAULT_REVIEW=[
   "复盘：**记录关键判断与事后验证**，用 **红** / @@蓝@@ / %%绿%% 区分结论、驱动、风险",
   "供应：",
@@ -971,13 +969,12 @@ function buildReviewCatalog(){
   });
 }
 function drawReviewChart(div, entries){
-  if(reviewChart){ try{ reviewChart.dispose(); }catch(e){} reviewChart=null; }
   if(!div) return;
   if(!entries||!entries.length){ div.innerHTML='<div style="padding:30px;color:#6b7686;text-align:center">请在上方的下拉框中选择 1–3 个对比指标（可跨页）</div>'; return; }
   if(!window.echarts){ div.innerHTML="<div style='padding:20px;color:#c00'>ECharts 未加载</div>"; return; }
   var fixedColors=["#1E6FFF","#E0301E","#2a3345"];
   div.style.height='100%';
-  var c=echarts.init(div); reviewChart=c;
+  var c=echarts.init(div);
   var series=[], legend=[], yAxisDefs=[], nameMap={};
   var allDates=[];
   entries.forEach(function(en, i){
@@ -1025,30 +1022,70 @@ function drawReviewChart(div, entries){
     series:series
   });
   setTimeout(function(){ try{ c.resize(); }catch(e){} }, 0);
+  return c;
 }
-function populateReviewSelects(){
-  var sels=[document.getElementById("reviewSel0"),document.getElementById("reviewSel1"),document.getElementById("reviewSel2")];
+function buildReviewOptions(cur){
   var byPage={};
   REVIEW_CATALOG.forEach(function(en){ (byPage[en.page]=byPage[en.page]||[]).push(en); });
-  sels.forEach(function(sel, i){
-    if(!sel) return;
-    var cur=reviewSel[i]||"";
-    sel.innerHTML='<option value="">— 对比项 '+(i+1)+' —</option>';
-    Object.keys(byPage).forEach(function(p){
-      var og=document.createElement("optgroup"); og.label=p;
-      byPage[p].forEach(function(en){
-        var o=document.createElement("option"); o.value=en.id; o.textContent=en.name;
-        if(en.id===cur) o.selected=true;
-        og.appendChild(o);
-      });
-      sel.appendChild(og);
-    });
-    sel.onchange=function(){ reviewSel[i]=sel.value||""; saveContentAuto(); drawReviewChartFromSel(); };
+  var html='<option value="">— 对比项 —</option>';
+  Object.keys(byPage).forEach(function(p){
+    html+='<optgroup label="'+esc(p)+'">';
+    byPage[p].forEach(function(en){ html+='<option value="'+esc(en.id)+'"'+(en.id===cur?' selected':'')+'>'+esc(en.name)+'</option>'; });
+    html+='</optgroup>';
   });
+  return html;
 }
-function drawReviewChartFromSel(){
-  var entries=reviewSel.filter(Boolean).map(function(id){ return reviewCatalogMap[id]; }).filter(Boolean);
-  drawReviewChart(document.getElementById("reviewChart"), entries);
+/* 复盘对比卡片容器：顶部 grid = 卡片0 + 笔记；底部 grid = 卡片1 + 卡片2 */
+function renderReviewCards(){
+  var top=document.getElementById("reviewGridTop"), bot=document.getElementById("reviewGridBottom");
+  if(!top||!bot) return;
+  top.innerHTML=""; bot.innerHTML="";
+  buildReviewCardEl(0, top);
+  var note=document.createElement("div"); note.className="review-card";
+  note.innerHTML='<div class="card-head"><span class="ttl">复盘笔记</span><button class="abtn" id="reviewNoteEdit">编辑</button></div><div class="review-text"><div class="logic" id="reviewNoteBox"><ul id="reviewNoteList"></ul></div></div>';
+  top.appendChild(note);
+  buildReviewCardEl(1, bot);
+  buildReviewCardEl(2, bot);
+  var nb=document.getElementById("reviewNoteEdit"); if(nb) nb.onclick=openReviewNoteEdit;
+  renderReviewNoteBox();
+}
+function buildReviewCardEl(idx, container){
+  var card=reviewCards[idx]; if(!card) return;
+  var wrap=document.createElement("div"); wrap.className="review-card";
+  var selHtml=""; for(var j=0;j<3;j++) selHtml+='<select class="review-sel"></select>';
+  wrap.innerHTML=
+    '<div class="card-head"><span class="ttl" contenteditable="true" spellcheck="false">'+esc(card.title)+'</span>'+
+    '<div class="actions"><button class="abtn review-save">保存</button><button class="abtn review-clear">清空</button></div></div>'+
+    '<div class="review-selectors">'+selHtml+'</div>'+
+    '<div class="review-chart" id="reviewChart'+idx+'"></div>';
+  container.appendChild(wrap);
+  var ttl=wrap.querySelector(".ttl");
+  ttl.addEventListener("input", function(){ card.title=ttl.textContent.trim()||("跨页数据对比 "+(idx+1)); saveContentAuto(); });
+  ttl.addEventListener("blur", function(){ var v=ttl.textContent.trim(); card.title=v||("跨页数据对比 "+(idx+1)); ttl.textContent=card.title; saveContentAuto(); });
+  var sels=wrap.querySelectorAll(".review-sel");
+  sels.forEach(function(sel, j){
+    sel.innerHTML=buildReviewOptions(card.sel[j]);
+    sel.onchange=function(){ card.sel[j]=sel.value||""; drawReviewChartForCard(idx); saveContentAuto(); };
+  });
+  wrap.querySelector(".review-save").onclick=function(){
+    var b=this, orig=b.textContent;
+    try{
+      localStorage.setItem(CONTENT_SAVED_KEY, JSON.stringify(contentPayload()));
+      saveContentAuto();
+      var t=new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+      b.textContent="已保存 "+t; b.classList.add("saved");
+      setTimeout(function(){ b.textContent=orig; b.classList.remove("saved"); }, 2500);
+    }catch(e){ alert("保存失败："+e.message); }
+  };
+  wrap.querySelector(".review-clear").onclick=function(){ card.sel=["","",""]; var ss=wrap.querySelectorAll(".review-sel"); ss.forEach(function(s){ s.value=""; }); drawReviewChartForCard(idx); saveContentAuto(); };
+  drawReviewChartForCard(idx);
+}
+function drawReviewChartForCard(idx){
+  var card=reviewCards[idx]; if(!card) return;
+  var div=document.getElementById("reviewChart"+idx); if(!div) return;
+  if(card.chart){ try{ card.chart.dispose(); }catch(e){} card.chart=null; }
+  var entries=card.sel.filter(Boolean).map(function(id){ return reviewCatalogMap[id]; }).filter(Boolean);
+  card.chart=drawReviewChart(div, entries);
 }
 /* 复盘笔记 */
 function renderReviewNoteBox(){
@@ -1057,6 +1094,9 @@ function renderReviewNoteBox(){
   var lines=reviewText||DEFAULT_REVIEW;
   lines.forEach(function(line){
     var li=document.createElement("li");
+    var lead=(line.match(/^[\s\t]*/)||[""])[0];
+    var level=Math.floor(lead.replace(/\t/g,"  ").length/2);
+    if(level>0) li.style.paddingLeft=(level*18)+"px";
     li.innerHTML=logicLineToHtml(line);
     ul.appendChild(li);
   });
@@ -1117,29 +1157,20 @@ document.getElementById("modalHistory").addEventListener("click", function(e){ i
 document.getElementById("modalClose").onclick=closePicker;
 document.getElementById("modal").addEventListener("click", function(e){ if(e.target===this) closePicker(); });
 document.getElementById("modalSearch").addEventListener("input", function(e){ renderPickerList(e.target.value); });
-window.addEventListener("resize", function(){ charts.forEach(function(c){ try{ c.resize(); }catch(e){} }); if(reviewChart){ try{ reviewChart.resize(); }catch(e){} } });
+window.addEventListener("resize", function(){ charts.forEach(function(c){ try{ c.resize(); }catch(e){} }); reviewCards.forEach(function(c){ if(c.chart){ try{ c.chart.resize(); }catch(e){} } }); });
 document.addEventListener("click", function(e){
   if(e.target.closest(".menu-btn")) return;
   document.querySelectorAll(".card .menu.show").forEach(function(m){ m.classList.remove("show"); });
 });
 /* 复盘事件 */
-document.getElementById("reviewSave").onclick=function(){
-  var b=this, orig=b.textContent;
-  try{
-    localStorage.setItem(CONTENT_SAVED_KEY, JSON.stringify(contentPayload()));
-    saveContentAuto();
-    var t=new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
-    b.textContent="已保存 "+t;
-    b.classList.add("saved");
-    setTimeout(function(){ b.textContent=orig; b.classList.remove("saved"); }, 2500);
-  }catch(e){ alert("保存失败："+e.message); }
-};
-document.getElementById("reviewClearSel").onclick=function(){ reviewSel=["","",""]; saveContentAuto(); populateReviewSelects(); drawReviewChartFromSel(); };
-document.getElementById("reviewNoteEdit").onclick=openReviewNoteEdit;
 document.getElementById("reviewNoteClose").onclick=closeReviewNoteEdit;
 document.getElementById("reviewNoteCancel").onclick=closeReviewNoteEdit;
 document.getElementById("reviewNoteSave").onclick=saveReviewNoteEdit;
 document.getElementById("modalReviewNote").addEventListener("click", function(e){ if(e.target===this) closeReviewNoteEdit(); });
+/* 复盘笔记编辑框：Tab 键插入缩进（2 空格 = 1 层级），渲染时按层级缩进突出 */
+document.getElementById("reviewNoteInput").addEventListener("keydown", function(e){
+  if(e.key==="Tab"){ e.preventDefault(); var s=this.selectionStart, en=this.selectionEnd; this.value=this.value.slice(0,s)+"  "+this.value.slice(en); this.selectionStart=this.selectionEnd=s+2; }
+});
 </script>
 </body>
 </html>
