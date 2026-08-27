@@ -98,7 +98,7 @@ select{border:1px solid var(--border); border-radius:6px; padding:5px 8px; font-
 .rank-sea-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:12px 14px; margin-top:10px;}
 .rank-sea-cell{border:1px solid #eef0f3; border-radius:8px; padding:6px 8px 4px; background:#fff;}
 .rank-sea-ttl{font-size:13px; font-weight:600; color:#1f2937; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-.rank-sea-chart{width:100%; height:160px;}
+.rank-sea-chart{width:100%; height:220px;}
 @media (max-width:1400px){ .rank-sea-grid{grid-template-columns:repeat(3,1fr);} }
 @media (max-width:1100px){ .rank-sea-grid{grid-template-columns:repeat(2,1fr);} }
 @media (max-width:640px){ .rank-sea-grid{grid-template-columns:1fr;} }
@@ -274,9 +274,9 @@ th .arr.up{color:var(--down);}
       <div class="grp"><label>年份：</label><span id="p3Years"></span></div>
     </div>
     <div class="grid3">
-      <div class="card"><div class="ct">批发销量（辆）</div><div class="chart" id="p3c1"></div></div>
-      <div class="card"><div class="ct">零售销量（辆）</div><div class="chart" id="p3c2"></div></div>
-      <div class="card"><div class="ct">出口销量（辆）</div><div class="chart" id="p3c3"></div></div>
+      <div class="card"><div class="ct">批发销量（辆）</div><div class="mstat" id="p3c1Meta"></div><div class="chart" id="p3c1"></div></div>
+      <div class="card"><div class="ct">零售销量（辆）</div><div class="mstat" id="p3c2Meta"></div><div class="chart" id="p3c2"></div></div>
+      <div class="card"><div class="ct">出口销量（辆）</div><div class="mstat" id="p3c3Meta"></div><div class="chart" id="p3c3"></div></div>
     </div>
     <div class="toolbar" style="margin-top:12px">
       <div class="grp"><label>堆积图销量类别：</label><span id="p3StackPs"></span></div>
@@ -324,7 +324,7 @@ th .arr.up{color:var(--down);}
 
 <script>
 (function(){
-  Promise.all([fetch('p5.json?v=1787807941').then(function(r){return r.json();}),fetch('clh.json?v=1787807941').then(function(r){return r.json();}),fetch('export.json?v=1787807941').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('p5.json?v=1787808974').then(function(r){return r.json();}),fetch('clh.json?v=1787808974').then(function(r){return r.json();}),fetch('export.json?v=1787808974').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; window.CLH=rs[1]; window.EXPORT=rs[2]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -830,6 +830,30 @@ function renderCn(){
     var cls=p>=0?'up':'down', sign=p>=0?'+':'';
     return '<span class="'+cls+'">'+sign+p.toFixed(1)+suffix+'</span>';
   }
+  function seasonalMetaHtml(byYear){
+    var yrs=Object.keys(byYear||{}).map(Number).sort(function(a,b){return a-b;});
+    var latestY=yrs[yrs.length-1]||LY;
+    var prevY=latestY-1;
+    var LYv=byYear[latestY]||byYear[String(latestY)]||[];
+    var PYv=byYear[prevY]||byYear[String(prevY)]||[];
+    var lat=null,latMi=-1;
+    for(var mi=11;mi>=0;mi--){ if(LYv[mi]!=null){ lat=LYv[mi]; latMi=mi; break; } }
+    var metaLM=(latMi>=0?latMi+1:LM);
+    var mom=null;
+    if(latMi>0 && LYv[latMi-1]!=null) mom=pct(lat,LYv[latMi-1]);
+    else if(latMi===0 && PYv[11]!=null) mom=pct(lat,PYv[11]);
+    var yoy=(latMi>=0 && PYv[latMi]!=null)?pct(lat,PYv[latMi]):null;
+    var cum=0,cumHas=false,cumP=0,cumPHas=false;
+    for(var ci=0;ci<metaLM;ci++){ if(LYv[ci]!=null){cum+=LYv[ci];cumHas=true;} if(PYv[ci]!=null){cumP+=PYv[ci];cumPHas=true;} }
+    var cumYoy=(cumHas&&cumPHas)?pct(cum,cumP):null;
+    return '<div class="mstat">'
+      +'<span>最新 <b>'+(lat==null?'—':fmtW(lat))+'</b></span>'
+      +'<span>累计 <b>'+(cumHas?fmtW(cum):'—')+'</b></span>'
+      +'<span>环比 '+pctHtml(mom)+'</span>'
+      +'<span>同比 '+pctHtml(yoy)+'</span>'
+      +'<span>累计同比 '+pctHtml(cumYoy)+'</span>'
+      +'</div>';
+  }
   var charts=[];
   function mkChart(el){var c=echarts.init(el);charts.push(c);return c}
   function seasonalOption(seriesByYear, visibleYears, opts){
@@ -934,12 +958,24 @@ function renderCn(){
     if(!grid)return;
     var d=DASH.rank[p2fuel][p2ps]||{};
     var topMakers=rankRows.slice(0,20).map(function(r){return r.mk;});
+    var rowMap={}; rankRows.forEach(function(r){rowMap[r.mk]=r;});
     var yrs=(DASH.rankYears||[]).map(Number).sort(function(a,b){return a-b});
     var note=document.getElementById('rankSeaNote');
     if(note)note.textContent='（'+topMakers.length+'家 · '+p2fuelLabel(p2fuel)+' · '+p2ps+' · 单位：万辆）';
     var html='';
     topMakers.forEach(function(mk,idx){
-      html+='<div class="rank-sea-cell"><div class="rank-sea-ttl">'+(idx+1)+'. '+mk+'</div><div class="rank-sea-chart" id="rankSea_'+idx+'"></div></div>';
+      var r=rowMap[mk];
+      var meta='';
+      if(r){
+        meta='<div class="mstat" style="font-size:9px;padding:1px 0 4px;gap:1px 5px;">'
+          +'<span>最新 <b>'+fmtW(r.cur)+'</b></span>'
+          +'<span>累计 <b>'+fmtW(r.cum)+'</b></span>'
+          +'<span>环比 '+pctHtml(r.mom)+'</span>'
+          +'<span>同比 '+pctHtml(r.yoy)+'</span>'
+          +'<span>累计同比 '+pctHtml(r.cyoy)+'</span>'
+          +'</div>';
+      }
+      html+='<div class="rank-sea-cell"><div class="rank-sea-ttl">'+(idx+1)+'. '+mk+'</div>'+meta+'<div class="rank-sea-chart" id="rankSea_'+idx+'"></div></div>';
     });
     grid.innerHTML=html;
     topMakers.forEach(function(mk,idx){
@@ -1187,8 +1223,12 @@ function renderCn(){
     if(!p3ChartObjs){
       p3ChartObjs=[mkChart(document.getElementById('p3c1')),mkChart(document.getElementById('p3c2')),mkChart(document.getElementById('p3c3'))];
     }
+    var metaIds=['p3c1Meta','p3c2Meta','p3c3Meta'];
     ['批发','零售','出口'].forEach(function(ps,i){
-      p3ChartObjs[i].setOption(seasonalOption(p3Series(ps),p3Visible,{legend:true}),true);
+      var byY=p3Series(ps);
+      p3ChartObjs[i].setOption(seasonalOption(byY,p3Visible,{legend:true}),true);
+      var me=document.getElementById(metaIds[i]);
+      if(me)me.innerHTML=seasonalMetaHtml(byY);
     });
     renderStack();
   }
