@@ -109,6 +109,10 @@ body{background:var(--bg); color:var(--text);
 .review-card .card-head .ttl[contenteditable="true"]{cursor:text; outline:none; border-radius:4px; padding:1px 5px; transition:background .15s, box-shadow .15s;}
 .review-card .card-head .ttl[contenteditable="true"]:hover{background:#f0f3f8;}
 .review-card .card-head .ttl[contenteditable="true"]:focus{background:#eef4ff; box-shadow:0 0 0 1px var(--accent);}
+.review-card .card-head .actions{display:flex; gap:8px; align-items:center;}
+.review-card .card-head .yaxis-toggle{font-size:12px; color:#5a6675; display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none; padding:3px 6px; border-radius:6px; transition:background .15s;}
+.review-card .card-head .yaxis-toggle:hover{background:#f0f3f8;}
+.review-card .card-head .yaxis-toggle input{width:14px; height:14px; margin:0; accent-color:var(--accent); cursor:pointer;}
 @media (max-width:1100px){ .review-grid{grid-template-columns:1fr;} }
 </style>
 </head>
@@ -335,7 +339,7 @@ function setRowNote(cardId, text){
 }
 function contentPayload(){
   return {logic: logicText||DEFAULT_LOGIC, rowNotes: rowNotes, history: logicHistory,
-          reviewText: reviewText||DEFAULT_REVIEW, reviewCards: reviewCards.map(function(c){ return {title:c.title, sel:c.sel.slice()}; }),
+          reviewText: reviewText||DEFAULT_REVIEW, reviewCards: reviewCards.map(function(c){ return {title:c.title, sel:c.sel.slice(), unifyY:!!c.unifyY}; }),
           savedAt: new Date().toLocaleString('zh-CN')};
 }
 function saveContentAuto(){ try{ localStorage.setItem(CONTENT_KEY, JSON.stringify(contentPayload())); }catch(e){} }
@@ -353,6 +357,7 @@ function loadContent(){
         if(rc && typeof rc==="object"){
           if(typeof rc.title==="string" && rc.title.trim()) reviewCards[i].title=rc.title.trim();
           if(Array.isArray(rc.sel)){ reviewCards[i].sel=rc.sel.slice(0,3); for(var k=reviewCards[i].sel.length;k<3;k++) reviewCards[i].sel.push(""); }
+          reviewCards[i].unifyY=rc.unifyY===true;
         }
       });
     } else if(Array.isArray(data.reviewSel)){
@@ -902,9 +907,9 @@ var REVIEW_PALETTE=["#1E6FFF","#E0301E","#2a3345","#0a9a5c","#8B5CF6","#F59A23"]
 var reviewText=null;
 /* 复盘对比图实例改由各卡片 reviewCards[i].chart 管理，不再用全局 reviewChart */
 var reviewCards=[
-  {title:"跨页数据对比", sel:["","",""], chart:null},
-  {title:"跨页数据对比 二", sel:["","",""], chart:null},
-  {title:"跨页数据对比 三", sel:["","",""], chart:null}
+  {title:"跨页数据对比", sel:["","",""], chart:null, unifyY:false},
+  {title:"跨页数据对比 二", sel:["","",""], chart:null, unifyY:false},
+  {title:"跨页数据对比 三", sel:["","",""], chart:null, unifyY:false}
 ];
 var DEFAULT_REVIEW=[
   "复盘：**记录关键判断与事后验证**，用 **红** / @@蓝@@ / %%绿%% 区分结论、驱动、风险",
@@ -968,10 +973,11 @@ function buildReviewCatalog(){
     });
   });
 }
-function drawReviewChart(div, entries){
+function drawReviewChart(div, entries, unifyY){
   if(!div) return;
   if(!entries||!entries.length){ div.innerHTML='<div style="padding:30px;color:#6b7686;text-align:center">请在上方的下拉框中选择 1–3 个对比指标（可跨页）</div>'; return; }
   if(!window.echarts){ div.innerHTML="<div style='padding:20px;color:#c00'>ECharts 未加载</div>"; return; }
+  unifyY=!!unifyY;
   var fixedColors=["#1E6FFF","#E0301E","#2a3345"];
   div.style.height='100%';
   var c=echarts.init(div);
@@ -982,26 +988,41 @@ function drawReviewChart(div, entries){
     nameMap[en.name]=en;
     legend.push(en.name);
     var data=Object.keys(en.series||{}).sort().map(function(d){ allDates.push(d); return [d, en.series[d]]; });
-    var isLeft=i===0, isRight=i>0;
-    yAxisDefs.push({
-      type:"value", name:en.unit||"", scale:true,
-      position: isLeft?"left":"right",
-      offset: i>=2 ? (i-1)*36 : 0,
-      nameTextStyle:{fontSize:10,color:color,padding:isLeft?[0,0,0,6]:[0,6,0,0]},
-      axisLine:{show:true,lineStyle:{color:color,width:1.5}},
-      axisTick:{show:true,lineStyle:{color:color},inside:true},
-      axisLabel:{fontSize:10,color:color,inside:true, formatter:function(v){ return Math.abs(v)>=10000?(v/10000)+"万":(Math.abs(v)>=1000?(v/1000)+"k":v); }},
-      splitLine:{show:i===0, lineStyle:{color:"#eef1f6"}}
-    });
-    series.push({name:en.name, type:"line", showSymbol:false, connectNulls:true, yAxisIndex:i, data:data, lineStyle:{width:1.8,color:color}, itemStyle:{color:color}, emphasis:{focus:"series"}});
+    if(unifyY){
+      series.push({name:en.name, type:"line", showSymbol:false, connectNulls:true, yAxisIndex:0, data:data, lineStyle:{width:1.8,color:color}, itemStyle:{color:color}, emphasis:{focus:"series"}});
+    } else {
+      var isLeft=i===0, isRight=i>0;
+      yAxisDefs.push({
+        type:"value", name:en.unit||"", scale:true,
+        position: isLeft?"left":"right",
+        offset: i>=2 ? (i-1)*36 : 0,
+        nameTextStyle:{fontSize:10,color:color,padding:isLeft?[0,0,0,6]:[0,6,0,0]},
+        axisLine:{show:true,lineStyle:{color:color,width:1.5}},
+        axisTick:{show:true,lineStyle:{color:color},inside:true},
+        axisLabel:{fontSize:10,color:color,inside:true, formatter:function(v){ return Math.abs(v)>=10000?(v/10000)+"万":(Math.abs(v)>=1000?(v/1000)+"k":v); }},
+        splitLine:{show:i===0, lineStyle:{color:"#eef1f6"}}
+      });
+      series.push({name:en.name, type:"line", showSymbol:false, connectNulls:true, yAxisIndex:i, data:data, lineStyle:{width:1.8,color:color}, itemStyle:{color:color}, emphasis:{focus:"series"}});
+    }
   });
+  if(unifyY){
+    var commonUnit = entries.map(function(e){return e.unit||"";}).filter(Boolean).join(" / ");
+    yAxisDefs=[{
+      type:"value", name:commonUnit, scale:true, position:"left",
+      nameTextStyle:{fontSize:10,color:"#5a6675",padding:[0,0,0,6]},
+      axisLine:{show:true,lineStyle:{color:"#5a6675",width:1.5}},
+      axisTick:{show:true,lineStyle:{color:"#5a6675"},inside:true},
+      axisLabel:{fontSize:10,color:"#5a6675",inside:true, formatter:function(v){ return Math.abs(v)>=10000?(v/10000)+"万":(Math.abs(v)>=1000?(v/1000)+"k":v); }},
+      splitLine:{show:true, lineStyle:{color:"#eef1f6"}}
+    }];
+  }
   var startValue="2026-01-01", endValue=new Date().toISOString().slice(0,10);
   if(allDates.length){
     allDates.sort();
     endValue=allDates[allDates.length-1];
     if(allDates[0]>startValue) startValue=allDates[0];
   }
-  var rightPad = entries.length>=3 ? 78 : (entries.length===2 ? 42 : 4);
+  var rightPad = unifyY ? 4 : (entries.length>=3 ? 78 : (entries.length===2 ? 42 : 4));
   var pad2=function(n){return ("0"+n).slice(-2);};
   c.setOption({
     animation:false,
@@ -1053,9 +1074,12 @@ function buildReviewCardEl(idx, container){
   var card=reviewCards[idx]; if(!card) return;
   var wrap=document.createElement("div"); wrap.className="review-card";
   var selHtml=""; for(var j=0;j<3;j++) selHtml+='<select class="review-sel"></select>';
+  var toggleId='reviewUnifyY'+idx;
   wrap.innerHTML=
     '<div class="card-head"><span class="ttl" contenteditable="true" spellcheck="false">'+esc(card.title)+'</span>'+
-    '<div class="actions"><button class="abtn review-save">保存</button><button class="abtn review-clear">清空</button></div></div>'+
+    '<div class="actions">'+
+      '<label class="yaxis-toggle" for="'+toggleId+'"><input type="checkbox" id="'+toggleId+'" '+(card.unifyY?'checked':'')+'><span>统一纵轴</span></label>'+
+      '<button class="abtn review-save">保存</button><button class="abtn review-clear">清空</button></div></div>'+
     '<div class="review-selectors">'+selHtml+'</div>'+
     '<div class="review-chart" id="reviewChart'+idx+'"></div>';
   container.appendChild(wrap);
@@ -1067,6 +1091,8 @@ function buildReviewCardEl(idx, container){
     sel.innerHTML=buildReviewOptions(card.sel[j]);
     sel.onchange=function(){ card.sel[j]=sel.value||""; drawReviewChartForCard(idx); saveContentAuto(); };
   });
+  var yaxisToggle=wrap.querySelector(".yaxis-toggle input");
+  yaxisToggle.onchange=function(){ card.unifyY=!!yaxisToggle.checked; drawReviewChartForCard(idx); saveContentAuto(); };
   wrap.querySelector(".review-save").onclick=function(){
     var b=this, orig=b.textContent;
     try{
@@ -1085,7 +1111,7 @@ function drawReviewChartForCard(idx){
   var div=document.getElementById("reviewChart"+idx); if(!div) return;
   if(card.chart){ try{ card.chart.dispose(); }catch(e){} card.chart=null; }
   var entries=card.sel.filter(Boolean).map(function(id){ return reviewCatalogMap[id]; }).filter(Boolean);
-  card.chart=drawReviewChart(div, entries);
+  card.chart=drawReviewChart(div, entries, card.unifyY);
 }
 /* 复盘笔记 */
 function renderReviewNoteBox(){
