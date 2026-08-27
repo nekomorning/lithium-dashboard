@@ -321,7 +321,7 @@ th .arr.up{color:var(--down);}
 
 <script>
 (function(){
-  Promise.all([fetch('p5.json?v=1787796572').then(function(r){return r.json();}),fetch('clh.json?v=1787796572').then(function(r){return r.json();}),fetch('export.json?v=1787796572').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('p5.json?v=1787802944').then(function(r){return r.json();}),fetch('clh.json?v=1787802944').then(function(r){return r.json();}),fetch('export.json?v=1787802944').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; window.CLH=rs[1]; window.EXPORT=rs[2]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -1032,9 +1032,13 @@ function renderCn(){
       var tot=0;
       Object.keys(md[m]).forEach(function(f){
         if(!fuelMatch(f,p3fuel))return;
-        Object.keys(md[m][f]).forEach(function(ps){
-          Object.keys(md[m][f][ps]).forEach(function(y){
-            (md[m][f][ps][y]||[]).forEach(function(v){tot+=v||0});
+        var fobj=md[m][f];
+        if(!fobj||typeof fobj!=='object'||Array.isArray(fobj))return; // 跳过 priceBand 等非燃料元字段
+        Object.keys(fobj).forEach(function(ps){
+          Object.keys(fobj[ps]).forEach(function(y){
+            var arr12=fobj[ps][y];
+            if(!Array.isArray(arr12))return;
+            arr12.forEach(function(v){tot+=v||0});
           });
         });
       });
@@ -1050,9 +1054,12 @@ function renderCn(){
       if(p3model!=='__ALL__'&&m!==p3model)return;
       Object.keys(md[m]).forEach(function(f){
         if(!fuelMatch(f,p3fuel))return;
-        var pd=md[m][f][ps];if(!pd)return;
+        var fobj=md[m][f];
+        if(!fobj||typeof fobj!=='object'||Array.isArray(fobj))return; // 跳过 priceBand 等非燃料元字段
+        var pd=fobj[ps];if(!pd)return;
         Object.keys(pd).forEach(function(y){
           if(!out[y])out[y]=[null,null,null,null,null,null,null,null,null,null,null,null];
+          if(!Array.isArray(pd[y]))return;
           pd[y].forEach(function(v,i){if(v!=null)out[y][i]=(out[y][i]||0)+v});
         });
       });
@@ -1145,8 +1152,11 @@ function renderCn(){
     Object.keys(md).forEach(function(m){
       Object.keys(md[m]).forEach(function(f){
         if(!fuelMatch(f,p3fuel))return;
-        var pd=md[m][f][p3stackPs];if(!pd)return;
+        var fobj=md[m][f];
+        if(!fobj||typeof fobj!=='object'||Array.isArray(fobj))return; // 跳过 priceBand 等非燃料元字段
+        var pd=fobj[p3stackPs];if(!pd)return;
         Object.keys(pd).forEach(function(y){
+          if(!Array.isArray(pd[y]))return;
           pd[y].forEach(function(v,mi){
             if(v==null)return;
             var key=y+'-'+((mi+1)<10?'0':'')+(mi+1);
@@ -1194,9 +1204,12 @@ function renderCn(){
       (md[m]||{});
       Object.keys(md[m]||{}).forEach(function(f){
         if(!fuelMatch(f,p3fuel))return;
-        var pd=(md[m][f]||{})[p3stackPs];if(!pd)return;
+        var fobj=md[m][f];
+        if(!fobj||typeof fobj!=='object'||Array.isArray(fobj))return; // 跳过 priceBand 等非燃料元字段
+        var pd=fobj[p3stackPs];if(!pd)return;
         Object.keys(pd).forEach(function(y){
           if(!byYear[y])byYear[y]=[null,null,null,null,null,null,null,null,null,null,null,null];
+          if(!Array.isArray(pd[y]))return;
           pd[y].forEach(function(v,i){if(v!=null)byYear[y][i]=(byYear[y][i]||0)+v});
         });
       });
@@ -1484,9 +1497,13 @@ function CLHModels(){
     var tot=0;
     Object.keys(md[m]).forEach(function(f){
       if(!CLHFuelMatch(f,CLH_fuel2))return;
-      Object.keys(md[m][f]).forEach(function(ps){
-        Object.keys(md[m][f][ps]).forEach(function(y){
-          (md[m][f][ps][y]||[]).forEach(function(v){tot+=v||0});
+      var fobj=md[m][f];
+      if(!fobj||typeof fobj!=='object'||Array.isArray(fobj))return; // 跳过 priceBand 等非燃料元字段
+      Object.keys(fobj).forEach(function(ps){
+        Object.keys(fobj[ps]).forEach(function(y){
+          var arr12=fobj[ps][y];
+          if(!Array.isArray(arr12))return;
+          arr12.forEach(function(v){tot+=v||0});
         });
       });
     });
@@ -1503,9 +1520,12 @@ function CLHSeries(ps){
     if(CLH_model!=='__ALL__'&&m!==CLH_model)return;
     Object.keys(md[m]).forEach(function(f){
       if(!CLHFuelMatch(f,CLH_fuel2))return;
-      var pd=md[m][f][ps];if(!pd)return;
+      var fobj=md[m][f];
+      if(!fobj||typeof fobj!=='object'||Array.isArray(fobj))return; // 跳过 priceBand 等非燃料元字段
+      var pd=fobj[ps];if(!pd)return;
       Object.keys(pd).forEach(function(y){
         if(!out[y])out[y]=[null,null,null,null,null,null,null,null,null,null,null,null];
+        if(!Array.isArray(pd[y]))return;
         pd[y].forEach(function(v,i){if(v!=null)out[y][i]=(out[y][i]||0)+v});
       });
     });
@@ -1558,8 +1578,11 @@ function CLHRenderStack(){
   Object.keys(md).forEach(function(m){
     Object.keys(md[m]).forEach(function(f){
       if(!CLHFuelMatch(f,CLH_fuel2))return;
-      var pd=md[m][f][CLH_stackPs];if(!pd)return;
+      var fobj=md[m][f];
+      if(!fobj||typeof fobj!=='object'||Array.isArray(fobj))return; // 跳过 priceBand 等非燃料元字段
+      var pd=fobj[CLH_stackPs];if(!pd)return;
       Object.keys(pd).forEach(function(y){
+        if(!Array.isArray(pd[y]))return;
         pd[y].forEach(function(v,mi){
           if(v==null)return;
           var key=y+'-'+((mi+1)<10?'0':'')+(mi+1);
