@@ -75,6 +75,7 @@ body{background:var(--bg); color:var(--text);
 .card .chg{font-size:13px; font-weight:600;}
 .card .chg.up{color:var(--up);} .card .chg.down{color:var(--down);} .card .chg.flat{color:var(--flat);}
 .card .dt{font-size:11px; color:var(--sub);}
+.card .sub{font-size:13px; font-weight:600; color:var(--text);}
 .card .chart{width:100%; height:220px;}
 .card.empty .pick{padding:12px 18px; border:1px dashed var(--border); background:#fafbfd; border-radius:10px; cursor:pointer; color:var(--sub); font-size:14px;}
 .card.empty .pick:hover{color:var(--accent); border-color:var(--accent);}
@@ -425,29 +426,78 @@ function openLogicHistory(){
 /* ---- 指标统计（p1/p2/p3 用 stat） ---- */
 function computeStatMeta(ind){
   var st=ind.stat||{};
+  var freq=(st.freq||'day');
   var latest=st.latest!=null?st.latest:null;
-  var chg=st.chg!=null?st.chg:null;
-  var pct=st.pct!=null?st.pct:null;
-  return {latest:latest, unit:ind.unit||'', chg:chg, pct:pct, date:st.latestDate||'', cls:chgCls(chg)};
+  var chg, pct;
+  if(freq==='week'){ chg=st.weekChg!=null?st.weekChg:null; pct=st.weekPct!=null?st.weekPct:null; }
+  else { chg=st.chg!=null?st.chg:null; pct=st.pct!=null?st.pct:null; }
+  var noWkChg=/周度库存变化/.test(ind.title||'');
+  return {freq:freq, dec:(ind.dec==null?2:ind.dec), latest:latest, unit:ind.unit||'', chg:chg, pct:pct, date:st.latestDate||'', cls:chgCls(chg), noWkChg:noWkChg};
 }
-/* 月轴最新统计（平衡表等，可指定单位） */
-function calcBalanceMeta(byYear, unit){
-  var years=Object.keys(byYear).map(Number).sort();
-  if(!years.length) return {latest:null,unit:unit,chg:null,pct:null,date:'',cls:'flat'};
+/* 月度指标 meta：最新实际、年度实际累计（剔除虚线预测）、环比%、同比%、累计同比% */
+function calcMonthMeta(monthVals, unit, dec){
+  var NOW=new Date(); var CUR_M=NOW.getMonth()+1;
+  var years=Object.keys(monthVals).map(Number).sort();
+  dec=(dec==null?2:dec);
+  if(!years.length) return {freq:'month', dec:dec, latest:null, cum:null, momPct:null, yoyPct:null, cumYoy:null, unit:unit, date:''};
   var ly=years[years.length-1];
-  var arr=byYear[String(ly)]||[];
-  var li=arr.length-1; while(li>=0 && (arr[li]==null||isNaN(arr[li]))) li--;
-  if(li<0) return {latest:null,unit:unit,chg:null,pct:null,date:'',cls:'flat'};
-  var cumThis=0, cumPrev=0, hasPrev=false;
-  for(var i=0;i<=li;i++){
-    if(arr[i]!=null && !isNaN(arr[i])) cumThis+=arr[i];
-    var pv = byYear[String(ly-1)] ? byYear[String(ly-1)][i] : null;
-    if(pv!=null && !isNaN(pv)){ cumPrev+=pv; hasPrev=true; }
+  var arrThis=monthVals[String(ly)]||[];
+  var arrPrev=monthVals[String(ly-1)]||[];
+  /* 实际月份截断：最新年中，实际月 = 1..(CUR_M-1)；超出部分为预测（不计入） */
+  var mActual=0;
+  for(var mi=1; mi<=12; mi++){
+    if(mi>CUR_M-1) break;
+    var v=(arrThis[mi-1]!=null && !isNaN(arrThis[mi-1]))?arrThis[mi-1]:null;
+    if(v!=null) mActual=mi;
   }
-  var diff = hasPrev ? cumThis-cumPrev : null;
-  var pct = (hasPrev && cumPrev!==0) ? diff/cumPrev*100 : null;
-  var dateStr = (li===11) ? ly+'年全年累计' : ly+'年1-'+(li+1)+'月累计';
-  return {latest:cumThis, unit:unit, chg:diff, pct:pct, date:dateStr, cls:chgCls(diff), isCum:true};
+  if(mActual===0){ for(var mi2=1; mi2<=12; mi2++){ if(arrThis[mi2-1]!=null && !isNaN(arrThis[mi2-1])) mActual=mi2; } }
+  if(mActual===0) return {freq:'month', dec:dec, latest:null, cum:null, momPct:null, yoyPct:null, cumYoy:null, unit:unit, date:''};
+  var latest=arrThis[mActual-1];
+  var cumThis=0; for(var i=0;i<mActual;i++){ if(arrThis[i]!=null && !isNaN(arrThis[i])) cumThis+=arrThis[i]; }
+  var prevM=(mActual>=2)?arrThis[mActual-2]:null;
+  var momPct=(prevM!=null && prevM!==0)?(latest-prevM)/Math.abs(prevM)*100:null;
+  var yoyV=(arrPrev[mActual-1]!=null && !isNaN(arrPrev[mActual-1]))?arrPrev[mActual-1]:null;
+  var yoyPct=(yoyV!=null && yoyV!==0)?(latest-yoyV)/Math.abs(yoyV)*100:null;
+  var cumPrev=0; for(var j=0;j<mActual;j++){ if(arrPrev[j]!=null && !isNaN(arrPrev[j])) cumPrev+=arrPrev[j]; }
+  var cumYoy=(cumPrev!==0)?(cumThis-cumPrev)/Math.abs(cumPrev)*100:null;
+  var dateStr=ly+'年'+(mActual===12?'全年':('1-'+mActual+'月'));
+  return {freq:'month', dec:dec, latest:latest, cum:cumThis, momPct:momPct, yoyPct:yoyPct, cumYoy:cumYoy, unit:unit, date:dateStr};
+}
+/* 将日序季节图 series（[[day,val]...]）转换为按月值数组（索引=月份-1） */
+function seriesToMonthVals(ind){
+  var s=ind.series||{}; var out={};
+  Object.keys(s).forEach(function(y){
+    var arr=s[y]||[];
+    out[y]=arr.map(function(p){ return (p&&p.length>=2)?p[1]:null; });
+  });
+  return out;
+}
+/* 单个比率小标签（带涨跌色） */
+function chgSpan(pct, label){
+  var cls=chgCls(pct); var sgn=pct>0?'+':'';
+  return '<span class="chg '+cls+'">'+label+' '+sgn+pct.toFixed(2)+'%</span>';
+}
+/* 根据频率渲染卡片标题下方 meta */
+function metaHTML(m){
+  if(!m) return '<span class="val">—</span>';
+  if(m.latest==null) return '<span class="val">—</span>';
+  var dec=(m.dec==null?2:m.dec);
+  if(m.freq==='month'){
+    var parts=[];
+    parts.push('<span class="val">'+fmt(m.latest,dec)+'<span class="unit"> '+(m.unit||'')+'</span></span>');
+    if(m.cum!=null) parts.push('<span class="sub">累计 '+fmt(m.cum,dec)+'<span class="unit"> '+(m.unit||'')+'</span></span>');
+    if(m.momPct!=null) parts.push(chgSpan(m.momPct,'环比'));
+    if(m.yoyPct!=null) parts.push(chgSpan(m.yoyPct,'同比'));
+    if(m.cumYoy!=null) parts.push(chgSpan(m.cumYoy,'累计同比'));
+    if(m.date) parts.push('<span class="dt">'+m.date+'</span>');
+    return parts.join('');
+  }
+  if(m.noWkChg){
+    return '<span class="val">'+fmt(m.latest,dec)+'<span class="unit"> '+(m.unit||'')+'</span></span>'+(m.date?'<span class="dt">'+m.date+'</span>':'');
+  }
+  var chgTxt='';
+  if(m.chg!=null){ var sgn=m.chg>0?'+':''; chgTxt='<span class="chg '+m.cls+'">'+arrow(m.chg)+' '+sgn+fmt(m.chg,dec)+'（'+(m.pct!=null?sgn+m.pct.toFixed(2)+'%':'—')+'）</span>'; }
+  return '<span class="val">'+fmt(m.latest,dec)+'<span class="unit"> '+(m.unit||'')+'</span></span>'+chgTxt+(m.date?'<span class="dt">'+m.date+'</span>':'');
 }
 
 /* ---- 图表库构建 ---- */
@@ -457,9 +507,11 @@ function groupFromIndicators(label, src, inds, xlabels, years){
   Object.keys(inds).forEach(function(k){
     var ind=inds[k];
     var hideYears = (src==='p1' && k.indexOf('月差')>=0) ? ['2023'] : null;
+    var freq=(ind.stat&&ind.stat.freq)||'day';
+    var meta = (freq==='month') ? calcMonthMeta(seriesToMonthVals(ind), ind.unit||'', ind.dec==null?2:ind.dec) : computeStatMeta(ind);
     items.push({
       src:src, key:k, title:ind.title||k,
-      meta:computeStatMeta(ind),
+      meta:meta,
       hideYears:hideYears,
       draw:function(div){ drawSeason(div, ind, xlabels, years, hideYears); }
     });
@@ -486,7 +538,7 @@ function buildLibrary(){
         return {
           src:'p7', key:'bal::'+sheetName+'::'+sc.key,
           title:(sc.title||sc.label)+'（'+sheetName+'）',
-          meta:calcBalanceMeta(byYear, sc.unit),
+          meta:calcMonthMeta(byYear, sc.unit, sc.dec==null?2:sc.dec),
           draw:function(div){ drawMonthSeason(div, byYear, 2); }
         };
       });
@@ -784,16 +836,7 @@ function makeCard(item, ri, ci){
 
     var meta=def.meta||{};
     var m=document.createElement("div"); m.className="meta";
-    var chgTxt="", valTxt="—";
-    if(meta.isCum){
-      valTxt = meta.latest!=null ? dispCore(meta.latest, meta.unit) : '—';
-      if(meta.chg!=null){ var sign=meta.chg>0?"+":""; chgTxt='<span class="chg '+meta.cls+'">累计同比 '+arrow(meta.chg)+' '+sign+dispCore(meta.chg, meta.unit)+'（'+(meta.pct!=null?sign+meta.pct.toFixed(2)+'%':'—')+'）</span>'; }
-    } else {
-      valTxt = meta.latest!=null ? fmt(meta.latest, meta.latest%1===0?0:2) : '—';
-      if(meta.chg!=null){ var sign=meta.chg>0?"+":""; chgTxt='<span class="chg '+meta.cls+'">'+arrow(meta.chg)+' '+sign+fmt(meta.chg, meta.chg%1===0?0:2)+'（'+(meta.pct!=null?sign+meta.pct.toFixed(2)+'%':'—')+'）</span>'; }
-    }
-    m.innerHTML='<span class="val">'+valTxt+'<span class="unit"> '+(meta.unit||'')+'</span></span>'+
-      chgTxt+'<span class="dt">'+(meta.date||'')+'</span>';
+    m.innerHTML=metaHTML(meta);
     card.appendChild(m);
 
     var div=document.createElement("div"); div.className="chart";
