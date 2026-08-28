@@ -242,6 +242,10 @@ function dispCore(v, unit){
   if(unit==="万吨LCE") return (v/10000).toFixed(1);
   return Number(v).toFixed(1);
 }
+function fmtByUnit(v, dec, unit){
+  if(unit==="万吨LCE") return dispCore(v, unit);
+  return fmt(v, dec);
+}
 function uid(){ return "c"+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36); }
 
 /* 多数据源（锂看板各页 JSON） */
@@ -484,8 +488,8 @@ function metaHTML(m){
   var dec=(m.dec==null?2:m.dec);
   if(m.freq==='month'){
     var parts=[];
-    parts.push('<span class="val">'+fmt(m.latest,dec)+'<span class="unit"> '+(m.unit||'')+'</span></span>');
-    if(m.cum!=null) parts.push('<span class="sub">累计 '+fmt(m.cum,dec)+'<span class="unit"> '+(m.unit||'')+'</span></span>');
+    parts.push('<span class="val">'+fmtByUnit(m.latest,dec,m.unit)+'<span class="unit"> '+(m.unit||'')+'</span></span>');
+    if(m.cum!=null) parts.push('<span class="sub">累计 '+fmtByUnit(m.cum,dec,m.unit)+'<span class="unit"> '+(m.unit||'')+'</span></span>');
     if(m.momPct!=null) parts.push(chgSpan(m.momPct,'环比'));
     if(m.yoyPct!=null) parts.push(chgSpan(m.yoyPct,'同比'));
     if(m.cumYoy!=null) parts.push(chgSpan(m.cumYoy,'累计同比'));
@@ -493,11 +497,11 @@ function metaHTML(m){
     return parts.join('');
   }
   if(m.noWkChg){
-    return '<span class="val">'+fmt(m.latest,dec)+'<span class="unit"> '+(m.unit||'')+'</span></span>'+(m.date?'<span class="dt">'+m.date+'</span>':'');
+    return '<span class="val">'+fmtByUnit(m.latest,dec,m.unit)+'<span class="unit"> '+(m.unit||'')+'</span></span>'+(m.date?'<span class="dt">'+m.date+'</span>':'');
   }
   var chgTxt='';
-  if(m.chg!=null){ var sgn=m.chg>0?'+':''; chgTxt='<span class="chg '+m.cls+'">'+arrow(m.chg)+' '+sgn+fmt(m.chg,dec)+'（'+(m.pct!=null?sgn+m.pct.toFixed(2)+'%':'—')+'）</span>'; }
-  return '<span class="val">'+fmt(m.latest,dec)+'<span class="unit"> '+(m.unit||'')+'</span></span>'+chgTxt+(m.date?'<span class="dt">'+m.date+'</span>':'');
+  if(m.chg!=null){ var sgn=m.chg>0?'+':''; chgTxt='<span class="chg '+m.cls+'">'+arrow(m.chg)+' '+sgn+fmtByUnit(m.chg,dec,m.unit)+'（'+(m.pct!=null?sgn+m.pct.toFixed(2)+'%':'—')+'）</span>'; }
+  return '<span class="val">'+fmtByUnit(m.latest,dec,m.unit)+'<span class="unit"> '+(m.unit||'')+'</span></span>'+chgTxt+(m.date?'<span class="dt">'+m.date+'</span>':'');
 }
 
 /* ---- 图表库构建 ---- */
