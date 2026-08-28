@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>碳酸锂数据看板 · 事件及政策跟踪</title>
+<style>
+:root{
+  --bg:#f4f6fa; --card:#ffffff; --border:#e5e9f0; --text:#1f2733; --sub:#6b7686;
+  --up:#d92626; --down:#0a9a5c; --flat:#8a93a3; --accent:#0f4c81; --focus:#2b7cff;
+  --evt:#ff7a00;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{background:var(--bg); color:var(--text);
+  font-family:"Microsoft YaHei","PingFang SC","Helvetica Neue",Arial,sans-serif; font-size:14px;}
+.wrap{max-width:1560px; margin:0 auto; padding:18px 22px 60px;}
+.header{display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:14px;}
+.header h1{font-size:24px; color:var(--accent); letter-spacing:1px;}
+.header .date{color:var(--sub); font-size:13px;}
+.tabs{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;}
+.tab{padding:7px 20px; border-radius:8px 8px 0 0; border:1px solid var(--border); border-bottom:none;
+  background:#e9edf3; color:var(--sub); cursor:default; font-size:14px; text-decoration:none;}
+.tab.active{background:var(--accent); color:#fff; font-weight:600;}
+.tab:hover:not(.active){color:var(--accent);}
+/* 子页签 */
+.subtabs{display:flex; gap:8px; margin:0 0 16px; flex-wrap:wrap;}
+.subtab{padding:8px 22px; border-radius:8px; border:1px solid var(--border); background:#fff; color:var(--sub);
+  cursor:pointer; font-size:14px; font-weight:600;}
+.subtab.active{background:var(--accent); color:#fff; border-color:var(--accent);}
+.subtab:hover:not(.active){color:var(--accent);}
+/* 年份筛选 */
+.ybar{display:flex; gap:8px; flex-wrap:wrap; margin:4px 0 14px;}
+.ybtn{display:inline-flex; align-items:center; gap:6px; padding:5px 14px; border-radius:16px;
+  border:1px solid var(--border); background:#fff; color:var(--sub); font-size:13px; cursor:pointer;}
+.ybtn .dot{width:10px; height:10px; border-radius:50%;}
+.ybtn.off{opacity:.35; filter:grayscale(.6);}
+/* 顶部工具条 */
+.topbar{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0 0 10px;}
+.topbar .sec-sub{margin:0; flex:1; min-width:260px;}
+.abtn{padding:6px 14px; border:1px solid var(--border); background:#fff; border-radius:8px; cursor:pointer; font-size:13px; color:var(--accent);}
+.abtn:hover{background:#eef3f9;}
+.abtn.saved{color:#0a9a5c; border-color:#0a9a5c; background:#f0faf4;}
+/* 双栏布局 */
+.evt-layout{display:flex; gap:18px; align-items:flex-start;}
+.evt-panel{width:400px; flex-shrink:0; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px 16px; position:sticky; top:12px;}
+.evt-head{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+.evt-charts{flex:1; min-width:0;}
+/* 时间表 */
+.evt-table{width:100%; border-collapse:collapse; margin-top:10px;}
+.evt-table th{text-align:left; font-size:12px; color:var(--sub); font-weight:700; padding:6px 6px; border-bottom:1px solid var(--border);}
+.evt-table td{padding:5px 6px; border-bottom:1px solid #eef1f6; vertical-align:top;}
+.evt-table input.ev-date, .evt-table textarea{width:100%; border:1px solid var(--border); border-radius:7px; padding:6px 8px; font-size:13px; font-family:inherit; color:var(--text); background:#fafbfd; resize:vertical; line-height:1.5;}
+.evt-table input.ev-date{width:100%;}
+.evt-table input.ev-date:focus, .evt-table textarea:focus{outline:none; border-color:var(--accent); background:#fff;}
+.evt-table input.ev-date.ok{border-color:#0a9a5c; background:#f3fbf6;}
+.evt-table input.ev-date.bad{border-color:#d92626; background:#fdf1f1;}
+.evt-table td.evt-act{width:34px; text-align:center;}
+.evt-del{width:26px; height:26px; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; color:var(--sub); font-size:15px; line-height:1; margin-top:2px;}
+.evt-del:hover{color:#d92626; border-color:#d92626; background:#fdf1f1;}
+.evt-empty{color:var(--sub); font-size:13px; padding:18px 6px; text-align:center;}
+.evt-hint{color:var(--sub); font-size:12px; margin:8px 0 0; line-height:1.7;}
+.evt-hint code{background:#eef1f6; padding:1px 5px; border-radius:4px; font-size:11px; color:var(--accent);}
+/* 图表栅格 + 行标题 */
+.grid{display:grid; gap:14px;}
+.grid.c4{grid-template-columns:repeat(4,1fr);}
+.crow{display:grid; gap:14px; margin-bottom:18px;}
+.crow .row-header{grid-column:1/-1; display:flex; align-items:center; gap:8px; margin-bottom:4px;}
+.crow .row-note{flex:1; font-size:18px; color:var(--accent); font-weight:700; background:transparent; border:none; border-bottom:1px solid var(--border); border-radius:0; padding:8px 4px; min-height:34px; outline:none; cursor:text; line-height:1.5;}
+.crow .row-note:focus{border-bottom-color:var(--accent); color:var(--accent);}
+.crow .row-note:empty::before{content:attr(data-ph); color:#b3bcc9; font-weight:400;}
+.crow .row-tools{display:flex; align-items:center; gap:6px;}
+.crow .row-tools button{font-size:12px; line-height:1; padding:4px 8px; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; color:var(--sub);}
+.crow .row-tools button:hover{background:#f0f3f8; color:var(--accent); border-color:var(--accent);}
+.crow .row-tools button:disabled{opacity:.4; cursor:not-allowed;}
+@media (max-width:1200px){ .grid.c4{grid-template-columns:repeat(2,1fr);} .evt-layout{flex-direction:column;} .evt-panel{width:100%; position:static;} }
+@media (max-width:720px){ .grid.c4{grid-template-columns:1fr;} .crow{grid-template-columns:1fr;} .wrap{padding:12px 10px 40px;} }
+.card{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:8px 12px 6px; min-width:0; position:relative;}
+.card.focus{box-shadow:0 0 0 2px var(--focus); border-color:var(--focus);}
+.card.empty{border-style:dashed; display:flex; align-items:center; justify-content:center; min-height:230px;}
+.card-head{display:flex; align-items:center; justify-content:space-between; gap:6px; margin:0 0 4px; cursor:grab; position:relative;}
+.card-head .ttl{font-size:14px; font-weight:700; color:#2a3345; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.4;}
+.menu-btn{width:24px; height:22px; display:inline-flex; align-items:center; justify-content:center; padding:0; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; color:var(--sub); font-size:14px; line-height:1; flex-shrink:0;}
+.menu-btn:hover{background:#f0f3f8; color:var(--accent); border-color:var(--accent);}
+.menu{position:absolute; top:calc(100% + 4px); right:0; background:#fff; border:1px solid var(--border); border-radius:8px; padding:4px; box-shadow:0 4px 12px rgba(0,0,0,.12); display:none; flex-direction:column; gap:2px; z-index:10; min-width:92px;}
+.menu.show{display:flex;}
+.menu button{font-size:12px; line-height:1.2; padding:5px 8px; border:1px solid transparent; background:#fff; border-radius:6px; cursor:pointer; color:var(--sub); text-align:left; white-space:nowrap;}
+.menu button:hover{background:#f0f3f8; color:var(--accent); border-color:var(--border);}
+.menu button.on{background:var(--focus); color:#fff; border-color:var(--focus);}
+.card .meta{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin:4px 0 2px;}
+.card .val{font-size:20px; font-weight:700;}
+.card .unit{font-size:11px; color:var(--sub);}
+.card .chg{font-size:13px; font-weight:600;}
+.card .chg.up{color:var(--up);} .card .chg.down{color:var(--down);} .card .chg.flat{color:var(--flat);}
+.card .dt{font-size:11px; color:var(--sub);}
+.card .sub{font-size:13px; font-weight:600; color:var(--text);}
+.card .chart{width:100%; height:220px;}
+.card.empty .pick{padding:12px 18px; border:1px dashed var(--border); background:#fafbfd; border-radius:10px; cursor:pointer; color:var(--sub); font-size:14px;}
+.card.empty .pick:hover{color:var(--accent); border-color:var(--accent);}
+.card .err{color:#c0392b; font-size:12px; padding:10px 4px;}
+/* 选择图表 modal */
+.modal{position:fixed; inset:0; background:rgba(20,30,45,.45); display:none; align-items:center; justify-content:center; z-index:50;}
+.modal-box{background:#fff; width:min(660px,92vw); max-height:82vh; border-radius:12px; display:flex; flex-direction:column; overflow:hidden;}
+.modal-head{padding:12px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-weight:700;}
+.modal-head button{border:none; background:none; font-size:18px; cursor:pointer; color:var(--sub); line-height:1;}
+.modal-search{padding:10px 16px; border-bottom:1px solid var(--border);}
+.modal-search input{width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:8px; font-size:13px;}
+.modal-list{overflow:auto; padding:8px 10px 16px;}
+.src-group{font-size:12px; color:var(--sub); padding:10px 6px 4px; font-weight:700;}
+.src-sub{font-size:11px; color:var(--sub); padding:8px 6px 2px; font-weight:600;}
+.chart-item{padding:9px 12px; border-radius:8px; cursor:pointer; font-size:13px; border:1px solid transparent; display:flex; justify-content:space-between; gap:10px;}
+.chart-item:hover{background:#f0f3f8; border-color:var(--border);}
+.chart-item .k{color:var(--sub); font-size:11px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1>碳酸锂数据看板 · 事件及政策跟踪</h1>
+    <div class="date" id="dataDate">数据加载中…</div>
+  </div>
+  <div class="tabs">
+    <a class="tab" href="core.html">核心逻辑</a>
+    <a class="tab" href="p7.html">中国锂产业链平衡</a>
+    <a class="tab active" href="event.html">事件及政策跟踪</a>
+    <a class="tab" href="p6.html">全球年度平衡</a>
+    <a class="tab" href="p5.html">全球汽车</a>
+    <a class="tab" href="p3.html">产业链库存</a>
+    <a class="tab" href="p2.html">产量开工利润</a>
+    <a class="tab" href="p1.html">日度价格</a>
+    <a class="tab" href="weekly.html">周报</a>
+  </div>
+
+  <div class="subtabs" id="subtabs">
+    <button class="subtab active" data-page="jxw">枧下窝</button>
+    <button class="subtab" data-page="zimbabwe">津巴布韦</button>
+    <button class="subtab" data-page="tax">税收政策</button>
+  </div>
+
+  <div class="evt-layout">
+    <section class="evt-panel">
+      <div class="evt-head">
+        <h2 class="sec-title" style="margin:0">事件及政策时间线</h2>
+        <button class="abtn" id="addRow">＋ 新增行</button>
+      </div>
+      <p class="sec-sub" style="margin:8px 0 0">时间格式：<code>2026-08-26</code> 或 <code>2026年8月26日</code>。右侧图表将在对应日期的数据点高亮标注（橙色）。</p>
+      <table class="evt-table">
+        <thead><tr><th style="width:118px">时间</th><th>事件</th><th>影响</th><th style="width:30px"></th></tr></thead>
+        <tbody id="evtBody"></tbody>
+      </table>
+      <p class="evt-hint">编辑内容自动保存于本机浏览器；切换子页或刷新后保留。绿色边框＝日期可识别并会标注。</p>
+    </section>
+
+    <section class="evt-charts">
+      <div class="topbar">
+        <span class="sec-sub">数据来源于各看板页（日度价格 / 产量开工利润 / 产业链库存 / 中国锂产业链平衡 / 全球锂资源），跟随每日刷新同步更新 · 点卡片右上角按钮可自定义（选择 / 清空 / 上移 / 下移 / 关注蓝框 / 删除），卡片可拖拽排序</span>
+        <button class="abtn" id="addCard">＋ 新增一行</button>
+        <button class="abtn" id="saveLayout">保存布局</button>
+        <button class="abtn" id="saveContent">保存内容</button>
+      </div>
+      <div class="ybar" id="ybar"></div>
+      <div id="charts"></div>
+    </section>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="modal-box">
+      <div class="modal-head"><span>选择图表</span><button id="modalClose">×</button></div>
+      <div class="modal-search"><input id="modalSearch" placeholder="搜索图表名称…"></div>
+      <div class="modal-list" id="modalList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ ECharts 加载（多 CDN 容错） ============ */
+(function(){
+  var urls=[
+    "https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js",
+    "https://cdn.bootcdn.net/ajax/libs/echarts/5.5.0/echarts.min.js",
+    "https://unpkg.com/echarts@5.5.0/dist/echarts.min.js"
+  ];
+  var i=0;
+  function tryNext(){
+    if(i>=urls.length){ document.getElementById("charts").innerHTML="<div style='padding:20px;color:#c00'>ECharts 加载失败，请检查网络。</div>"; return; }
+    var s=document.createElement("script");
+    s.src=urls[i++];
+    s.onload=function(){ window.echarts ? init() : tryNext(); };
+    s.onerror=tryNext;
+    document.head.appendChild(s);
+  }
+  tryNext();
+})();
+
+/* ============ 基础工具 ============ */
+var MONTHS=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+var PALETTE=['#5B8FF9','#61C6B5','#F6BD16','#9661BC','#78D3F8','#F08BB4','#65789B','#7cb305','#d48265','#E60000'];
+var YEAR_COLORS={"2016":"#94a3b8","2017":"#60a5fa","2018":"#34d399","2019":"#fbbf24","2020":"#f472b6","2021":"#12B5A6","2022":"#8B5CF6","2023":"#1E6FFF","2024":"#F59A23","2025":"#E60000","2026":"#1A1A1A"};
+function yearColor(y){ return YEAR_COLORS[String(y)] || "#888888"; }
+function fmt(v,dec){
+  if(v===null||v===undefined||isNaN(v)) return "—";
+  if(dec===0||dec===undefined||dec===null) return Math.round(v).toLocaleString('zh-CN');
+  return Number(v).toFixed(dec);
+}
+function chgCls(c){ if(c===null||c===undefined||c===0) return "flat"; return c>0?"up":"down"; }
+function arrow(c){ if(c===null||c===undefined||c===0) return "→"; return c>0?"▲":"▼"; }
+function esc(s){ var d=document.createElement("div"); d.textContent=(s==null?"":String(s)); return d.innerHTML; }
+function dispCore(v, unit){
+  if(v===null||v===undefined||isNaN(v)) return "—";
+  if(unit==="万吨LCE") return (v/10000).toFixed(1);
+  return Number(v).toFixed(1);
+}
+function fmtByUnit(v, dec, unit){
+  if(unit==="万吨LCE") return dispCore(v, unit);
+  return fmt(v, dec);
+}
+function uid(){ return "c"+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36); }
+
+/* ============ 数据源 ============ */
+var SRC={
+  p1:{label:"日度价格", url:"data.json?v=1787930953", indicators:null, xlabels:null, years:null, date:null},
+  p2:{label:"产量开工利润", url:"p2.json?v=1787930953", indicators:null, xlabels:null, years:null, date:null},
+  p3:{label:"产业链库存", url:"p3.json?v=1787930953", indicators:null, xlabels:null, years:null, date:null},
+  p6:{label:"全球锂资源", url:"p6.json?v=1787930953", rows:null, years:null, demand:null},
+  p7:{label:"中国锂产业链平衡", url:"p7.json?v=1787930953", sheets:null}
+};
+var GROUPS=[], LIBMAP={};
+var allYears=[], yearVisible={}, charts=[], layout=[], dragFrom=null, currentPickIdx=null;
+
+/* 默认布局（与核心逻辑页一致） */
+var DEFAULT_ITEMS=[
+  [{src:'p1', key:'主力收盘价'}, {src:'p1', key:'基差'}, {src:'p1', key:'总持仓量'}, {src:'p1', key:'总成交量'}],
+  [{src:'p2', key:'碳酸锂总产量'}, {src:'p3', key:'锂矿库存：锂盐厂原料库存（吨LCE）'}, {src:'p7', key:'bal::锂矿::prod'}, {src:'p7', key:'bal::碳酸锂::carb_prod'}]
+];
+function defaultLayout(){
+  return DEFAULT_ITEMS.map(function(row){ return row.map(function(it){ return {id:uid(), src:it.src, key:it.key, focus:false}; }); });
+}
+function fetchJson(u){
+  return fetch(u,{cache:"no-store"})
+    .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); });
+}
+
+/* ============ 状态与持久化（每个子页独立） ============ */
+var SUBPAGES={ jxw:{title:'枧下窝'}, zimbabwe:{title:'津巴布韦'}, tax:{title:'税收政策'} };
+var LS_KEY="lcEventStateV1";
+var state={ active:'jxw', pages:{
+  jxw:{events:[], layout:[]},
+  zimbabwe:{events:[], layout:[]},
+  tax:{events:[], layout:[]}
+}};
+var HILITE_DAY={}, HILITE_MONTH={};   /* 由时间表计算：年 -> [{doy|m, label, event, impact, dateStr}] */
+function save(){ saveState(); }
+function saveState(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){}
+}
+function loadState(){
+  try{
+    var s=localStorage.getItem(LS_KEY);
+    if(s){
+      var d=JSON.parse(s);
+      if(d && d.pages){
+        state.active = SUBPAGES[d.active] ? d.active : 'jxw';
+        Object.keys(SUBPAGES).forEach(function(k){
+          if(d.pages[k]){
+            state.pages[k].events = Array.isArray(d.pages[k].events) ? d.pages[k].events : [];
+            state.pages[k].layout = Array.isArray(d.pages[k].layout) && d.pages[k].layout.length ? d.pages[k].layout : defaultLayout();
+            state.pages[k].layout = state.pages[k].layout.map(function(row){
+              return row.map(function(it){ return {id:it.id||uid(), src:it.src||'p1', key:it.key||null, focus:!!it.focus}; });
+            });
+          }
+        });
+      }
+    }
+  }catch(e){}
+  if(!state.pages[state.active].layout.length) state.pages[state.active].layout=defaultLayout();
+}
+
+/* ============ 时间表日期解析 ============ */
+function parseEventDate(str){
+  if(!str) return null;
+  str=String(str).trim();
+  var y=null,m=null,d=null;
+  var ym=str.match(/(\d{4})\s*年/); if(ym) y=+ym[1];
+  var mm=str.match(/(\d{1,2})\s*月/); if(mm) m=+mm[1];
+  var dd=str.match(/(\d{1,2})\s*[日号]/); if(dd) d=+dd[1];
+  if(y==null||m==null||d==null){
+    var iso=str.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    if(iso){ y=+iso[1]; m=+iso[2]; d=+iso[3]; }
+  }
+  if(y==null) y=new Date().getFullYear();
+  if(m==null||d==null) return null;
+  if(m<1||m>12||d<1||d>31) return null;
+  var days=[0,31,28,31,30,31,30,31,31,30,31,30,31];
+  var leap=(y%4===0&&y%100!==0)||y%400===0; if(leap) days[2]=29;
+  if(d>days[m]) return null;
+  var doy=0; for(var i=1;i<m;i++) doy+=days[i]; doy+=d;
+  return {year:y, month:m, day:d, doy:doy, label:(m)+'/'+d};
+}
+function recomputeHilite(){
+  HILITE_DAY={}; HILITE_MONTH={};
+  var evs=state.pages[state.active].events||[];
+  evs.forEach(function(ev){
+    var p=parseEventDate(ev.date);
+    if(!p) return;
+    var yk=String(p.year);
+    HILITE_DAY[yk]=HILITE_DAY[yk]||[];
+    HILITE_DAY[yk].push({doy:p.doy, label:p.label, event:ev.event||'', impact:ev.impact||'', dateStr:ev.date||''});
+    HILITE_MONTH[yk]=HILITE_MONTH[yk]||[];
+    HILITE_MONTH[yk].push({m:p.month-1, label:(p.month)+'月', event:ev.event||'', impact:ev.impact||'', dateStr:ev.date||''});
+  });
+}
+
+/* ============ 时间表渲染 ============ */
+function renderTimeline(){
+  var body=document.getElementById('evtBody');
+  if(!body) return;
+  body.innerHTML="";
+  var evs=state.pages[state.active].events;
+  evs.forEach(function(ev, idx){
+    var tr=document.createElement('tr');
+    // 时间
+    var td1=document.createElement('td');
+    var inp=document.createElement('input'); inp.className='ev-date'; inp.value=ev.date||''; inp.placeholder='2026-08-26';
+    if(ev.date){ var pp=parseEventDate(ev.date); inp.classList.add(pp?'ok':'bad'); }
+    inp.addEventListener('change', function(){
+      evs[idx].date=inp.value;
+      var pp=parseEventDate(inp.value);
+      inp.classList.remove('ok','bad'); if(inp.value){ inp.classList.add(pp?'ok':'bad'); }
+      onEventChange();
+    });
+    td1.appendChild(inp);
+    // 事件
+    var td2=document.createElement('td');
+    var ta=document.createElement('textarea'); ta.className='ev-event'; ta.value=ev.event||''; ta.rows=1; ta.placeholder='事件描述';
+    ta.addEventListener('input', function(){ ta.style.height='auto'; ta.style.height=ta.scrollHeight+'px'; });
+    ta.addEventListener('change', function(){ evs[idx].event=ta.value; saveState(); });
+    td2.appendChild(ta);
+    // 影响
+    var td3=document.createElement('td');
+    var ti=document.createElement('textarea'); ti.className='ev-impact'; ti.value=ev.impact||''; ti.rows=1; ti.placeholder='对供需/价格影响';
+    ti.addEventListener('input', function(){ ti.style.height='auto'; ti.style.height=ti.scrollHeight+'px'; });
+    ti.addEventListener('change', function(){ evs[idx].impact=ti.value; saveState(); });
+    td3.appendChild(ti);
+    // 删除
+    var td4=document.createElement('td'); td4.className='evt-act';
+    var del=document.createElement('button'); del.className='ev-del'; del.textContent='×'; del.title='删除该行';
+    del.addEventListener('click', function(){
+      evs.splice(idx,1); saveState(); renderTimeline(); recomputeHilite(); renderAll();
+    });
+    td4.appendChild(del);
+    tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4);
+    body.appendChild(tr);
+  });
+  if(!evs.length){
+    var tr=document.createElement('tr');
+    var td=document.createElement('td'); td.colSpan=4; td.className='evt-empty';
+    td.textContent='暂无事件，点击右上角「＋ 新增行」添加。';
+    tr.appendChild(td); body.appendChild(tr);
+  }
+}
+function onEventChange(){ saveState(); recomputeHilite(); renderAll(); }
+
+function switchPage(k){
+  if(!SUBPAGES[k] || k===state.active) return;
+  saveState();
+  state.active=k;
+  layout=state.pages[state.active].layout;
+  if(!layout.length) layout=defaultLayout();
+  saveState();
+  document.querySelectorAll('.subtab').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-page')===state.active); });
+  renderTimeline(); recomputeHilite(); renderAll();
+}
+function active(){ return state.active; }
+
+/* ============ meta 计算 ============ */
+function chgSpan(pct, label){
+  var cls=chgCls(pct); var sgn=pct>0?'+':'';
+  return '<span class="chg '+cls+'">'+label+' '+sgn+pct.toFixed(2)+'%</span>';
+}
+function metaHTML(m){
+  if(!m) return '<span class="val">—</span>';
+  if(m.latest==null) return '<span class="val">—</span>';
+  var dec=(m.dec==null?2:m.dec);
+  if(m.freq==='month'){
+    var parts=[];
+    parts.push('<span class="val">'+fmtByUnit(m.latest,dec,m.unit)+'<span class="unit"> '+(m.unit||'')+'</span></span>');
+    if(m.cum!=null) parts.push('<span class="sub">累计 '+fmtByUnit(m.cum,dec,m.unit)+'<span class="unit"> '+(m.unit||'')+'</span></span>');
+    if(m.momPct!=null) parts.push(chgSpan(m.momPct,'环比'));
+    if(m.yoyPct!=null) parts.push(chgSpan(m.yoyPct,'同比'));
+    if(m.cumYoy!=null) parts.push(chgSpan(m.cumYoy,'累计同比'));
+    if(m.date) parts.push('<span class="dt">'+m.date+'</span>');
+    return parts.join('');
+  }
+  if(m.noWkChg){
+    return '<span class="val">'+fmtByUnit(m.latest,dec,m.unit)+'<span class="unit"> '+(m.unit||'')+'</span></span>'+(m.date?'<span class="dt">'+m.date+'</span>':'');
+  }
+  var chgTxt='';
+  if(m.chg!=null){ var sgn=m.chg>0?'+':''; chgTxt='<span class="chg '+m.cls+'">'+arrow(m.chg)+' '+sgn+fmtByUnit(m.chg,dec,m.unit)+'（'+(m.pct!=null?sgn+m.pct.toFixed(2)+'%':'—')+'）</span>'; }
+  return '<span class="val">'+fmtByUnit(m.latest,dec,m.unit)+'<span class="unit"> '+(m.unit||'')+'</span></span>'+chgTxt+(m.date?'<span class="dt">'+m.date+'</span>':'');
+}
+function computeStatMeta(ind){
+  var st=ind.stat||{};
+  var freq=(st.freq||'day');
+  var latest=st.latest!=null?st.latest:null;
+  var chg, pct;
+  if(freq==='week'){ chg=st.weekChg!=null?st.weekChg:null; pct=st.weekPct!=null?st.weekPct:null; }
+  else { chg=st.chg!=null?st.chg:null; pct=st.pct!=null?st.pct:null; }
+  var noWkChg=/周度库存变化/.test(ind.title||'');
+  return {freq:freq, dec:(ind.dec==null?2:ind.dec), latest:latest, unit:ind.unit||'', chg:chg, pct:pct, date:st.latestDate||'', cls:chgCls(chg), noWkChg:noWkChg};
+}
+function calcMonthMeta(monthVals, unit, dec){
+  var NOW=new Date(); var CUR_M=NOW.getMonth()+1;
+  var years=Object.keys(monthVals).map(Number).sort();
+  dec=(dec==null?2:dec);
+  if(!years.length) return {freq:'month', dec:dec, latest:null, cum:null, momPct:null, yoyPct:null, cumYoy:null, unit:unit, date:''};
+  var ly=years[years.length-1];
+  var arrThis=monthVals[String(ly)]||[];
+  var arrPrev=monthVals[String(ly-1)]||[];
+  var mActual=0;
+  for(var mi=1; mi<=12; mi++){
+    if(mi>CUR_M-1) break;
+    var v=(arrThis[mi-1]!=null && !isNaN(arrThis[mi-1]))?arrThis[mi-1]:null;
+    if(v!=null) mActual=mi;
+  }
+  if(mActual===0){ for(var mi2=1; mi2<=12; mi2++){ if(arrThis[mi2-1]!=null && !isNaN(arrThis[mi2-1])) mActual=mi2; } }
+  if(mActual===0) return {freq:'month', dec:dec, latest:null, cum:null, momPct:null, yoyPct:null, cumYoy:null, unit:unit, date:''};
+  var latest=arrThis[mActual-1];
+  var cumThis=0; for(var i=0;i<mActual;i++){ if(arrThis[i]!=null && !isNaN(arrThis[i])) cumThis+=arrThis[i]; }
+  var prevM=(mActual>=2)?arrThis[mActual-2]:null;
+  var momPct=(prevM!=null && prevM!==0)?(latest-prevM)/Math.abs(prevM)*100:null;
+  var yoyV=(arrPrev[mActual-1]!=null && !isNaN(arrPrev[mActual-1]))?arrPrev[mActual-1]:null;
+  var yoyPct=(yoyV!=null && yoyV!==0)?(latest-yoyV)/Math.abs(yoyV)*100:null;
+  var cumPrev=0; for(var j=0;j<mActual;j++){ if(arrPrev[j]!=null && !isNaN(arrPrev[j])) cumPrev+=arrPrev[j]; }
+  var cumYoy=(cumPrev!==0)?(cumThis-cumPrev)/Math.abs(cumPrev)*100:null;
+  var dateStr=ly+'年'+(mActual===12?'全年':('1-'+mActual+'月'));
+  return {freq:'month', dec:dec, latest:latest, cum:cumThis, momPct:momPct, yoyPct:yoyPct, cumYoy:cumYoy, unit:unit, date:dateStr};
+}
+function seriesToMonthVals(ind){
+  var s=ind.series||{}; var out={};
+  Object.keys(s).forEach(function(y){
+    var arr=s[y]||[];
+    out[y]=arr.map(function(p){ return (p&&p.length>=2)?p[1]:null; });
+  });
+  return out;
+}
+
+/* ============ 高亮辅助 ============ */
+function yearColor2(i){ return PALETTE[((i%PALETTE.length)+PALETTE.length)%PALETTE.length]; }
+function MONTH_TICK(v, xlabels){
+  if(!xlabels||!xlabels[v]) return "";
+  var lab=xlabels[v];
+  if(lab.slice(3)==="01") return parseInt(lab.slice(0,2),10)+"月";
+  return "";
+}
+function doyToMonth(doy, year){
+  var days=[0,31,28,31,30,31,30,31,31,30,31,30,31];
+  var leap=(year%4===0&&year%100!==0)||year%400===0; if(leap) days[2]=29;
+  var acc=0;
+  for(var m=1;m<=12;m++){ acc+=days[m]; if(doy<=acc) return m; }
+  return 12;
+}
+function matchEventPoint(pts, ev, freq){
+  if(!pts||!pts.length) return null;
+  var best=null, bestd=1e9;
+  for(var i=0;i<pts.length;i++){
+    var p=pts[i]; if(!p||p.length<2||p[1]==null||isNaN(p[1])) continue;
+    var d=p[0]-ev.doy;
+    if(freq==='month'){
+      var pm=doyToMonth(p[0], ev.year||2026);
+      if(pm===ev.month){ if(Math.abs(d)<bestd){ bestd=Math.abs(d); best=p; } }
+    } else if(freq==='week'){
+      if(Math.abs(d)<=10 && Math.abs(d)<bestd){ bestd=Math.abs(d); best=p; }
+    } else {
+      if(d===0) return p;
+      if(Math.abs(d)<bestd){ bestd=Math.abs(d); best=p; }
+    }
+  }
+  return best;
+}
+
+/* ============ 渲染：日/周序季节图（带事件高亮） ============ */
+function drawSeasonEvt(div, ind, xlabels, years, hideYears, freq){
+  var c=echarts.init(div);
+  var n=years.length, series=[], legend=[], hlPts=[];
+  years.forEach(function(y){
+    if(!yearVisible[String(y)]) return;
+    if(hideYears && hideYears.indexOf(String(y))>=0) return;
+    var pts=ind.series[String(y)];
+    if(!pts||!pts.length) return;
+    legend.push(String(y));
+    var isLatest=(String(y)===String(years[n-1]));
+    series.push({ name:String(y), type:"line", showSymbol:false, connectNulls:true, data:pts,
+      lineStyle:{width:isLatest?2.2:1.4, color:yearColor(y)}, itemStyle:{color:yearColor(y)}, emphasis:{focus:"series"}, z:isLatest?10:5,
+      endLabel:{show:isLatest, fontSize:10, color:yearColor(y), formatter:function(p){ return fmt(p.value[1], ind.dec); }} });
+    var evs=HILITE_DAY[String(y)]||[];
+    evs.forEach(function(ev){ var m=matchEventPoint(pts, ev, freq); if(m) hlPts.push({value:[m[0], m[1]], name:ev.label}); });
+  });
+  if(hlPts.length){
+    series.push({ name:"事件标注", type:"scatter", symbol:"pin", symbolSize:15, z:40, data:hlPts,
+      itemStyle:{color:"#ff7a00"}, label:{show:true, position:"top", fontSize:10, color:"#ff7a00", fontWeight:"bold", formatter:function(p){ return p.data.name; }, backgroundColor:"rgba(255,122,0,.14)", padding:[1,3], borderRadius:3} });
+  }
+  c.setOption({ animation:false,
+    grid:{left:8,right:14,top:26,bottom:4,containLabel:true},
+    legend:{show:true, top:0, right:0, itemWidth:14, itemHeight:2, icon:"rect", textStyle:{fontSize:11,color:"#6b7686"}, data:legend},
+    tooltip:{trigger:"axis", confine:true, formatter:function(ps){ if(!ps.length) return ""; var lab=xlabels[ps[0].value[0]]; var s=parseInt(lab.slice(0,2),10)+"月"+parseInt(lab.slice(3),10)+"日"; ps.sort(function(a,b){return Number(b.seriesName)-Number(a.seriesName);}); ps.forEach(function(p){ s+="<br>"+p.marker+p.seriesName+"年： <b>"+fmt(p.value[1], ind.dec)+"</b>"; }); return s; }},
+    xAxis:{type:"value", min:0, max:365, interval:1, axisLabel:{fontSize:10,color:"#8a93a3", formatter:function(v){ return MONTH_TICK(v, xlabels); }}, axisTick:{show:false}, axisLine:{lineStyle:{color:"#dde3ec"}}, splitLine:{show:false}},
+    yAxis:{type:"value", scale:true, axisLabel:{fontSize:10,color:"#8a93a3", formatter:function(v){ return Math.abs(v)>=10000?(v/10000)+"万":(Math.abs(v)>=1000?(v/1000)+"k":v); }}, splitLine:{lineStyle:{color:"#eef1f6"}}},
+    series:series });
+  charts.push(c);
+}
+
+/* ============ 渲染：月轴季节图（平衡表，带事件高亮） ============ */
+function drawMonthSeasonEvt(div, byYear, dec){
+  var c=echarts.init(div);
+  var years=Object.keys(byYear).map(Number).sort();
+  var legend=[], series=[], hlPts=[];
+  var NOW=new Date(); var CUR_Y=NOW.getFullYear(); var CUR_M=NOW.getMonth()+1;
+  years.forEach(function(y){
+    if(!yearVisible[String(y)]) return;
+    var arr=byYear[String(y)]||[];
+    legend.push(String(y));
+    var isLast=String(y)===String(years[years.length-1]);
+    var col=yearColor(y);
+    var predStart=(y<CUR_Y)?13:((y===CUR_Y)?CUR_M:1);
+    var actual=[], pred=[];
+    for(var mi=0; mi<12; mi++){ var v=arr[mi], mnum=mi+1; actual.push(mnum<=predStart-1?v:null); pred.push(mnum>=predStart-1?v:null); }
+    series.push({name:String(y), type:"line", connectNulls:false, symbol:"circle", symbolSize:4, data:actual, lineStyle:{width:isLast?2.2:1.4, color:col}, itemStyle:{color:col}, emphasis:{focus:"series"}});
+    if(pred.some(function(v){ return v!=null; })){ series.push({name:String(y), type:"line", connectNulls:false, symbol:"circle", symbolSize:4, data:pred, lineStyle:{width:isLast?2.2:1.4, type:"dashed", color:col}, itemStyle:{color:col}, emphasis:{focus:"series"}}); }
+    var evs=HILITE_MONTH[String(y)]||[];
+    evs.forEach(function(ev){ if(ev.m==null) return; var v=arr[ev.m]; if(v!=null && !isNaN(v)) hlPts.push({value:[MONTHS[ev.m], v], name:ev.label}); });
+  });
+  if(hlPts.length){ series.push({ name:"事件标注", type:"scatter", symbol:"pin", symbolSize:15, z:40, data:hlPts, itemStyle:{color:"#ff7a00"}, label:{show:true, position:"top", fontSize:10, color:"#ff7a00", fontWeight:"bold", formatter:function(p){ return p.data.name; }, backgroundColor:"rgba(255,122,0,.14)", padding:[1,3], borderRadius:3} }); }
+  function tip(ps){ if(!ps.length) return ""; var seen={}; ps.forEach(function(p){ if(p.seriesName && p.value!=null && !(typeof p.value==='number'&&isNaN(p.value))) seen[p.seriesName]=p; }); var s=ps[0].axisValue; Object.keys(seen).sort(function(a,b){return Number(b)-Number(a);}).forEach(function(name){ var p=seen[name]; s+="<br>"+p.marker+name+"年： <b>"+fmt(p.value, dec||0)+"</b>"; }); return s; }
+  c.setOption({ animation:false, grid:{left:8,right:14,top:26,bottom:6,containLabel:true},
+    legend:{show:true, top:0, right:0, itemWidth:14, itemHeight:2, icon:"rect", textStyle:{fontSize:11,color:"#6b7686"}, data:legend},
+    tooltip:{trigger:"axis", confine:true, formatter:tip},
+    xAxis:{type:"category", data:MONTHS, axisLabel:{fontSize:10,color:"#8a93a3"}, axisLine:{lineStyle:{color:"#dde3ec"}}, axisTick:{show:false}},
+    yAxis:{type:"value", scale:true, axisLabel:{fontSize:10,color:"#8a93a3"}, splitLine:{lineStyle:{color:"#eef1f6"}}},
+    series:series });
+  charts.push(c);
+}
+
+/* ============ 渲染：年度折线（p6，带事件高亮） ============ */
+function drawLineEvt(div, years, seriesList){
+  var c=echarts.init(div);
+  var totals=years.map(function(y, j){ var s=0; seriesList.forEach(function(r){ s+=(r.data[j]||0); }); return s; });
+  var series=seriesList.map(function(s){ return {name:s.name, type:"line", smooth:true, symbol:"none", connectNulls:true, data:s.data, lineStyle:{width:2, color:s.color}, itemStyle:{color:s.color}, emphasis:{focus:"series"}}; });
+  var hlPts=[];
+  years.forEach(function(y,j){ var evs=HILITE_DAY[String(y)]||[]; if(evs.length && totals[j]!=null) hlPts.push({value:[String(y), totals[j]], name:String(y)+"年"}); });
+  if(hlPts.length){ series.push({ name:"事件标注", type:"scatter", symbol:"pin", symbolSize:15, z:40, data:hlPts, itemStyle:{color:"#ff7a00"}, label:{show:true, position:"top", fontSize:10, color:"#ff7a00", fontWeight:"bold", formatter:function(p){ return p.data.name; }, backgroundColor:"rgba(255,122,0,.14)", padding:[1,3], borderRadius:3} }); }
+  c.setOption({ animation:false, grid:{left:8,right:14,top:26,bottom:6,containLabel:true},
+    legend:{show:true, top:0, right:0, itemWidth:14, itemHeight:2, icon:"rect", textStyle:{fontSize:11,color:"#6b7686"}, data:seriesList.map(function(s){return s.name;})},
+    tooltip:{trigger:"axis", confine:true, formatter:function(ps){ if(!ps.length) return ""; var s=ps[0].axisValue+"年"; ps.sort(function(a,b){return Number(b.seriesName)-Number(a.seriesName);}); ps.forEach(function(p){ s+="<br>"+p.marker+p.seriesName+"： <b>"+fmt(p.value,0)+"</b>"; }); return s; }},
+    xAxis:{type:"category", data:years, axisLabel:{fontSize:10,color:"#8a93a3"}, axisLine:{lineStyle:{color:"#dde3ec"}}, axisTick:{show:false}},
+    yAxis:{type:"value", scale:true, axisLabel:{fontSize:10,color:"#8a93a3"}, splitLine:{lineStyle:{color:"#eef1f6"}}},
+    series:series });
+  charts.push(c);
+}
+
+
+/* ============ 图表库构建（事件页） ============ */
+function unionYears(){
+  var set={};
+  [SRC.p1.years,SRC.p2.years,SRC.p3.years,SRC.p6.years].forEach(function(arr){
+    (arr||[]).forEach(function(y){ set[y]=1; });
+  });
+  return Object.keys(set).map(Number).sort(function(a,b){return a-b;});
+}
+function groupFromIndicatorsEvt(label, src, inds, xlabels, years){
+  if(!inds) return;
+  var items=[];
+  Object.keys(inds).forEach(function(k){
+    var ind=inds[k];
+    if(!ind || !ind.series) return;
+    var hideYears=(src==='p1' && k.indexOf('月差')>=0)?['2023']:null;
+    var freq=(ind.stat&&ind.stat.freq)||'day';
+    var meta=(freq==='month')?calcMonthMeta(seriesToMonthVals(ind), ind.unit||'', ind.dec==null?2:ind.dec):computeStatMeta(ind);
+    items.push({ src:src, key:k, title:ind.title||k, meta:meta, freq:freq, hideYears:hideYears,
+      draw:function(div){ drawSeasonEvt(div, ind, xlabels, years, hideYears, freq); } });
+  });
+  if(items.length) GROUPS.push({label:label, items:items});
+}
+function buildLibrary(){
+  GROUPS=[]; LIBMAP={};
+  groupFromIndicatorsEvt('日度价格','p1', SRC.p1.indicators, SRC.p1.xlabels, SRC.p1.years);
+  groupFromIndicatorsEvt('产量开工利润','p2', SRC.p2.indicators, SRC.p2.xlabels, SRC.p2.years);
+  groupFromIndicatorsEvt('产业链库存','p3', SRC.p3.indicators, SRC.p3.xlabels, SRC.p3.years);
+  if(SRC.p7.sheets){
+    Object.keys(SRC.p7.sheets).forEach(function(sheetName){
+      var sh=SRC.p7.sheets[sheetName];
+      var cols=sh.seasonalCols||[];
+      if(!cols.length) return;
+      var items=cols.map(function(sc){
+        var seaObj=sh.seasonal[sc.key]||{};
+        var byYear={};
+        ['2023','2024','2025','2026'].forEach(function(y){
+          var arr=(seaObj[y]||[]).slice(0,12);
+          byYear[y]=arr.map(function(v){ return (v==null||isNaN(v))?null:(v/10000); });
+        });
+        return { src:'p7', key:'bal::'+sheetName+'::'+sc.key, title:(sc.title||sc.label)+'（'+sheetName+'）',
+          meta:calcMonthMeta(byYear, sc.unit, 2),
+          draw:function(div){ drawMonthSeasonEvt(div, byYear, 2); } };
+      });
+      GROUPS.push({label:'平衡表·'+sheetName, items:items});
+    });
+  }
+  if(SRC.p6.rows){
+    var years=(SRC.p6.years||[]).map(String);
+    var regMap={};
+    SRC.p6.rows.forEach(function(r){
+      var reg=r.region||'其他'; var vals=r.vals||[];
+      if(!regMap[reg]) regMap[reg]={};
+      years.forEach(function(y,i){ regMap[reg][y]=(regMap[reg][y]||0)+(vals[i]||0); });
+    });
+    var regions=Object.keys(regMap);
+    var seriesList=regions.map(function(reg,ri){
+      return {name:reg, color:yearColor2(ri), data:years.map(function(y){ return regMap[reg][y]; })};
+    });
+    var totals=years.map(function(y,j){ var s=0; regions.forEach(function(reg){ s+=regMap[reg][y]||0; }); return s; });
+    var m=totals.length-1;
+    var chg=(m>=1)?(totals[m]-(totals[m-1]||0)):null;
+    var pct=(m>=1&&totals[m-1])?((totals[m]-totals[m-1])/Math.abs(totals[m-1])*100):null;
+    GROUPS.push({label:'全球锂资源（分地区年度产量）', items:[{ src:'p6', key:'region', title:'全球锂资源产量（分地区·年度合计）',
+      meta:{latest:totals[m], unit:'', chg:chg, pct:pct, date:years[m]+'年', cls:chgCls(chg)},
+      draw:function(div){ drawLineEvt(div, years, seriesList); } }]});
+  }
+  GROUPS.forEach(function(g){ g.items.forEach(function(it){ LIBMAP[it.src+'|'+it.key]=it; }); });
+}
+function buildYearBar(){
+  var bar=document.getElementById('ybar');
+  bar.innerHTML='';
+  allYears.forEach(function(y){
+    var b=document.createElement('button');
+    b.className='ybtn'+(yearVisible[y]?'':' off');
+    b.innerHTML='<span class="dot" style="background:'+yearColor(y)+'"></span>'+y+'年';
+    b.onclick=function(){ yearVisible[String(y)]=!yearVisible[String(y)]; b.classList.toggle('off',!yearVisible[String(y)]); renderAll(); };
+    bar.appendChild(b);
+  });
+}
+
+/* ============ 渲染全部卡片 ============ */
+function findCard(id){
+  for(var r=0;r<layout.length;r++){ for(var c=0;c<layout[r].length;c++){ if(layout[r][c].id===id) return {r:r,c:c,card:layout[r][c]}; } }
+  return null;
+}
+function moveCard(id, beforeId){
+  if(id===beforeId) return;
+  var src=findCard(id); if(!src) return;
+  var card=src.card;
+  layout[src.r].splice(src.c,1);
+  if(!layout[src.r].length) layout.splice(src.r,1);
+  if(beforeId){
+    var t=findCard(beforeId);
+    if(t){ layout[t.r].splice(t.c,0,card); }
+    else { layout.push([card]); }
+  } else { layout.push([card]); }
+  saveState();
+}
+function renderAll(){
+  if(charts && charts.length){ charts.forEach(function(c){ try{c.dispose();}catch(e){} }); }
+  charts=[];
+  var box=document.getElementById('charts');
+  box.innerHTML='';
+  if(!layout.length) layout=defaultLayout();
+  layout.forEach(function(row){
+    var crow=document.createElement('div'); crow.className='crow';
+    var grid=document.createElement('div'); grid.className='grid c4';
+    row.forEach(function(card){ grid.appendChild(buildCard(card)); });
+    crow.appendChild(grid);
+    box.appendChild(crow);
+  });
+  box.querySelectorAll('.card:not(.empty) .chart').forEach(function(div){
+    var id=div.getAttribute('data-id');
+    var fc=findCard(id); if(!fc) return;
+    var item=LIBMAP[fc.card.src+'|'+fc.card.key];
+    if(!item) return;
+    try{ item.draw(div); }catch(e){ div.innerHTML='<div class="err">图表渲染失败：'+esc(e.message)+'</div>'; }
+  });
+}
+function buildCard(card){
+  var item=LIBMAP[card.src+'|'+card.key];
+  var el=document.createElement('div');
+  el.className='card'+(card.focus?' focus':'');
+  el.setAttribute('draggable','true');
+  el.setAttribute('data-id',card.id);
+  if(!item){
+    el.classList.add('empty');
+    var pick=document.createElement('div'); pick.className='pick'; pick.textContent='＋ 选择图表';
+    pick.onclick=function(){ openPicker(card.id); };
+    el.appendChild(pick);
+    el.addEventListener('dragstart',function(e){ dragFrom=card.id; e.dataTransfer.effectAllowed='move'; });
+    el.addEventListener('dragover',function(e){ e.preventDefault(); });
+    el.addEventListener('drop',function(e){ e.preventDefault(); if(dragFrom&&dragFrom!==card.id) moveCard(dragFrom,card.id); dragFrom=null; renderAll(); });
+    return el;
+  }
+  var head=document.createElement('div'); head.className='card-head';
+  var ttl=document.createElement('div'); ttl.className='ttl'; ttl.textContent=item.title; ttl.title=item.title;
+  var menuBtn=document.createElement('button'); menuBtn.className='menu-btn'; menuBtn.textContent='☰';
+  var menu=document.createElement('div'); menu.className='menu';
+  [['选择','sel'],['清空','clr'],['上移','up'],['下移','down'],['关注','focus'],['删除','del']].forEach(function(a){
+    var b=document.createElement('button'); b.textContent=a[0]; if(a[0]==='关注'&&card.focus) b.classList.add('on');
+    b.onclick=function(e){ e.stopPropagation(); menu.classList.remove('show'); cardAction(card.id, a[0]); };
+    menu.appendChild(b);
+  });
+  menuBtn.onclick=function(e){ e.stopPropagation(); menu.classList.toggle('show'); };
+  head.appendChild(ttl); head.appendChild(menuBtn); head.appendChild(menu);
+  var meta=document.createElement('div'); meta.className='meta'; meta.innerHTML=metaHTML(item.meta);
+  var chart=document.createElement('div'); chart.className='chart'; chart.setAttribute('data-id',card.id);
+  el.appendChild(head); el.appendChild(meta); el.appendChild(chart);
+  el.addEventListener('dragstart',function(e){ dragFrom=card.id; e.dataTransfer.effectAllowed='move'; });
+  el.addEventListener('dragover',function(e){ e.preventDefault(); });
+  el.addEventListener('drop',function(e){ e.preventDefault(); if(dragFrom&&dragFrom!==card.id) moveCard(dragFrom,card.id); dragFrom=null; renderAll(); });
+  return el;
+}
+function cardAction(id, act){
+  var fc=findCard(id); if(!fc) return;
+  var card=fc.card;
+  if(act==='选择'){ openPicker(id); return; }
+  if(act==='清空'){ card.src=null; card.key=null; saveState(); renderAll(); return; }
+  if(act==='删除'){ layout[fc.r].splice(fc.c,1); if(!layout[fc.r].length) layout.splice(fc.r,1); saveState(); renderAll(); return; }
+  if(act==='关注'){ card.focus=!card.focus; saveState(); renderAll(); return; }
+  if(act==='上移'||act==='下移'){
+    var row=layout[fc.r];
+    var nc=fc.c+(act==='上移'?-1:1);
+    if(nc<0||nc>=row.length) return;
+    row.splice(fc.c,1); row.splice(nc,0,card); saveState(); renderAll(); return;
+  }
+}
+
+
+/* ============ 选择图表 modal ============ */
+function openPicker(id){
+  currentPickIdx=id;
+  document.getElementById('modalSearch').value='';
+  renderModalList('');
+  document.getElementById('modal').style.display='flex';
+  setTimeout(function(){ try{ document.getElementById('modalSearch').focus(); }catch(e){} },30);
+}
+function closeModal(){ document.getElementById('modal').style.display='none'; currentPickIdx=null; }
+function renderModalList(q){
+  var list=document.getElementById('modalList'); list.innerHTML='';
+  q=(q||'').trim().toLowerCase();
+  GROUPS.forEach(function(g){
+    var shown=g.items.filter(function(it){ return !q || (it.title||'').toLowerCase().indexOf(q)>=0; });
+    if(!shown.length) return;
+    var sg=document.createElement('div'); sg.className='src-group'; sg.textContent=g.label; list.appendChild(sg);
+    shown.forEach(function(it){
+      var row=document.createElement('div'); row.className='chart-item';
+      row.innerHTML='<span>'+esc(it.title)+'</span><span class="k">'+esc(it.src+'|'+it.key)+'</span>';
+      row.onclick=function(){
+        var fc=findCard(currentPickIdx); if(fc){ fc.card.src=it.src; fc.card.key=it.key; }
+        saveState(); closeModal(); renderAll();
+      };
+      list.appendChild(row);
+    });
+  });
+  if(!list.innerHTML.trim()){ list.innerHTML='<div class="src-sub">无匹配的图表</div>'; }
+}
+/* ============ UI 绑定 ============ */
+function flash(btn, txt){
+  var old=btn.textContent; btn.textContent=txt; btn.classList.add('saved');
+  setTimeout(function(){ btn.textContent=old; btn.classList.remove('saved'); },1200);
+}
+function wireUI(){
+  document.getElementById('addRow').onclick=function(){
+    state.pages[state.active].events.push({date:'',event:'',impact:''});
+    saveState(); renderTimeline();
+  };
+  document.getElementById('addCard').onclick=function(){
+    layout.push([{id:uid(), src:null, key:null, focus:false}]);
+    saveState(); renderAll();
+  };
+  document.getElementById('saveLayout').onclick=function(){ saveState(); flash(this,'已保存布局'); };
+  document.getElementById('saveContent').onclick=function(){ saveState(); flash(this,'已保存内容'); };
+  document.getElementById('modalClose').onclick=closeModal;
+  document.getElementById('modal').addEventListener('click',function(e){ if(e.target===this) closeModal(); });
+  document.getElementById('modalSearch').addEventListener('input',function(){ renderModalList(this.value); });
+  document.querySelectorAll('.subtab').forEach(function(b){ b.onclick=function(){ switchPage(b.getAttribute('data-page')); }; });
+  document.addEventListener('click',function(){ document.querySelectorAll('.menu.show').forEach(function(m){ m.classList.remove('show'); }); });
+  window.addEventListener('resize',function(){ charts.forEach(function(c){ try{c.resize();}catch(e){} }); });
+}
+/* ============ 初始化（由 ECharts 加载器 onload 调用） ============ */
+function init(){
+  var jobs=[
+    fetchJson(SRC.p1.url).then(function(d){ SRC.p1.indicators=d.indicators; SRC.p1.xlabels=d.xlabels; SRC.p1.years=d.years; SRC.p1.date=d.date; }),
+    fetchJson(SRC.p2.url).then(function(d){ SRC.p2.indicators=d.indicators; SRC.p2.xlabels=d.xlabels; SRC.p2.years=d.years; SRC.p2.date=d.date; }),
+    fetchJson(SRC.p3.url).then(function(d){ SRC.p3.indicators=d.indicators; SRC.p3.xlabels=d.xlabels; SRC.p3.years=d.years; SRC.p3.date=d.date; }),
+    fetchJson(SRC.p6.url).then(function(d){ SRC.p6.rows=d.rows; SRC.p6.years=d.years; SRC.p6.demand=d.demand; }),
+    fetchJson(SRC.p7.url).then(function(d){ SRC.p7.sheets=d.sheets; })
+  ];
+  Promise.all(jobs).then(function(){
+    allYears=unionYears();
+    allYears.forEach(function(y){ if(!(String(y) in yearVisible)) yearVisible[String(y)]=true; });
+    buildLibrary();
+    loadState();
+    layout=state.pages[state.active].layout;
+    buildYearBar();
+    renderTimeline();
+    recomputeHilite();
+    wireUI();
+    renderAll();
+    var dt=SRC.p1.date||'';
+    document.getElementById('dataDate').textContent='数据更新：'+String(dt).slice(0,10);
+  }).catch(function(e){
+    console.error(e);
+    var box=document.getElementById('charts'); if(box) box.innerHTML='<div style="padding:20px;color:#c00">数据加载失败：'+((e&&e.message)||e)+'</div>';
+  });
+}
+
+</script>
+</body>
+</html>
