@@ -283,11 +283,11 @@ function bindColorButtons(){
 
 /* ============ 数据源 ============ */
 var SRC={
-  p1:{label:"日度价格", url:"data.json?v=1788016276", indicators:null, xlabels:null, years:null, date:null},
-  p2:{label:"产量开工利润", url:"p2.json?v=1788016276", indicators:null, xlabels:null, years:null, date:null},
-  p3:{label:"产业链库存", url:"p3.json?v=1788016276", indicators:null, xlabels:null, years:null, date:null},
-  p6:{label:"全球锂资源", url:"p6.json?v=1788016276", rows:null, years:null, demand:null},
-  p7:{label:"中国锂产业链平衡", url:"p7.json?v=1788016276", sheets:null}
+  p1:{label:"日度价格", url:"data.json?v=1788017256", indicators:null, xlabels:null, years:null, date:null},
+  p2:{label:"产量开工利润", url:"p2.json?v=1788017256", indicators:null, xlabels:null, years:null, date:null},
+  p3:{label:"产业链库存", url:"p3.json?v=1788017256", indicators:null, xlabels:null, years:null, date:null},
+  p6:{label:"全球锂资源", url:"p6.json?v=1788017256", rows:null, years:null, demand:null},
+  p7:{label:"中国锂产业链平衡", url:"p7.json?v=1788017256", sheets:null}
 };
 var GROUPS=[], LIBMAP={};
 var allYears=[], yearVisible={}, charts=[], layout=[], dragFrom=null, currentPickIdx=null;
@@ -307,9 +307,29 @@ function fetchJson(u){
 
 /* ============ 状态与持久化（每个子页独立） ============ */
 var SUBPAGES={ jxw:{title:'枧下窝'}, zimbabwe:{title:'津巴布韦'}, tax:{title:'税收政策'} };
-var LS_KEY="lcEventStateV1";
+var LS_KEY="lcEventStateV2";
 var state={ active:'jxw', editMode:false, pages:{
-  jxw:{events:[], layout:[]},
+  jxw:{events:[
+    {date:'2025-07-01', event:'新修订《矿产资源法》施行。<br>市场开始担心“陶瓷土含锂”模式被重审，锂矿要重新按主矿种/伴生矿种规范。', impact:'政策背景坐实。'},
+    {date:'2025-07-07', event:'宜春8宗涉锂矿权被要求完成储量核实、确定主矿种，枧下窝在列。<br>“宜春锂矿大整顿”“9月底前未完成或停产”。', impact:'有媒体引用文件，监管趋严基本坐实。'},
+    {date:'2025-08-09', event:'枧下窝原采矿证到期后暂停开采；宁德时代回应称正在办理采矿权证延续。<br>“只是证照续期问题” vs “监管重审导致停产”。', impact:'停产是事实，原因核心在证照/矿种/审批链条。'},
+    {date:'2025-09-09', event:'传出宜春时代召开复产工作会议，市场预期很快复产。<br>“马上复产”“员工召回”。', impact:'后续未兑现，属于复产预期/传闻。'},
+    {date:'2025-09-30', event:'2025年9月下旬，市场继续追踪，枧下窝仍未明确恢复正常生产。<br>“月底前解决”“继续停产”。', impact:'复产仍未坐实。'},
+    {date:'2025-11-06', event:'江西公示枧下窝已动用未有偿处置锂资源量出让收益评估。<br>“补缴出让收益后换证”。', impact:'手续推进属实。'},
+    {date:'2025-11-28', event:'后续报道显示，枧下窝开采主矿种由陶瓷土变更为锂矿，采矿权延续至2047-11-27。<br>“已经拿到锂矿采矿证，所以马上复产”。', impact:'采矿许可推进重要，但不等于环保、安全、生产全放行。'},
+    {date:'2025-12-18', event:'项目发布首次环评信息公示。<br>“环评启动，复产倒计时”。', impact:'环评进入流程，但不是批复。'},
+    {date:'2026-01-01', event:'2026年1月至5月，复产消息反复出现，但没有明确官方复产公告。<br>“春节后复产”“二季度复产”。', impact:'多为市场小作文，未坐实。'},
+    {date:'2026-06-08', event:'原用地预审意见书注销，引发市场担忧。<br>“2026年内复产无望”。', impact:'当时构成明显利空信号。'},
+    {date:'2026-06-17', event:'宜春时代重新取得《建设项目用地预审与选址意见书》，有效期至2029-06-17。<br>“手续重启，四季度复产”。', impact:'用地前置手续恢复，但仍非最终复产许可。'},
+    {date:'2026-06-24', event:'媒体实探称矿区有挖机、铲车、测量、培训等迹象；6月29日传出安许证到手、已复产。<br>“所有生产证件齐全”“已经复产”。', impact:'现场筹备可信；全面复产当时未被官方确认。'},
+    {date:'2026-07-07', event:'信用中国公示安全生产许可变更，矿种变为锂矿、陶瓷、镍、钴，规模3000万吨/年，决定日期为2026-06-29。<br>“安许证落地就是复产”。', impact:'安许证是重要进展，但仍不等于环评批复。'},
+    {date:'2026-07-16', event:'媒体实探：复产说法对立，现场有作业迹象，但法律人士认为可能只是筹备、三通一平或前期工程。<br>“采选冶一两周满产” vs “伪启动”。', impact:'仍不能确认全面复产。'},
+    {date:'2026-07-27', event:'环评征求意见稿公示，公众参与说明称收到1份反馈。<br>“环评进入最后阶段”。', impact:'是公众参与流程，不是正式批复。'},
+    {date:'2026-08-07', event:'宜丰生态环境局回应：现场检查时企业处于停产检修状态，未进行矿石装运及破碎等生产作业，要求尽快办理环评审批手续。<br>“复产传闻被官方否认”。', impact:'这是强证据：至少当时未正常生产。'},
+    {date:'2026-08-17', event:'宜春市生态环境局拟受理枧下窝采矿项目环评，公示期为10个工作日。<br>“公示结束后很快评审/批复，9月可能复产”。', impact:'原本是重大推进节点。'},
+    {date:'2026-08-23', event:'宜丰县官网又发布第一次环评信息公示、征求意见稿；企业称是“本地平台补充”。<br>“补公示是不是程序瑕疵”。', impact:'程序争议开始放大。'},
+    {date:'2026-08-26', event:'宜春市生态环境局环评科发布《说明》：枧下窝锂矿采矿项目环评报告书在拟受理公示期间，群众对建设单位前期公示的网站存在质疑；现将该拟受理公示撤销，待后续核准符合要求后，再另行公示。<br>“环评被否” vs “只是程序补正后重公示”。', impact:'关键更新：不是实质否决，但原8月17日至28日拟受理公示失效，环评流程回退，复产时间表再度不确定。'}
+  ], layout:[]},
   zimbabwe:{events:[], layout:[]},
   tax:{events:[], layout:[]}
 }};
