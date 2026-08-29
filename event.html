@@ -42,9 +42,9 @@ body{background:var(--bg); color:var(--text);
 .abtn.saved{color:#0a9a5c; border-color:#0a9a5c; background:#f0faf4;}
 /* 双栏布局 */
 .evt-layout{display:flex; gap:18px; align-items:flex-start;}
-.evt-panel{width:400px; flex-shrink:0; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px 16px; position:sticky; top:12px;}
+.evt-panel{flex:1 1 50%; min-width:0; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px 16px; position:sticky; top:12px;}
 .evt-head{display:flex; align-items:center; justify-content:space-between; gap:8px;}
-.evt-charts{flex:1; min-width:0;}
+.evt-charts{flex:1 1 50%; min-width:0;}
 /* 时间表 */
 .evt-table{width:100%; border-collapse:collapse; margin-top:10px;}
 .evt-table th{text-align:left; font-size:12px; color:var(--sub); font-weight:700; padding:6px 6px; border-bottom:1px solid var(--border);}
@@ -62,7 +62,7 @@ body{background:var(--bg); color:var(--text);
 .evt-hint code{background:#eef1f6; padding:1px 5px; border-radius:4px; font-size:11px; color:var(--accent);}
 /* 图表栅格 + 行标题 */
 .grid{display:grid; gap:14px;}
-.grid.c4{grid-template-columns:repeat(4,1fr);}
+.grid.c4{grid-template-columns:repeat(2,1fr);}
 .crow{display:grid; gap:14px; margin-bottom:18px;}
 .crow .row-header{grid-column:1/-1; display:flex; align-items:center; gap:8px; margin-bottom:4px;}
 .crow .row-note{flex:1; font-size:18px; color:var(--accent); font-weight:700; background:transparent; border:none; border-bottom:1px solid var(--border); border-radius:0; padding:8px 4px; min-height:34px; outline:none; cursor:text; line-height:1.5;}
@@ -72,7 +72,7 @@ body{background:var(--bg); color:var(--text);
 .crow .row-tools button{font-size:12px; line-height:1; padding:4px 8px; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; color:var(--sub);}
 .crow .row-tools button:hover{background:#f0f3f8; color:var(--accent); border-color:var(--accent);}
 .crow .row-tools button:disabled{opacity:.4; cursor:not-allowed;}
-@media (max-width:1200px){ .grid.c4{grid-template-columns:repeat(2,1fr);} .evt-layout{flex-direction:column;} .evt-panel{width:100%; position:static;} }
+@media (max-width:1200px){ .evt-layout{flex-direction:column;} .evt-panel{width:100%; position:static;} .evt-charts{width:100%;} }
 @media (max-width:720px){ .grid.c4{grid-template-columns:1fr;} .crow{grid-template-columns:1fr;} .wrap{padding:12px 10px 40px;} }
 .card{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:8px 12px 6px; min-width:0; position:relative;}
 .card.focus{box-shadow:0 0 0 2px var(--focus); border-color:var(--focus);}
@@ -217,11 +217,11 @@ function uid(){ return "c"+Date.now().toString(36)+Math.floor(Math.random()*1e4)
 
 /* ============ 数据源 ============ */
 var SRC={
-  p1:{label:"日度价格", url:"data.json?v=1787930953", indicators:null, xlabels:null, years:null, date:null},
-  p2:{label:"产量开工利润", url:"p2.json?v=1787930953", indicators:null, xlabels:null, years:null, date:null},
-  p3:{label:"产业链库存", url:"p3.json?v=1787930953", indicators:null, xlabels:null, years:null, date:null},
-  p6:{label:"全球锂资源", url:"p6.json?v=1787930953", rows:null, years:null, demand:null},
-  p7:{label:"中国锂产业链平衡", url:"p7.json?v=1787930953", sheets:null}
+  p1:{label:"日度价格", url:"data.json?v=1788012589", indicators:null, xlabels:null, years:null, date:null},
+  p2:{label:"产量开工利润", url:"p2.json?v=1788012589", indicators:null, xlabels:null, years:null, date:null},
+  p3:{label:"产业链库存", url:"p3.json?v=1788012589", indicators:null, xlabels:null, years:null, date:null},
+  p6:{label:"全球锂资源", url:"p6.json?v=1788012589", rows:null, years:null, demand:null},
+  p7:{label:"中国锂产业链平衡", url:"p7.json?v=1788012589", sheets:null}
 };
 var GROUPS=[], LIBMAP={};
 var allYears=[], yearVisible={}, charts=[], layout=[], dragFrom=null, currentPickIdx=null;
