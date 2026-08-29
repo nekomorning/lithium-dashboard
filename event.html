@@ -80,7 +80,7 @@ body{background:var(--bg); color:var(--text);
 .evt-hint code{background:#eef1f6; padding:1px 5px; border-radius:4px; font-size:11px; color:var(--accent);}
 /* 图表栅格 + 行标题 */
 .grid{display:grid; gap:14px;}
-.grid.c4{grid-template-columns:repeat(2,1fr);}
+.grid.c4{grid-template-columns:1fr;}
 .crow{display:grid; gap:14px; margin-bottom:18px;}
 .crow .row-header{grid-column:1/-1; display:flex; align-items:center; gap:8px; margin-bottom:4px;}
 .crow .row-note{flex:1; font-size:18px; color:var(--accent); font-weight:700; background:transparent; border:none; border-bottom:1px solid var(--border); border-radius:0; padding:8px 4px; min-height:34px; outline:none; cursor:text; line-height:1.5;}
@@ -111,7 +111,7 @@ body{background:var(--bg); color:var(--text);
 .card .chg.up{color:var(--up);} .card .chg.down{color:var(--down);} .card .chg.flat{color:var(--flat);}
 .card .dt{font-size:11px; color:var(--sub);}
 .card .sub{font-size:13px; font-weight:600; color:var(--text);}
-.card .chart{width:100%; height:220px;}
+.card .chart{width:100%; height:300px;}
 .card.empty .pick{padding:12px 18px; border:1px dashed var(--border); background:#fafbfd; border-radius:10px; cursor:pointer; color:var(--sub); font-size:14px;}
 .card.empty .pick:hover{color:var(--accent); border-color:var(--accent);}
 .card .err{color:#c0392b; font-size:12px; padding:10px 4px;}
@@ -283,11 +283,11 @@ function bindColorButtons(){
 
 /* ============ 数据源 ============ */
 var SRC={
-  p1:{label:"日度价格", url:"data.json?v=1788018392", indicators:null, xlabels:null, years:null, date:null},
-  p2:{label:"产量开工利润", url:"p2.json?v=1788018392", indicators:null, xlabels:null, years:null, date:null},
-  p3:{label:"产业链库存", url:"p3.json?v=1788018392", indicators:null, xlabels:null, years:null, date:null},
-  p6:{label:"全球锂资源", url:"p6.json?v=1788018392", rows:null, years:null, demand:null},
-  p7:{label:"中国锂产业链平衡", url:"p7.json?v=1788018392", sheets:null}
+  p1:{label:"日度价格", url:"data.json?v=1788019453", indicators:null, xlabels:null, years:null, date:null},
+  p2:{label:"产量开工利润", url:"p2.json?v=1788019453", indicators:null, xlabels:null, years:null, date:null},
+  p3:{label:"产业链库存", url:"p3.json?v=1788019453", indicators:null, xlabels:null, years:null, date:null},
+  p6:{label:"全球锂资源", url:"p6.json?v=1788019453", rows:null, years:null, demand:null},
+  p7:{label:"中国锂产业链平衡", url:"p7.json?v=1788019453", sheets:null}
 };
 var GROUPS=[], LIBMAP={};
 var allYears=[], yearVisible={}, charts=[], layout=[], dragFrom=null, currentPickIdx=null;
