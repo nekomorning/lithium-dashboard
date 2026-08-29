@@ -52,20 +52,31 @@ body{background:var(--bg); color:var(--text);
 .evt-table.view td{padding-top:10px; padding-bottom:10px;}
 .evt-table.view tr:hover{background:#f7f9fb;}
 .evt-table.view td.ev-date{width:118px;}
-.evt-table.view .date-text{font-weight:600; color:var(--accent); font-size:13px; white-space:nowrap;}
+.evt-table.view .date-text{font-weight:600; color:var(--text); font-size:13px; white-space:nowrap;}
 .evt-table.view .date-text.ok{color:#0a9a5c;}
 .evt-table.view .date-text.bad{color:#d92626;}
 .evt-table.view .event-text{font-weight:600; color:var(--text); font-size:13px; line-height:1.5; word-break:break-word;}
-.evt-table.view .impact-text{color:var(--sub); font-size:13px; line-height:1.6; word-break:break-word;}
+.evt-table.view .impact-text{font-weight:600; color:var(--text); font-size:13px; line-height:1.5; word-break:break-word;}
 .evt-table.view td.evt-act{width:30px;}
-.evt-table.edit input.ev-date, .evt-table.edit textarea{width:100%; border:1px solid var(--border); border-radius:7px; padding:6px 8px; font-size:13px; font-family:inherit; color:var(--text); background:#fafbfd; resize:vertical; line-height:1.5;}
-.evt-table.edit input.ev-date{width:100%;}
-.evt-table.edit input.ev-date:focus, .evt-table.edit textarea:focus{outline:none; border-color:var(--accent); background:#fff;}
+.evt-table.edit input.ev-date{width:100%; border:1px solid var(--border); border-radius:7px; padding:6px 8px; font-size:13px; font-family:inherit; color:var(--text); background:#fafbfd; line-height:1.5;}
+.evt-table.edit input.ev-date:focus{outline:none; border-color:var(--accent); background:#fff;}
 .evt-table.edit input.ev-date.ok{border-color:#0a9a5c; background:#f3fbf6;}
 .evt-table.edit input.ev-date.bad{border-color:#d92626; background:#fdf1f1;}
 .evt-table.edit td.evt-act{width:34px; text-align:center;}
 .evt-del{width:26px; height:26px; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; color:var(--sub); font-size:15px; line-height:1; margin-top:2px;}
 .evt-del:hover{color:#d92626; border-color:#d92626; background:#fdf1f1;}
+/* 富文本编辑 */
+.evt-tools{display:flex; gap:6px; align-items:center; margin:0 0 10px; flex-wrap:wrap;}
+.evt-tools>span{color:var(--sub); font-size:12px;}
+.evt-tools button{width:26px; height:26px; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; font-size:13px; font-weight:700; display:inline-flex; align-items:center; justify-content:center;}
+.evt-tools button:hover{border-color:var(--accent); background:#f0f3f8;}
+.evt-tools .c-red{color:#d92626;}
+.evt-tools .c-green{color:#0a9a5c;}
+.evt-tools .c-blue{color:#2b7cff;}
+.evt-tools .c-black{color:var(--text);}
+.evt-rich{width:100%; border:1px solid var(--border); border-radius:7px; padding:6px 8px; font-size:13px; font-family:inherit; color:var(--text); background:#fafbfd; min-height:34px; line-height:1.5; outline:none; white-space:pre-wrap; word-break:break-word;}
+.evt-rich:focus{outline:none; border-color:var(--accent); background:#fff;}
+.evt-table.edit td.ev-event,.evt-table.edit td.ev-impact{padding-top:10px; padding-bottom:10px;}
 .evt-empty{color:var(--sub); font-size:13px; padding:18px 6px; text-align:center;}
 .evt-hint{color:var(--sub); font-size:12px; margin:8px 0 0; line-height:1.7;}
 .evt-hint code{background:#eef1f6; padding:1px 5px; border-radius:4px; font-size:11px; color:var(--accent);}
@@ -155,11 +166,18 @@ body{background:var(--bg); color:var(--text);
         </div>
       </div>
       <p class="sec-sub" style="margin:8px 0 0">时间格式：<code>2026-08-26</code> 或 <code>2026年8月26日</code>。右侧图表将在对应日期的数据点高亮标注（橙色）。</p>
+      <div class="evt-tools" id="evtTools" style="display:none;">
+        <span>选中文字后点选颜色：</span>
+        <button class="c-red" data-color="#d92626" title="红色">A</button>
+        <button class="c-green" data-color="#0a9a5c" title="绿色">A</button>
+        <button class="c-blue" data-color="#2b7cff" title="蓝色">A</button>
+        <button class="c-black" data-color="#1f2733" title="黑色">A</button>
+      </div>
       <table class="evt-table">
         <thead><tr><th style="width:118px">时间</th><th>事件</th><th>影响</th><th style="width:30px"></th></tr></thead>
         <tbody id="evtBody"></tbody>
       </table>
-      <p class="evt-hint">点击「编辑」进入编辑模式（可新增/修改/删除行），点击「保存」退出为展示表格；内容自动保存于本机浏览器，切换子页或刷新后保留。绿色边框＝日期可识别并会标注。</p>
+      <p class="evt-hint">点击「编辑」进入编辑模式（可新增/修改/删除行，选中文字后可用上方色块标记红/绿/蓝），点击「保存」退出为展示表格；内容自动保存于本机浏览器，切换子页或刷新后保留。绿色边框＝日期可识别并会标注。</p>
     </section>
 
     <section class="evt-charts">
@@ -227,13 +245,51 @@ function fmtByUnit(v, dec, unit){
 }
 function uid(){ return "c"+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36); }
 
+/* 富文本：仅保留 <span style="color:#..."> 与 <br> */
+function richHtml(s){
+  if(!s) return '';
+  return String(s)
+    .replace(/<\/p>/gi,'<br>')
+    .replace(/<\/div>/gi,'<br>')
+    .replace(/<br\s*\/?>/gi,'{{BR}}')
+    .replace(/<span[^>]*style=["'][^"']*color:\s*([^;"']+)[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi,'{{SPAN|$1|$2}}')
+    .replace(/<[^>]+>/g,'')
+    .replace(/{{SPAN\|([^|]+)\|([\s\S]*?)}}/g,function(m,color,text){
+      var c=color.trim().toLowerCase().replace(/\s+/g,'');
+      if(c==='rgb(217,38,38)'||c==='#d92626'||c==='red'||c==='#ff0000') c='#d92626';
+      else if(c==='rgb(10,154,92)'||c==='#0a9a5c'||c==='green'||c==='#008000') c='#0a9a5c';
+      else if(c==='rgb(43,124,255)'||c==='#2b7cff'||c==='blue'||c==='#0000ff') c='#2b7cff';
+      else if(c==='rgb(31,39,51)'||c==='var(--text)'||c==='#1f2733'||c==='black'||c==='#000000') c='#1f2733';
+      else c='#1f2733';
+      return '<span style="color:'+c+'">'+text+'</span>';
+    })
+    .replace(/{{BR}}/gi,'<br>');
+}
+function isRichEmpty(s){ return !s || !String(s).replace(/<[^>]+>/g,'').trim(); }
+function applyColor(color){
+  var sel=window.getSelection();
+  if(!sel||sel.rangeCount===0) return;
+  var node=sel.anchorNode;
+  while(node && node.nodeType!==1) node=node.parentElement;
+  if(!node || !node.closest || !node.closest('.evt-rich')) return;
+  document.execCommand('styleWithCSS', false, true);
+  document.execCommand('foreColor', false, color);
+}
+function bindColorButtons(){
+  var box=document.getElementById('evtTools');
+  if(!box) return;
+  box.querySelectorAll('button[data-color]').forEach(function(b){
+    b.onmousedown=function(e){ e.preventDefault(); applyColor(b.getAttribute('data-color')); return false; };
+  });
+}
+
 /* ============ 数据源 ============ */
 var SRC={
-  p1:{label:"日度价格", url:"data.json?v=1788014250", indicators:null, xlabels:null, years:null, date:null},
-  p2:{label:"产量开工利润", url:"p2.json?v=1788014250", indicators:null, xlabels:null, years:null, date:null},
-  p3:{label:"产业链库存", url:"p3.json?v=1788014250", indicators:null, xlabels:null, years:null, date:null},
-  p6:{label:"全球锂资源", url:"p6.json?v=1788014250", rows:null, years:null, demand:null},
-  p7:{label:"中国锂产业链平衡", url:"p7.json?v=1788014250", sheets:null}
+  p1:{label:"日度价格", url:"data.json?v=1788015657", indicators:null, xlabels:null, years:null, date:null},
+  p2:{label:"产量开工利润", url:"p2.json?v=1788015657", indicators:null, xlabels:null, years:null, date:null},
+  p3:{label:"产业链库存", url:"p3.json?v=1788015657", indicators:null, xlabels:null, years:null, date:null},
+  p6:{label:"全球锂资源", url:"p6.json?v=1788015657", rows:null, years:null, demand:null},
+  p7:{label:"中国锂产业链平衡", url:"p7.json?v=1788015657", sheets:null}
 };
 var GROUPS=[], LIBMAP={};
 var allYears=[], yearVisible={}, charts=[], layout=[], dragFrom=null, currentPickIdx=null;
@@ -326,9 +382,10 @@ function recomputeHilite(){
 function toggleEditMode(edit){
   state.editMode=(edit!==undefined?edit:!state.editMode);
   if(!state.editMode){
-    // 退出编辑时，清理空行并保存
+    // 退出编辑时，清理空行、规范化富文本并保存
     var evs=state.pages[state.active].events;
-    state.pages[state.active].events=evs.filter(function(ev){ return ev.date||ev.event||ev.impact; });
+    evs.forEach(function(ev){ ev.event=richHtml(ev.event); ev.impact=richHtml(ev.impact); });
+    state.pages[state.active].events=evs.filter(function(ev){ return ev.date||!isRichEmpty(ev.event)||!isRichEmpty(ev.impact); });
     saveState();
   }
   renderTimeline(); updateEditBtn();
@@ -352,6 +409,7 @@ function renderTimeline(){
   var evs=state.pages[state.active].events;
   var edit=!!state.editMode;
   document.querySelector('.evt-table').className='evt-table '+(edit?'edit':'view');
+  var tools=document.getElementById('evtTools'); if(tools) tools.style.display=edit?'flex':'none';
   evs.forEach(function(ev, idx){
     var tr=document.createElement('tr');
     var parsed=parseEventDate(ev.date);
@@ -375,24 +433,24 @@ function renderTimeline(){
     // 事件
     var td2=document.createElement('td'); td2.className='ev-event';
     if(edit){
-      var ta=document.createElement('textarea'); ta.value=ev.event||''; ta.rows=1; ta.placeholder='事件描述';
-      ta.addEventListener('input', function(){ ta.style.height='auto'; ta.style.height=ta.scrollHeight+'px'; });
-      ta.addEventListener('change', function(){ evs[idx].event=ta.value; saveState(); });
-      td2.appendChild(ta);
+      var ed=document.createElement('div'); ed.className='evt-rich'; ed.contentEditable=true; ed.innerHTML=richHtml(ev.event);
+      ed.addEventListener('blur',function(){ evs[idx].event=richHtml(ed.innerHTML); saveState(); });
+      ed.addEventListener('paste',function(e){ e.preventDefault(); var txt=(e.clipboardData||window.clipboardData).getData('text/plain'); document.execCommand('insertText',false,txt); });
+      td2.appendChild(ed);
     } else {
-      var eventSpan=document.createElement('div'); eventSpan.className='event-text'; eventSpan.textContent=ev.event||'—';
-      td2.appendChild(eventSpan);
+      var eventDiv=document.createElement('div'); eventDiv.className='event-text'; eventDiv.innerHTML=richHtml(ev.event)||'—';
+      td2.appendChild(eventDiv);
     }
     // 影响
     var td3=document.createElement('td'); td3.className='ev-impact';
     if(edit){
-      var ti=document.createElement('textarea'); ti.value=ev.impact||''; ti.rows=1; ti.placeholder='对供需/价格影响';
-      ti.addEventListener('input', function(){ ti.style.height='auto'; ti.style.height=ti.scrollHeight+'px'; });
-      ti.addEventListener('change', function(){ evs[idx].impact=ti.value; saveState(); });
-      td3.appendChild(ti);
+      var im=document.createElement('div'); im.className='evt-rich'; im.contentEditable=true; im.innerHTML=richHtml(ev.impact);
+      im.addEventListener('blur',function(){ evs[idx].impact=richHtml(im.innerHTML); saveState(); });
+      im.addEventListener('paste',function(e){ e.preventDefault(); var txt=(e.clipboardData||window.clipboardData).getData('text/plain'); document.execCommand('insertText',false,txt); });
+      td3.appendChild(im);
     } else {
-      var impactSpan=document.createElement('div'); impactSpan.className='impact-text'; impactSpan.textContent=ev.impact||'—';
-      td3.appendChild(impactSpan);
+      var impactDiv=document.createElement('div'); impactDiv.className='impact-text'; impactDiv.innerHTML=richHtml(ev.impact)||'—';
+      td3.appendChild(impactDiv);
     }
     // 删除/占位
     var td4=document.createElement('td'); td4.className='evt-act';
@@ -405,10 +463,6 @@ function renderTimeline(){
     }
     tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4);
     body.appendChild(tr);
-    // textarea auto-resize after mount
-    if(edit){
-      setTimeout(function(){ [ta,ti].forEach(function(x){ if(x){ x.style.height='auto'; x.style.height=x.scrollHeight+'px'; } }); },0);
-    }
   });
   if(!evs.length){
     var tr=document.createElement('tr');
@@ -832,6 +886,7 @@ function flash(btn, txt){
   setTimeout(function(){ btn.textContent=old; btn.classList.remove('saved'); },1200);
 }
 function wireUI(){
+  bindColorButtons();
   document.getElementById('addRow').onclick=function(){
     state.editMode=true;
     state.pages[state.active].events.push({date:'',event:'',impact:''});
