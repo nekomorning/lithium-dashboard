@@ -172,7 +172,7 @@ body{background:var(--bg); color:var(--text);
         <button class="c-black" data-color="#1f2733" title="黑色">A</button>
       </div>
       <table class="evt-table">
-        <thead><tr><th style="width:118px">时间</th><th>事件</th><th>影响</th><th style="width:30px"></th></tr></thead>
+        <thead><tr><th style="width:118px">时间</th><th>事件</th><th>备注</th><th style="width:30px"></th></tr></thead>
         <tbody id="evtBody"></tbody>
       </table>
       <p class="evt-hint">点击「编辑」进入编辑模式（可新增/修改/删除行，选中文字后可用上方色块标记红/绿/蓝），点击「保存」退出为展示表格；内容自动保存于本机浏览器，切换子页或刷新后保留。绿色边框＝日期可识别并会标注。</p>
@@ -283,11 +283,11 @@ function bindColorButtons(){
 
 /* ============ 数据源 ============ */
 var SRC={
-  p1:{label:"日度价格", url:"data.json?v=1788019453", indicators:null, xlabels:null, years:null, date:null},
-  p2:{label:"产量开工利润", url:"p2.json?v=1788019453", indicators:null, xlabels:null, years:null, date:null},
-  p3:{label:"产业链库存", url:"p3.json?v=1788019453", indicators:null, xlabels:null, years:null, date:null},
-  p6:{label:"全球锂资源", url:"p6.json?v=1788019453", rows:null, years:null, demand:null},
-  p7:{label:"中国锂产业链平衡", url:"p7.json?v=1788019453", sheets:null}
+  p1:{label:"日度价格", url:"data.json?v=1788140273", indicators:null, xlabels:null, years:null, date:null},
+  p2:{label:"产量开工利润", url:"p2.json?v=1788140273", indicators:null, xlabels:null, years:null, date:null},
+  p3:{label:"产业链库存", url:"p3.json?v=1788140273", indicators:null, xlabels:null, years:null, date:null},
+  p6:{label:"全球锂资源", url:"p6.json?v=1788140273", rows:null, years:null, demand:null},
+  p7:{label:"中国锂产业链平衡", url:"p7.json?v=1788140273", sheets:null}
 };
 var GROUPS=[], LIBMAP={};
 var allYears=[], yearVisible={}, charts=[], layout=[], dragFrom=null, currentPickIdx=null;
