@@ -42,11 +42,12 @@ body{background:var(--bg); color:var(--text);
 .abtn.saved{color:#0a9a5c; border-color:#0a9a5c; background:#f0faf4;}
 /* 双栏布局 */
 .evt-layout{display:flex; gap:18px; align-items:flex-start;}
-.evt-panel{flex:1 1 50%; min-width:0; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px 16px; position:sticky; top:12px;}
+.evt-panel{flex:1 1 50%; min-width:0; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px 16px; position:sticky; top:12px; display:flex; flex-direction:column; overflow:hidden;}
 .evt-head{display:flex; align-items:center; justify-content:space-between; gap:8px;}
 .evt-charts{flex:1 1 50%; min-width:0;}
 /* 时间表 */
-.evt-table{width:100%; border-collapse:collapse; margin-top:10px;}
+.evt-table-wrap{flex:1 1 auto; overflow-y:auto; margin:10px -4px 0; padding:0 4px;}
+.evt-table{width:100%; border-collapse:collapse;}
 .evt-table th{text-align:left; font-size:12px; color:var(--sub); font-weight:700; padding:6px 6px; border-bottom:1px solid var(--border);}
 .evt-table td{padding:5px 6px; border-bottom:1px solid #eef1f6; vertical-align:top;}
 .evt-table.view td{padding-top:10px; padding-bottom:10px;}
@@ -171,10 +172,12 @@ body{background:var(--bg); color:var(--text);
         <button class="c-blue" data-color="#2b7cff" title="蓝色">A</button>
         <button class="c-black" data-color="#1f2733" title="黑色">A</button>
       </div>
-      <table class="evt-table">
-        <thead><tr><th style="width:118px">时间</th><th>事件</th><th>备注</th><th style="width:30px"></th></tr></thead>
-        <tbody id="evtBody"></tbody>
-      </table>
+      <div class="evt-table-wrap" id="evtTableWrap">
+        <table class="evt-table">
+          <thead><tr><th style="width:118px">时间</th><th>事件</th><th>备注</th><th style="width:30px"></th></tr></thead>
+          <tbody id="evtBody"></tbody>
+        </table>
+      </div>
       <p class="evt-hint">点击「编辑」进入编辑模式（可新增/修改/删除行，选中文字后可用上方色块标记红/绿/蓝），点击「保存」退出为展示表格；内容自动保存于本机浏览器，切换子页或刷新后保留。绿色边框＝日期可识别并会标注。</p>
     </section>
 
@@ -283,11 +286,11 @@ function bindColorButtons(){
 
 /* ============ 数据源 ============ */
 var SRC={
-  p1:{label:"日度价格", url:"data.json?v=1788140273", indicators:null, xlabels:null, years:null, date:null},
-  p2:{label:"产量开工利润", url:"p2.json?v=1788140273", indicators:null, xlabels:null, years:null, date:null},
-  p3:{label:"产业链库存", url:"p3.json?v=1788140273", indicators:null, xlabels:null, years:null, date:null},
-  p6:{label:"全球锂资源", url:"p6.json?v=1788140273", rows:null, years:null, demand:null},
-  p7:{label:"中国锂产业链平衡", url:"p7.json?v=1788140273", sheets:null}
+  p1:{label:"日度价格", url:"data.json?v=1788141709", indicators:null, xlabels:null, years:null, date:null},
+  p2:{label:"产量开工利润", url:"p2.json?v=1788141709", indicators:null, xlabels:null, years:null, date:null},
+  p3:{label:"产业链库存", url:"p3.json?v=1788141709", indicators:null, xlabels:null, years:null, date:null},
+  p6:{label:"全球锂资源", url:"p6.json?v=1788141709", rows:null, years:null, demand:null},
+  p7:{label:"中国锂产业链平衡", url:"p7.json?v=1788141709", sheets:null}
 };
 var GROUPS=[], LIBMAP={};
 var allYears=[], yearVisible={}, charts=[], layout=[], dragFrom=null, currentPickIdx=null;
@@ -492,6 +495,30 @@ function renderTimeline(){
 }
 function onEventChange(){ saveState(); recomputeHilite(); renderAll(); }
 
+function syncPanelHeight(){
+  var panel=document.querySelector('.evt-panel');
+  var chartsBox=document.getElementById('charts');
+  if(!panel||!chartsBox) return;
+  if(window.innerWidth<=1200){ panel.style.maxHeight=''; return; }
+  var cards=chartsBox.querySelectorAll('.card');
+  var target=null, count=0;
+  for(var i=0;i<cards.length;i++){
+    target=cards[i];
+    count++;
+    if(count>=2) break;
+  }
+  if(!target && cards.length) target=cards[0];
+  if(!target){ panel.style.maxHeight=''; return; }
+  var rectT=target.getBoundingClientRect();
+  var rectP=panel.getBoundingClientRect();
+  var h=rectT.bottom-rectP.top;
+  panel.style.maxHeight=Math.max(320, Math.round(h))+'px';
+}
+function scrollTimelineToBottom(){
+  var wrap=document.getElementById('evtTableWrap');
+  if(wrap) wrap.scrollTop=wrap.scrollHeight;
+}
+
 function switchPage(k){
   if(!SUBPAGES[k] || k===state.active) return;
   saveState();
@@ -502,6 +529,7 @@ function switchPage(k){
   saveState();
   document.querySelectorAll('.subtab').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-page')===state.active); });
   renderTimeline(); updateEditBtn(); recomputeHilite(); renderAll();
+  setTimeout(function(){ syncPanelHeight(); scrollTimelineToBottom(); },0);
 }
 function active(){ return state.active; }
 
@@ -815,6 +843,7 @@ function renderAll(){
     if(!item) return;
     try{ item.draw(div); }catch(e){ div.innerHTML='<div class="err">图表渲染失败：'+esc(e.message)+'</div>'; }
   });
+  setTimeout(function(){ syncPanelHeight(); scrollTimelineToBottom(); },0);
 }
 function buildCard(card){
   var item=LIBMAP[card.src+'|'+card.key];
@@ -906,6 +935,7 @@ function wireUI(){
     state.editMode=true;
     state.pages[state.active].events.push({date:'',event:'',impact:''});
     saveState(); renderTimeline(); updateEditBtn();
+    setTimeout(scrollTimelineToBottom,0);
   };
   document.getElementById('editModeBtn').onclick=function(){ toggleEditMode(); };
   document.getElementById('addCard').onclick=function(){
@@ -919,7 +949,7 @@ function wireUI(){
   document.getElementById('modalSearch').addEventListener('input',function(){ renderModalList(this.value); });
   document.querySelectorAll('.subtab').forEach(function(b){ b.onclick=function(){ switchPage(b.getAttribute('data-page')); }; });
   document.addEventListener('click',function(){ document.querySelectorAll('.menu.show').forEach(function(m){ m.classList.remove('show'); }); });
-  window.addEventListener('resize',function(){ charts.forEach(function(c){ try{c.resize();}catch(e){} }); });
+  window.addEventListener('resize',function(){ charts.forEach(function(c){ try{c.resize();}catch(e){} }); syncPanelHeight(); });
 }
 /* ============ 初始化（由 ECharts 加载器 onload 调用） ============ */
 function init(){
