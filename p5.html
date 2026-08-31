@@ -325,7 +325,7 @@ th .arr.up{color:var(--down);}
 
 <script>
 (function(){
-  Promise.all([fetch('p5.json?v=1788163646').then(function(r){return r.json();}),fetch('clh.json?v=1788163646').then(function(r){return r.json();}),fetch('export.json?v=1788163646').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('p5.json?v=1788182890').then(function(r){return r.json();}),fetch('clh.json?v=1788182890').then(function(r){return r.json();}),fetch('export.json?v=1788182890').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; window.CLH=rs[1]; window.EXPORT=rs[2]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
