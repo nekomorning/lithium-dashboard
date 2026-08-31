@@ -287,11 +287,11 @@ function bindColorButtons(){
 
 /* ============ 数据源 ============ */
 var SRC={
-  p1:{label:"日度价格", url:"data.json?v=1788160510", indicators:null, xlabels:null, years:null, date:null},
-  p2:{label:"产量开工利润", url:"p2.json?v=1788160510", indicators:null, xlabels:null, years:null, date:null},
-  p3:{label:"产业链库存", url:"p3.json?v=1788160510", indicators:null, xlabels:null, years:null, date:null},
-  p6:{label:"全球锂资源", url:"p6.json?v=1788160510", rows:null, years:null, demand:null},
-  p7:{label:"中国锂产业链平衡", url:"p7.json?v=1788160510", sheets:null}
+  p1:{label:"日度价格", url:"data.json?v=1788161915", indicators:null, xlabels:null, years:null, date:null},
+  p2:{label:"产量开工利润", url:"p2.json?v=1788161915", indicators:null, xlabels:null, years:null, date:null},
+  p3:{label:"产业链库存", url:"p3.json?v=1788161915", indicators:null, xlabels:null, years:null, date:null},
+  p6:{label:"全球锂资源", url:"p6.json?v=1788161915", rows:null, years:null, demand:null},
+  p7:{label:"中国锂产业链平衡", url:"p7.json?v=1788161915", sheets:null}
 };
 var GROUPS=[], LIBMAP={};
 var allYears=[], yearVisible={}, charts=[], layout=[], dragFrom=null, currentPickIdx=null;
@@ -761,13 +761,16 @@ function buildLibrary(){
       if(!cols.length) return;
       var items=cols.map(function(sc){
         var seaObj=sh.seasonal[sc.key]||{};
-        var byYear={};
+        var rawByYear={}, byYear={};
+        // p7 seasonal 数值实际单位不统一：标“万吨LCE”的列原始为吨，需÷10000；GWh/万辆/%等保持原值
+        var factor=(sc.unit && sc.unit.indexOf('万吨LCE')>=0)?10000:1;
         ['2023','2024','2025','2026'].forEach(function(y){
           var arr=(seaObj[y]||[]).slice(0,12);
-          byYear[y]=arr.map(function(v){ return (v==null||isNaN(v))?null:(v/10000); });
+          rawByYear[y]=arr.map(function(v){ return (v==null||isNaN(v))?null:v; });
+          byYear[y]=arr.map(function(v){ return (v==null||isNaN(v))?null:(v/factor); });
         });
         return { src:'p7', key:'bal::'+sheetName+'::'+sc.key, title:(sc.title||sc.label)+'（'+sheetName+'）',
-          meta:calcMonthMeta(byYear, sc.unit, 2),
+          meta:calcMonthMeta(rawByYear, sc.unit, 2),
           draw:function(div){ drawMonthSeasonEvt(div, byYear, 2); } };
       });
       GROUPS.push({label:'平衡表·'+sheetName, items:items});
