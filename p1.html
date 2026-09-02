@@ -181,7 +181,7 @@ tr.abn td{background:#fff7f0;}
 
 <script>
 (function(){
-  Promise.all([fetch('data.json?v=1788182889').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('data.json?v=1788315773').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
