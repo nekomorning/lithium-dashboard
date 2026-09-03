@@ -211,7 +211,7 @@ window.__DATA__ = /*DATA*/null/*DATA_END*/;
 </script>
 <script>
 (function(){
-  Promise.all([fetch('weekly.json?v=1788414851').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('weekly.json?v=1788439445').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
