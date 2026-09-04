@@ -152,6 +152,8 @@ body{background:var(--bg); color:var(--text);
     <button class="abtn" id="addCard">＋ 新增一行</button>
     <button class="abtn" id="saveLayout">保存布局</button>
     <button class="abtn" id="saveContent">保存内容</button>
+    <button class="abtn" id="publishCore" style="background:#0f4c81;color:#fff;border-color:#0f4c81">⇧ 发布到线上</button>
+    <button class="abtn" id="ghTokenBtn">⚙ 令牌</button>
   </div>
   <div class="ybar" id="ybar"></div>
   <div id="charts"></div>
@@ -265,6 +267,33 @@ var LS_SAVED_KEY="lcCoreLayoutV1_saved";
 var CONTENT_KEY="lcCoreContentV1";
 var CONTENT_SAVED_KEY="lcCoreContentV1_saved";
 
+/* 线上共享内容（发布到 GitHub Pages 后他人可见）；本地草稿仅自己可见 */
+var ONLINE_CONTENT_URL="lc_core_content.json";
+var onlineContent=null;   // 线上已发布的内容载荷（含 savedAtISO）
+var onlineLayout=null;    // 线上已发布的布局 {v, savedAtISO}
+function pickNewer(a,b){
+  if(!a) return b; if(!b) return a;
+  var ta=a.savedAtISO?Date.parse(a.savedAtISO):0;
+  var tb=b.savedAtISO?Date.parse(b.savedAtISO):0;
+  return (ta>=tb)?a:b;   // 平局时线上优先
+}
+function pickLocalOrOnline(savedKey, autoKey, online){
+  var cand = online || null;
+  try{ var s=localStorage.getItem(savedKey); if(s) cand=pickNewer(cand, JSON.parse(s)); }catch(e){}
+  try{ var s2=localStorage.getItem(autoKey); if(s2) cand=pickNewer(cand, JSON.parse(s2)); }catch(e){}
+  return cand;
+}
+function fetchOnlineContent(){
+  // 拉取线上共享内容；失败（含 file:// 或离线）时静默回退为纯本地模式
+  try{
+    if(typeof fetch!=="function") return Promise.resolve(null);
+    return fetch(ONLINE_CONTENT_URL+"?t="+Date.now(),{cache:"no-store"})
+      .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+      .then(function(oc){ if(oc){ if(oc.content) onlineContent=oc.content; if(oc.layout) onlineLayout=oc.layout; } return oc; })
+      ["catch"](function(){ return null; });
+  }catch(e){ return Promise.resolve(null); }
+}
+
 /* 定价逻辑默认文本 */
 var DEFAULT_LOGIC=[
   "供应：**锂盐厂原料库存与港口库存偏高，供给弹性来自回收料与进口矿**，矿端放量是核心慢变量",
@@ -283,29 +312,40 @@ var DEFAULT_ITEMS=[
 function defaultLayout(){
   return DEFAULT_ITEMS.map(function(row){ return row.map(function(it){ return {id:uid(), src:it.src, key:it.key, focus:false}; }); });
 }
-function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(layout)); }catch(e){} }
+function layoutEnvelope(){ return {v:layout, savedAtISO:new Date().toISOString()}; }
+function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(layoutEnvelope())); }catch(e){} }
 function loadLayout(){
+  function norm(it){ return {id:it.id||uid(), src:it.src, key:it.key, focus:!!it.focus}; }
+  // 兼容两种存储形态：{v, savedAtISO} 信封（现版）与裸数组（旧版，1D 每 4 张拆行 / 2D 行数组）
   function read(k){
     try{
       var s=localStorage.getItem(k);
       if(s){
-        var a=JSON.parse(s);
-        // 兼容旧 1D 布局：每 4 张卡拆成一行
-        if(Array.isArray(a) && a.length && !Array.isArray(a[0])){
-          var rows=[], GROUP=4;
-          for(var i=0;i<a.length;i+=GROUP){
-            rows.push(a.slice(i,i+GROUP).map(function(it){ return {id:it.id||uid(), src:it.src, key:it.key, focus:!!it.focus}; }));
+        var o=JSON.parse(s);
+        var a=(o && !Array.isArray(o) && Array.isArray(o.v))?o.v:o;
+        if(Array.isArray(a)){
+          var meta=(o && !Array.isArray(o))?(o.savedAtISO||""):"";
+          if(a.length && !Array.isArray(a[0])){
+            var rows=[], GROUP=4;
+            for(var i=0;i<a.length;i+=GROUP){
+              rows.push(a.slice(i,i+GROUP).map(norm));
+            }
+            return {v:rows, savedAtISO:meta};
           }
-          return rows;
-        }
-        if(Array.isArray(a) && a.every(function(r){return Array.isArray(r);})){
-          return a.map(function(row){ return row.map(function(it){ return {id:it.id||uid(), src:it.src, key:it.key, focus:!!it.focus}; }); });
+          if(a.length && a.every(function(r){return Array.isArray(r);})){
+            return {v:a.map(function(row){ return row.map(norm); }), savedAtISO:meta};
+          }
         }
       }
     }catch(e){}
     return null;
   }
-  return read(LS_SAVED_KEY) || read(LS_KEY) || defaultLayout();
+  var online=(onlineLayout && Array.isArray(onlineLayout.v))?onlineLayout
+            :(onlineLayout && Array.isArray(onlineLayout))?{v:onlineLayout, savedAtISO:""}
+            :null;
+  var cand=pickNewer(online, read(LS_SAVED_KEY));
+  cand=pickNewer(cand, read(LS_KEY));
+  return (cand && cand.v) ? cand.v : defaultLayout();
 }
 
 function fetchJson(u){
@@ -346,13 +386,11 @@ function setRowNote(cardId, text){
 function contentPayload(){
   return {logic: logicText||DEFAULT_LOGIC, rowNotes: rowNotes, history: logicHistory,
           reviewText: reviewText||DEFAULT_REVIEW, reviewCards: reviewCards.map(function(c){ return {title:c.title, sel:c.sel.slice(), unifyY:!!c.unifyY}; }),
-          savedAt: new Date().toLocaleString('zh-CN')};
+          savedAt: new Date().toLocaleString('zh-CN'), savedAtISO: new Date().toISOString()};
 }
 function saveContentAuto(){ try{ localStorage.setItem(CONTENT_KEY, JSON.stringify(contentPayload())); }catch(e){} }
 function loadContent(){
-  var data=null;
-  try{ var s=localStorage.getItem(CONTENT_SAVED_KEY); if(s) data=JSON.parse(s); }catch(e){}
-  if(!data){ try{ var s2=localStorage.getItem(CONTENT_KEY); if(s2) data=JSON.parse(s2); }catch(e){} }
+  var data=pickLocalOrOnline(CONTENT_SAVED_KEY, CONTENT_KEY, onlineContent);
   if(data){
     if(Array.isArray(data.logic)&&data.logic.length) logicText=data.logic;
     if(Array.isArray(data.rowNotes)) rowNotes=data.rowNotes;
@@ -695,7 +733,8 @@ function drawLine(div, years, seriesList){
 }
 
 function init(){
-  Promise.allSettled([ fetchJson(SRC.p1.url), fetchJson(SRC.p2.url), fetchJson(SRC.p3.url), fetchJson(SRC.p6.url), fetchJson(SRC.p7.url) ])
+  fetchOnlineContent().then(function(){
+  return Promise.allSettled([ fetchJson(SRC.p1.url), fetchJson(SRC.p2.url), fetchJson(SRC.p3.url), fetchJson(SRC.p6.url), fetchJson(SRC.p7.url) ])
     .then(function(res){
       if(res[0].status==="fulfilled"){ var d=res[0].value; SRC.p1.indicators=d.indicators; SRC.p1.xlabels=d.xlabels; SRC.p1.years=d.years; SRC.p1.date=d.latestDataDate; }
       if(res[1].status==="fulfilled"){ var d2=res[1].value; SRC.p2.indicators=d2.indicators; SRC.p2.xlabels=d2.xlabels; SRC.p2.years=d2.years; SRC.p2.date=d2.latestDataDate; }
@@ -718,6 +757,7 @@ function init(){
       renderReviewCards();
     })
     .catch(function(e){ document.getElementById("charts").innerHTML="<div style='padding:20px;color:#c00'>初始化失败："+e.message+"</div>"; });
+  });
 }
 
 function renderAll(){
@@ -1200,7 +1240,7 @@ document.getElementById("addCard").onclick=function(){
 document.getElementById("saveLayout").onclick=function(){
   var b=this;
   try{
-    localStorage.setItem(LS_SAVED_KEY, JSON.stringify(layout));
+    localStorage.setItem(LS_SAVED_KEY, JSON.stringify(layoutEnvelope()));
     var orig=b.textContent;
     var t=new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
     b.textContent="已保存 "+t;
@@ -1245,6 +1285,106 @@ document.getElementById("modalReviewNote").addEventListener("click", function(e)
 document.getElementById("reviewNoteInput").addEventListener("keydown", function(e){
   if(e.key==="Tab"){ e.preventDefault(); var s=this.selectionStart, en=this.selectionEnd; this.value=this.value.slice(0,s)+"  "+this.value.slice(en); this.selectionStart=this.selectionEnd=s+2; }
 });
+
+/* ===== 线上直推：GitHub git-data API（令牌仅存本浏览器 localStorage，不进页面源码） ===== */
+var GH_REPO="nekomorning/lithium-dashboard", GH_BRANCH="main", GH_TOKEN_KEY="gh_pat_lithium";
+function ghToken(){ try{ return localStorage.getItem(GH_TOKEN_KEY)||""; }catch(e){ return ""; } }
+function ghSetToken(t){ try{ localStorage.setItem(GH_TOKEN_KEY, t); }catch(e){} }
+function ghClearToken(){ try{ localStorage.removeItem(GH_TOKEN_KEY); }catch(e){} }
+function ghB64(s){ var b=new TextEncoder().encode(s), x=""; for(var i=0;i<b.length;i++){ x+=String.fromCharCode(b[i]); } return btoa(x); }
+function ghApi(method,path,body,token){
+  var h={"Authorization":"Bearer "+token,"Accept":"application/vnd.github+json","Content-Type":"application/json"};
+  var o={method:method,headers:h}; if(body!==undefined){ o.body=JSON.stringify(body); }
+  return fetch("https://api.github.com/"+path,o).then(function(r){
+    return r.text().then(function(t){ var d=null; try{ d=t?JSON.parse(t):null; }catch(e){}
+      if(!r.ok){ throw new Error((d&&d.message)||("HTTP "+r.status)); } return d; });
+  });
+}
+function ghCommitFile(fname,contentStr,msg){
+  var tk=ghToken(); if(!tk){ return Promise.reject(new Error("NO_TOKEN")); }
+  return ghApi("GET","repos/"+GH_REPO+"/git/refs/heads/"+GH_BRANCH,undefined,tk).then(function(ref){
+    var cs=ref.object.sha;
+    return ghApi("GET","repos/"+GH_REPO+"/git/commits/"+cs,undefined,tk).then(function(c){ return {cs:cs,tree:c.tree.sha}; });
+  }).then(function(a){
+    return ghApi("POST","repos/"+GH_REPO+"/git/blobs",{content:ghB64(contentStr),encoding:"base64"},tk).then(function(b){ return {tree:a.tree,cs:a.cs,blob:b.sha}; });
+  }).then(function(b){
+    return ghApi("POST","repos/"+GH_REPO+"/git/trees",{base_tree:b.tree,tree:[{path:fname,mode:"100644",type:"blob",sha:b.blob}]},tk).then(function(t){ return {tree:t.sha,cs:b.cs}; });
+  }).then(function(c){
+    return ghApi("POST","repos/"+GH_REPO+"/git/commits",{message:msg,tree:c.tree,parents:[c.cs]},tk);
+  }).then(function(cm){
+    return ghApi("PATCH","repos/"+GH_REPO+"/git/refs/heads/"+GH_BRANCH,{sha:cm.sha},tk).then(function(){ return cm.sha; });
+  });
+}
+function ghToast(msg){
+  var old=document.getElementById("ghToastBox"); if(old){ old.remove(); }
+  var d=document.createElement("div"); d.id="ghToastBox";
+  d.style.cssText="position:fixed;left:50%;bottom:36px;transform:translateX(-50%);background:#0f4c81;color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,.28);max-width:80vw;line-height:1.6";
+  d.textContent=msg; document.body.appendChild(d);
+  setTimeout(function(){ if(d&&d.parentNode){ d.remove(); } }, 6000);
+}
+function ghOpenTokenModal(onSaved, opt){
+  var ov=document.createElement("div");
+  ov.style.cssText="position:fixed;inset:0;background:rgba(15,20,28,.55);display:flex;align-items:center;justify-content:center;z-index:99998";
+  var box=document.createElement("div");
+  box.style.cssText="background:#fff;border-radius:12px;padding:20px 22px;width:min(520px,92vw);max-height:88vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.25);font-size:13px;color:#1f2733;line-height:1.75";
+  var has=!!ghToken();
+  box.innerHTML='<div style="font-size:15px;font-weight:700;margin-bottom:8px">设置 GitHub 令牌（用于一键发布到线上）</div>'+
+   '<div style="color:#6b7686;margin-bottom:12px">令牌只保存在你自己的浏览器 localStorage，<b>不会</b>写进页面源码，也不会发送给任何人。他人打开链接看不到、也拿不到你的令牌。</div>'+
+   '<div style="background:#f4f6fa;border:1px solid #e5e9f0;border-radius:8px;padding:10px 12px;margin-bottom:12px">'+
+   '到 <a href="https://github.com/settings/personal-access-tokens" target="_blank" rel="noopener" style="color:#2b7cff">GitHub → Settings → Developer settings → Fine-grained tokens</a> 创建令牌：<br>'+
+   '· Repository access：<b>Only select repositories → lithium-dashboard</b><br>'+
+   '· Permissions → Repository permissions：<b>Contents = Read and write</b><br>'+
+   '<span style="color:#d92626">务必按上面限定范围，切勿使用全权限的 classic token。</span></div>'+
+   (has?'<div style="color:#0a9a5c;margin-bottom:10px">当前已保存令牌。粘贴新的可覆盖。</div>':'')+
+   '<input id="ghTokInput" type="password" placeholder="粘贴 github_pat_… 令牌" style="width:100%;box-sizing:border-box;border:1px solid #dfe4ec;border-radius:8px;padding:9px 11px;font-size:13px;outline:none;margin-bottom:14px">'+
+   '<div style="display:flex;gap:8px;align-items:center;justify-content:space-between">'+
+   '<span id="ghTokClear" style="color:#8a93a3;font-size:12px;cursor:pointer;text-decoration:underline;'+(has?'':'display:none;')+'">清除已保存令牌</span>'+
+   '<span><button id="ghTokCancel" style="border:1px solid #dfe4ec;background:#fff;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer">取消</button> '+
+   '<button id="ghTokSave" style="border:0;background:#0f4c81;color:#fff;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer">保存</button></span></div>';
+  ov.appendChild(box); document.body.appendChild(ov);
+  var inp=box.querySelector("#ghTokInput"); setTimeout(function(){ inp.focus(); },60);
+  function close(){ ov.remove(); }
+  box.querySelector("#ghTokCancel").onclick=close;
+  ov.onclick=function(e){ if(e.target===ov){ close(); } };
+  box.querySelector("#ghTokClear").onclick=function(){ ghClearToken(); close(); ghToast("已清除已保存的令牌"); };
+  box.querySelector("#ghTokSave").onclick=function(){
+    var v=(inp.value||"").trim(); if(!v){ inp.style.borderColor="#d92626"; return; }
+    ghSetToken(v); close(); ghToast("令牌已保存（仅存本浏览器）"); if(onSaved){ onSaved(); }
+  };
+  inp.addEventListener("keydown",function(e){ if(e.key==="Enter"){ box.querySelector("#ghTokSave").click(); } });
+}
+function ghPublish(fname,payload,msg,btn){
+  function mark(txt){ if(btn){ if(!btn.dataset.ghOrig){ btn.dataset.ghOrig=btn.innerHTML; } btn.innerHTML=txt; } }
+  function done(){ if(btn){ btn.innerHTML=btn.dataset.ghOrig||btn.innerHTML; btn.disabled=false; } }
+  function push(){
+    if(btn){ btn.disabled=true; } mark("⏳ 正在提交…");
+    ghCommitFile(fname,JSON.stringify(payload,null,2),msg).then(function(sha){
+      mark("✓ 已提交 "+sha.slice(0,8));
+      ghToast("已提交到线上（commit "+sha.slice(0,8)+"）。GitHub Pages 约 1 分钟后更新，他人刷新即可看到。");
+      setTimeout(done,4000);
+    })["catch"](function(e){
+      done();
+      if(String(e.message)==="NO_TOKEN"){ ghOpenTokenModal(push); return; }
+      if(e.message && /401|Bad credentials/.test(e.message)){
+        ghToast("令牌无效或已过期，请重新设置。"); ghOpenTokenModal(push); return;
+      }
+      if(window.confirm("提交失败："+e.message+"\n\n是否改为下载 JSON，交给 AI 手动发布？")){
+        var blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+        var u=URL.createObjectURL(blob); var a=document.createElement("a");
+        a.href=u; a.download=fname; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function(){ URL.revokeObjectURL(u); },1000);
+      }
+    });
+  }
+  if(!ghToken()){ ghOpenTokenModal(push); return; }
+  push();
+}
+document.getElementById("publishCore").onclick=function(){
+  saveContentAuto();
+  var payload={ content: contentPayload(), layout: layoutEnvelope(), savedAtISO:new Date().toISOString() };
+  ghPublish("lc_core_content.json", payload, "核心逻辑页·可编辑内容更新", this);
+};
+document.getElementById("ghTokenBtn").onclick=function(){ ghOpenTokenModal(null); };
 </script>
 </body>
 </html>
