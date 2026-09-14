@@ -181,7 +181,7 @@ tr.abn td{background:#fff7f0;}
 
 <script>
 (function(){
-  Promise.all([fetch('data.json?v=1789389268').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('data.json?v=1789391035').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -283,7 +283,7 @@ function buildSummary(){
       +seg("总成交量","总成交量",true)+"，"
       +seg("总持仓量","总持仓量",true)+"，"
       +seg("基差","基差",false)+"，"
-      +seg("9-1月差","9-1月差",false)+"，"
+      +seg("11-1月差","11-1月差",false)+"，"
       +seg("仓单","仓单",true)+"。";
   html+="<br>现货价格涨幅居前："+(ups.length?ups.slice(0,3).map(liSpan).join("、"):"无")+"；";
   html+="跌幅居前："+(dns.length?dns.slice(0,3).map(liSpan).join("、"):"无")+"。";
