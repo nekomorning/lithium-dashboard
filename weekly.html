@@ -211,7 +211,7 @@ window.__DATA__ = /*DATA*/null/*DATA_END*/;
 </script>
 <script>
 (function(){
-  Promise.all([fetch('weekly.json?v=1789391036').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('weekly.json?v=1789397927').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -352,9 +352,16 @@ function autoResizeDesc(ta){
 }
 function replaceDescForExport(container){
   // html2canvas 对 textarea 的换行/高度支持不稳定，导出前临时替换成 div 以保证多行文字完整渲染
+  // 空分析文字时：隐藏文本框，避免 PDF 出现空白框，图表直接顶上来
   var tas = container.querySelectorAll ? container.querySelectorAll('textarea.sec--desc') : [];
   var backups = [];
   tas.forEach(function(ta){
+    var txt = ta.value.trim();
+    if(!txt){
+      backups.push({ta:ta, display:ta.style.display});
+      ta.style.display = 'none';
+      return;
+    }
     var div = document.createElement('div');
     div.className = 'sec--desc';
     div.textContent = ta.value;
@@ -364,7 +371,10 @@ function replaceDescForExport(container){
     backups.push({div:div, ta:ta, parent:div.parentNode});
   });
   return function restore(){
-    backups.forEach(function(b){ b.parent.replaceChild(b.ta, b.div); });
+    backups.forEach(function(b){
+      if(b.div){ b.parent.replaceChild(b.ta, b.div); }
+      else { b.ta.style.display = b.display; }
+    });
   };
 }
 
