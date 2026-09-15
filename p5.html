@@ -325,7 +325,7 @@ th .arr.up{color:var(--down);}
 
 <script>
 (function(){
-  Promise.all([fetch('p5.json?v=1789443704').then(function(r){return r.json();}),fetch('clh.json?v=1789443704').then(function(r){return r.json();}),fetch('export.json?v=1789443704').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('p5.json?v=1789444258').then(function(r){return r.json();}),fetch('clh.json?v=1789444258').then(function(r){return r.json();}),fetch('export.json?v=1789444258').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; window.CLH=rs[1]; window.EXPORT=rs[2]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -1347,7 +1347,7 @@ function renderCn(){
   }
 
   /* ---------- 价格带 ---------- */
-  var p4ps='零售', p4metric='pct', p4Years=[], p4Built=false, p4Charts=[], gtCache={};
+  var p4ps='批发', p4metric='pct', p4Years=[], p4Built=false, p4Charts=[], gtCache={};
   var ovYears=[];
   // 各价格带销量 → 占比%：分母 = 同组(fk)同产销类别(ps)下 7 个价格带合计
   function p4GroupTotal(fk, ps){
