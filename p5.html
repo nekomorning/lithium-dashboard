@@ -325,7 +325,7 @@ th .arr.up{color:var(--down);}
 
 <script>
 (function(){
-  Promise.all([fetch('p5.json?v=1789441117').then(function(r){return r.json();}),fetch('clh.json?v=1789441117').then(function(r){return r.json();}),fetch('export.json?v=1789441117').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('p5.json?v=1789443051').then(function(r){return r.json();}),fetch('clh.json?v=1789443051').then(function(r){return r.json();}),fetch('export.json?v=1789443051').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; window.CLH=rs[1]; window.EXPORT=rs[2]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -1444,14 +1444,30 @@ function renderCn(){
   window.DASH_init=function(pid,dash){
     if(!dash)return;
     DASH=dash;
-    // 车企细分优先使用 CLH 的 makers 数据，其中包含零售销量
-    if(pid==='maker' && window.CLH && window.CLH.makers){
-      var merged={};
-      for(var k in dash) merged[k]=dash[k];
-      merged.makers=window.CLH.makers;
-      merged.makerList=window.CLH.makerList || dash.makerList;
-      merged.p3Years=window.CLH.p3Years || dash.p3Years;
-      DASH=merged;
+    // 车企细分：DASH.makers 已含 批发/零售/出口 且月份更新更全（车企数也更多），优先使用；
+    // 仅当 DASH.makers 完全没有零售口径时才回退到 CLH（历史兼容）。
+    if(pid==='maker'){
+      var hasRetail=false;
+      try{
+        outer:
+        for(var _mk in dash.makers){
+          var _md=dash.makers[_mk];
+          for(var _mo in _md){
+            var _fd=_md[_mo];
+            for(var _fu in _fd){
+              if(_fu!=='priceBand' && _fd[_fu] && _fd[_fu]['零售']){hasRetail=true;break outer;}
+            }
+          }
+        }
+      }catch(e){hasRetail=false;}
+      if(!hasRetail && window.CLH && window.CLH.makers){
+        var merged={};
+        for(var k in dash) merged[k]=dash[k];
+        merged.makers=window.CLH.makers;
+        merged.makerList=window.CLH.makerList || dash.makerList;
+        merged.p3Years=window.CLH.p3Years || dash.p3Years;
+        DASH=merged;
+      }
     }
     LY=DASH.latestYear; LM=DASH.latestMonth;
     var sub=document.getElementById('mkSubDate'); if(sub)sub.textContent=LY+'年'+LM+'月';
