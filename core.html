@@ -315,7 +315,13 @@ function defaultLayout(){
 function layoutEnvelope(){ return {v:layout, savedAtISO:new Date().toISOString()}; }
 function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(layoutEnvelope())); }catch(e){} }
 function loadLayout(){
-  function norm(it){ return {id:it.id||uid(), src:it.src, key:it.key, focus:!!it.focus}; }
+  // 图表改名后的旧 key 自动迁移（如 9-1月差 → 11-1月差），避免存档卡片因 key 失效变成「未加载」
+  var KEY_ALIASES={"9-1月差":"11-1月差"};
+  function norm(it){
+    var key=it.key;
+    if(key && KEY_ALIASES[key]) key=KEY_ALIASES[key];
+    return {id:it.id||uid(), src:it.src, key:key, focus:!!it.focus};
+  }
   // 兼容两种存储形态：{v, savedAtISO} 信封（现版）与裸数组（旧版，1D 每 4 张拆行 / 2D 行数组）
   function read(k){
     try{
@@ -345,7 +351,8 @@ function loadLayout(){
             :null;
   var cand=pickNewer(online, read(LS_SAVED_KEY));
   cand=pickNewer(cand, read(LS_KEY));
-  return (cand && cand.v) ? cand.v : defaultLayout();
+  var rows=(cand && cand.v) ? cand.v : defaultLayout();
+  return rows.map(function(row){ return row.map(norm); });
 }
 
 function fetchJson(u){
@@ -865,9 +872,10 @@ function makeCard(item, ri, ci){
   var def=LIBMAP[item.src+'|'+item.key];
   card.className="card"+(item.focus?" focus":"")+(def?"":" empty");
 
-  if(def){
-    var head=document.createElement("div"); head.className="card-head"; head.draggable=true;
-    var ttl=document.createElement("div"); ttl.className="ttl"; ttl.textContent=def.title;
+  /* 卡片头 + ⋯ 菜单：正常卡片与「数据源未加载」卡片共用，保证坏卡片也能 编辑/移动/删除 */
+  function buildHead(titleText, draggable){
+    var head=document.createElement("div"); head.className="card-head"; head.draggable=!!draggable;
+    var ttl=document.createElement("div"); ttl.className="ttl"; ttl.textContent=titleText;
     var menuBtn=document.createElement("button"); menuBtn.className="menu-btn"; menuBtn.title="操作"; menuBtn.innerHTML="⋯";
     var menu=document.createElement("div"); menu.className="menu";
     menu.innerHTML='<button data-act="pick" title="选择图表">选择</button>'+
@@ -877,17 +885,6 @@ function makeCard(item, ri, ci){
       '<button data-act="focus" title="关注(蓝框)" class="'+(item.focus?"on":"")+'">'+(item.focus?"★ 关注":"☆ 关注")+'</button>'+
       '<button data-act="del" title="删除">删除</button>';
     head.appendChild(ttl); head.appendChild(menuBtn); head.appendChild(menu);
-    card.appendChild(head);
-
-    var meta=def.meta||{};
-    var m=document.createElement("div"); m.className="meta";
-    m.innerHTML=metaHTML(meta);
-    card.appendChild(m);
-
-    var div=document.createElement("div"); div.className="chart";
-    div._chart={def:def};
-    card.appendChild(div);
-
     menuBtn.addEventListener("click", function(e){
       e.stopPropagation();
       document.querySelectorAll(".card .menu.show").forEach(function(mm){ if(mm!==menu) mm.classList.remove("show"); });
@@ -904,8 +901,25 @@ function makeCard(item, ri, ci){
       else if(act==="focus"){ layout[ri][ci].focus=!layout[ri][ci].focus; save(); renderAll(); }
       else if(act==="del"){ deleteCard(ri, ci); }
     });
-    head.addEventListener("dragstart", function(e){ dragFrom={ri:ri, ci:ci}; e.dataTransfer.effectAllowed="move"; });
+    if(draggable) head.addEventListener("dragstart", function(e){ dragFrom={ri:ri, ci:ci}; e.dataTransfer.effectAllowed="move"; });
+    return head;
+  }
+
+  if(def){
+    card.appendChild(buildHead(def.title, true));
+
+    var meta=def.meta||{};
+    var m=document.createElement("div"); m.className="meta";
+    m.innerHTML=metaHTML(meta);
+    card.appendChild(m);
+
+    var div=document.createElement("div"); div.className="chart";
+    div._chart={def:def};
+    card.appendChild(div);
   } else if(item.key){
+    /* 数据源未加载：仍渲染卡片头（可拖动）+ 完整菜单，避免坏卡片无法编辑/删除 */
+    var errHead=buildHead("（未加载："+item.src+"｜"+item.key+"）", true);
+    card.appendChild(errHead);
     var err=document.createElement("div"); err.className="err"; err.textContent="（该图表数据源未加载："+item.src+"）";
     card.appendChild(err);
   } else {
