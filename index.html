@@ -30,6 +30,16 @@ body{background:var(--bg); color:var(--text);
 .logic li{position:relative; padding-left:18px; margin:8px 0; color:var(--text); font-size:16px; line-height:1.6;}
 .logic li::before{content:"●"; position:absolute; left:2px; color:var(--accent); font-size:9px; top:6px;}
 .logic b{color:var(--accent);}
+.logic li img{max-width:100%; max-height:320px; border-radius:8px; border:1px solid var(--border); display:block; margin:6px 0;}
+.logic li.li-img{padding-left:0;}
+.logic li.li-img::before{content:"";}
+/* 定价逻辑编辑区（contenteditable，支持粘贴图片） */
+.logic-editor{min-height:150px; max-height:340px; overflow:auto; background:#fff;
+  border:1px solid var(--border); border-radius:8px; padding:10px; font-size:14px; line-height:1.7;
+  font-family:inherit; resize:vertical; box-sizing:border-box;}
+.logic-editor:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 2px rgba(43,124,255,.12);}
+.logic-editor img{max-width:100%; max-height:240px; border-radius:8px; border:1px solid var(--border); display:block; margin:6px 0;}
+.logic-editor.dragover{border-color:var(--accent); background:#f2f7ff;}
 /* 年份筛选 */
 .ybar{display:flex; gap:8px; flex-wrap:wrap; margin:4px 0 14px;}
 .ybtn{display:inline-flex; align-items:center; gap:6px; padding:5px 14px; border-radius:16px;
@@ -176,9 +186,9 @@ body{background:var(--bg); color:var(--text);
   <div class="modal" id="modalLogic" style="display:none">
     <div class="modal-box">
       <div class="modal-head"><span>编辑定价逻辑</span><button id="logicClose">×</button></div>
-      <div class="modal-search" style="font-size:12px;color:var(--sub)">每行一条。三种加粗标记：<code>**红**</code> 红色加粗 · <code>@@蓝@@</code> 蓝色加粗 · <code>%%绿%%</code> 绿色加粗。行首「供应：/需求：/核心：」自动蓝色加粗。</div>
+      <div class="modal-search" style="font-size:12px;color:var(--sub)">每行一条。三种加粗标记：<code>**红**</code> 红色加粗 · <code>@@蓝@@</code> 蓝色加粗 · <code>%%绿%%</code> 绿色加粗。行首「供应：/需求：/核心：」自动蓝色加粗。可直接 <b>粘贴 / 拖拽图片</b>（自动压缩为内嵌图）。</div>
       <div class="modal-list" style="padding:10px 16px 16px;">
-        <textarea id="logicInput" style="width:100%; height:150px; border:1px solid var(--border); border-radius:8px; padding:10px; font-size:14px; line-height:1.7; font-family:inherit; resize:vertical; box-sizing:border-box;"></textarea>
+        <div id="logicInput" class="logic-editor" contenteditable="true" spellcheck="false"></div>
         <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:10px;">
           <button class="abtn" id="logicSave">保存</button>
           <button class="abtn" id="logicCancel">取消</button>
@@ -362,13 +372,79 @@ function fetchJson(u){
 
 /* ---- 定价逻辑 / 行标题 / 保存内容 ---- */
 function esc(s){ var d=document.createElement("div"); d.textContent=(s==null?"":String(s)); return d.innerHTML; }
+/* 富文本行净化：只保留 b/strong/u/i/em/span(仅颜色、加粗)/img(data 或 http)/br，其余标签拆掉 */
+function sanitizeLogicHtml(html){
+  var d=document.createElement("div");
+  d.innerHTML=String(html==null?"":html);
+  (function walk(node){
+    Array.prototype.slice.call(node.childNodes).forEach(function(n){
+      if(n.nodeType===3) return;
+      if(n.nodeType!==1){ if(n.parentNode) n.parentNode.removeChild(n); return; }
+      var tag=n.tagName.toLowerCase();
+      if(tag==="script"||tag==="style"||tag==="iframe"||tag==="object"||tag==="embed"){ n.parentNode.removeChild(n); return; }
+      if(tag==="img"){
+        var src=n.getAttribute("src")||"";
+        if(!/^data:image\//i.test(src) && !/^https?:\/\//i.test(src)){ n.parentNode.removeChild(n); return; }
+        Array.prototype.slice.call(n.attributes).forEach(function(a){ if(a.name!=="src") n.removeAttribute(a.name); });
+        n.removeAttribute("onerror"); n.removeAttribute("onload");
+        return;
+      }
+      if(tag==="br") return;
+      if(tag==="b"||tag==="strong"||tag==="u"||tag==="i"||tag==="em"||tag==="span"){
+        walk(n);
+        var keep={};
+        var st=n.getAttribute("style")||"";
+        var m=st.match(/color\s*:\s*([^;]+)/i);
+        if(m) keep.color=m[1].trim();
+        if(/font-weight\s*:\s*(bold|[6-9]00)/i.test(st) || tag==="b" || tag==="strong") keep.bold=true;
+        Array.prototype.slice.call(n.attributes).forEach(function(a){ n.removeAttribute(a.name); });
+        var css=(keep.color?"color:"+keep.color+";":"")+(keep.bold?"font-weight:700;":"");
+        if(css) n.setAttribute("style",css);
+        return;
+      }
+      walk(n);
+      var p=n.parentNode;
+      while(n.firstChild) p.insertBefore(n.firstChild, n);
+      p.removeChild(n);
+    });
+  })(d);
+  return d.innerHTML;
+}
+function isRichLine(s){ return /<(img|span|b|strong|u|i|em|br)[\s>\/]/i.test(String(s||"")); }
 function logicLineToHtml(line){
-  var s=esc((line||"").trim());
+  var raw=String(line==null?"":line).trim();
+  if(!raw) return "";
+  if(isRichLine(raw)) return sanitizeLogicHtml(raw);
+  var s=esc(raw);
   s=s.replace(/^([供应需求核心价格供需]+\s*[:：])/, '<b>$1</b>');
   s=s.replace(/\*\*([^*]+)\*\*/g, '<span style="color:#e0301e;font-weight:700">$1</span>');
   s=s.replace(/@@([^@]+)@@/g, '<span style="color:#0f4c81;font-weight:700">$1</span>');
   s=s.replace(/%%([^%]+)%%/g, '<span style="color:#0a9a5c;font-weight:700">$1</span>');
   return s;
+}
+/* 编辑区（contenteditable）：行 <-> HTML */
+function logicLinesToEditorHtml(lines){
+  var arr=(lines&&lines.length)?lines:[""];
+  return arr.map(function(l){ var h=logicLineToHtml(l); return "<div>"+(h||"<br>")+"</div>"; }).join("");
+}
+function editorHtmlToLines(editor){
+  if(!editor) return [];
+  var out=[""];
+  function add(part){ out[out.length-1]+=part; }
+  Array.prototype.forEach.call(editor.childNodes, function(n){
+    if(n.nodeType===3){ add(esc(n.nodeValue)); return; }
+    if(n.nodeType!==1) return;
+    var tag=n.tagName.toLowerCase();
+    if(tag==="br"){ out.push(""); return; }
+    if(tag==="div"||tag==="p"||tag==="li"){
+      String(n.innerHTML).split(/<br\s*\/?>/i).forEach(function(part,i){ if(i>0) out.push(""); add(part); });
+      out.push("");
+      return;
+    }
+    add(n.outerHTML);
+  });
+  return out.map(function(s){ return String(s).replace(/&nbsp;/g," ").trim(); })
+            .filter(function(s){ return s && !/^<br\s*\/?>$/i.test(s); });
 }
 function renderLogic(){
   var list=document.getElementById("logicList");
@@ -378,6 +454,7 @@ function renderLogic(){
   lines.forEach(function(line){
     var li=document.createElement("li");
     li.innerHTML=logicLineToHtml(line);
+    if(li.children.length===1 && li.children[0].tagName==="IMG") li.className="li-img";
     list.appendChild(li);
   });
 }
@@ -395,7 +472,14 @@ function contentPayload(){
           reviewText: reviewText||DEFAULT_REVIEW, reviewCards: reviewCards.map(function(c){ return {title:c.title, sel:c.sel.slice(), unifyY:!!c.unifyY}; }),
           savedAt: new Date().toLocaleString('zh-CN'), savedAtISO: new Date().toISOString()};
 }
-function saveContentAuto(){ try{ localStorage.setItem(CONTENT_KEY, JSON.stringify(contentPayload())); }catch(e){} }
+function saveContentAuto(verbose){
+  try{ localStorage.setItem(CONTENT_KEY, JSON.stringify(contentPayload())); return true; }
+  catch(e){
+    if(verbose) alert("本地保存失败（可能是图片过多超出浏览器存储上限）："+(e&&e.name?e.name:e)+
+      "\n建议减少图片数量，或删除部分图片后重试；已保存到线上的内容不受影响。");
+    return false;
+  }
+}
 function loadContent(){
   var data=pickLocalOrOnline(CONTENT_SAVED_KEY, CONTENT_KEY, onlineContent);
   if(data){
@@ -420,22 +504,29 @@ function loadContent(){
 }
 
 function openLogicEdit(){
-  var ta=document.getElementById("logicInput");
-  ta.value=(logicText||DEFAULT_LOGIC).join("\n");
+  var ed=document.getElementById("logicInput");
+  ed.innerHTML=logicLinesToEditorHtml(logicText||DEFAULT_LOGIC);
   document.getElementById("modalLogic").style.display="flex";
-  setTimeout(function(){ ta.focus(); }, 50);
+  setTimeout(function(){
+    ed.focus();
+    try{ var r=document.createRange(); r.selectNodeContents(ed); r.collapse(false);
+      var s=window.getSelection(); s.removeAllRanges(); s.addRange(r); ed.scrollTop=ed.scrollHeight; }catch(e){}
+  }, 50);
 }
 function closeLogicEdit(){ document.getElementById("modalLogic").style.display="none"; }
 function saveLogicEdit(){
-  var raw=document.getElementById("logicInput").value;
-  var lines=raw.split("\n").map(function(s){return s.trim();}).filter(Boolean);
+  var ed=document.getElementById("logicInput");
+  var lines=editorHtmlToLines(ed).map(function(s){ return sanitizeLogicHtml(s); })
+            .filter(function(s){ return s && s.replace(/<[^>]*>/g,"").trim(); });
   if(!lines.length) return;
   if(JSON.stringify(lines)!==JSON.stringify(logicText||DEFAULT_LOGIC)){
-    logicHistory.unshift({date:new Date().toLocaleString('zh-CN'), text:lines.slice()});
+    // 历史记录不保存图片 base64，避免 localStorage 膨胀
+    var hist=lines.map(function(l){ return l.replace(/<img\s[^>]*>/gi, "[图片]"); });
+    logicHistory.unshift({date:new Date().toLocaleString('zh-CN'), text:hist});
     if(logicHistory.length>50) logicHistory.pop();
   }
   logicText=lines.slice();
-  saveContentAuto();
+  saveContentAuto(true);
   renderLogic();
   closeLogicEdit();
 }
@@ -1279,6 +1370,81 @@ document.getElementById("logicClose").onclick=closeLogicEdit;
 document.getElementById("logicCancel").onclick=closeLogicEdit;
 document.getElementById("logicSave").onclick=saveLogicEdit;
 document.getElementById("historyLogic").onclick=openLogicHistory;
+/* 定价逻辑编辑区：粘贴 / 拖拽图片 */
+(function bindLogicEditorImage(){
+  var ed=document.getElementById("logicInput");
+  if(!ed) return;
+  ed.addEventListener("paste", function(e){
+    var cd=e.clipboardData||window.clipboardData;
+    if(!cd) return;
+    var items=cd.items||[], files=[], i;
+    for(i=0;i<items.length;i++){
+      if(items[i] && items[i].type && items[i].type.indexOf("image/")===0){
+        var f=items[i].getAsFile(); if(f) files.push(f);
+      }
+    }
+    if(!files.length){
+      // 纯文本：去掉外部格式
+      e.preventDefault();
+      var txt=cd.getData?cd.getData("text/plain"):"";
+      document.execCommand("insertText", false, txt||"");
+      return;
+    }
+    e.preventDefault();
+    files.forEach(function(file){ compressImageToDataURL(file, function(url){ if(url) insertLogicImage(url); }); });
+  });
+  ed.addEventListener("dragover", function(e){ e.preventDefault(); ed.classList.add("dragover"); });
+  ed.addEventListener("dragleave", function(e){ ed.classList.remove("dragover"); });
+  ed.addEventListener("drop", function(e){
+    var dt=e.dataTransfer;
+    ed.classList.remove("dragover");
+    if(!dt) return;
+    var files=dt.files||[], has=false;
+    Array.prototype.forEach.call(files, function(f){
+      if(f && f.type && f.type.indexOf("image/")===0){ has=true; compressImageToDataURL(f, function(url){ if(url) insertLogicImage(url); }); }
+    });
+    if(has) e.preventDefault();
+  });
+})();
+function compressImageToDataURL(file, cb){
+  var fr=new FileReader();
+  fr.onload=function(){
+    var src=String(fr.result||"");
+    var img=new Image();
+    img.onload=function(){
+      try{
+        var w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+        var scale=Math.min(1, 1000/(w||1), 1000/(h||1));
+        var cv=document.createElement("canvas");
+        cv.width=Math.max(1,Math.round(w*scale)); cv.height=Math.max(1,Math.round(h*scale));
+        cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+        var out=cv.toDataURL("image/jpeg",0.82);
+        cb(out && out.length>2000 ? out : src);
+      }catch(err){ cb(src); }
+    };
+    img.onerror=function(){ cb(src); };
+    img.src=src;
+  };
+  fr.onerror=function(){ cb(""); };
+  fr.readAsDataURL(file);
+}
+function insertLogicImage(dataUrl){
+  var ed=document.getElementById("logicInput");
+  if(!ed) return;
+  ed.focus();
+  var html='<img src="'+dataUrl+'"/><br>';
+  var sel=window.getSelection();
+  if(sel && sel.rangeCount && ed.contains(sel.anchorNode)){
+    var r=sel.getRangeAt(0);
+    r.deleteContents();
+    var frag=r.createContextualFragment(html);
+    var last=frag.lastChild;
+    r.insertNode(frag);
+    if(last){ r.setStartAfter(last); r.collapse(true); sel.removeAllRanges(); sel.addRange(r); }
+  } else {
+    document.execCommand("insertHTML", false, html);
+  }
+}
 document.getElementById("historyClose").onclick=function(){ document.getElementById("modalHistory").style.display="none"; };
 document.getElementById("modalLogic").addEventListener("click", function(e){ if(e.target===this) closeLogicEdit(); });
 document.getElementById("modalHistory").addEventListener("click", function(e){ if(e.target===this) this.style.display="none"; });
