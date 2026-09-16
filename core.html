@@ -366,7 +366,8 @@ function loadLayout(){
 }
 
 function fetchJson(u){
-  return fetch(u,{cache:"no-store"})
+  // 加时间戳绕过 GitHub Pages CDN 缓存（no-store 只约束浏览器，CDN 边缘节点仍可能回旧缓存）
+  return fetch(u+(u.indexOf("?")>=0?"&":"?")+"v="+Date.now(),{cache:"no-store"})
     .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); });
 }
 
