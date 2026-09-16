@@ -395,11 +395,13 @@ function sanitizeLogicHtml(html){
         walk(n);
         var keep={};
         var st=n.getAttribute("style")||"";
-        var m=st.match(/color\s*:\s*([^;]+)/i);
-        if(m) keep.color=m[1].trim();
+        var m=st.match(/(^|[^-])color\s*:\s*([^;]+)/i);
+        if(m) keep.color=m[2].trim();
+        var bg=st.match(/background(?:-color)?\s*:\s*([^;]+)/i);
+        if(bg) keep.bg=bg[1].trim();
         if(/font-weight\s*:\s*(bold|[6-9]00)/i.test(st) || tag==="b" || tag==="strong") keep.bold=true;
         Array.prototype.slice.call(n.attributes).forEach(function(a){ n.removeAttribute(a.name); });
-        var css=(keep.color?"color:"+keep.color+";":"")+(keep.bold?"font-weight:700;":"");
+        var css=(keep.color?"color:"+keep.color+";":"")+(keep.bg?"background-color:"+keep.bg+";":"")+(keep.bold?"font-weight:700;":"");
         if(css) n.setAttribute("style",css);
         return;
       }
@@ -428,22 +430,42 @@ function logicLinesToEditorHtml(lines){
   var arr=(lines&&lines.length)?lines:[""];
   return arr.map(function(l){ var h=logicLineToHtml(l); return "<div>"+(h||"<br>")+"</div>"; }).join("");
 }
+/* 编辑区(contenteditable) → 行数组：递归处理，兼容粘贴进来的 ul/ol 嵌套列表、h1-h6、表格等块级结构（各拍平为一行） */
 function editorHtmlToLines(editor){
   if(!editor) return [];
   var out=[""];
-  function add(part){ out[out.length-1]+=part; }
-  Array.prototype.forEach.call(editor.childNodes, function(n){
-    if(n.nodeType===3){ add(esc(n.nodeValue)); return; }
-    if(n.nodeType!==1) return;
-    var tag=n.tagName.toLowerCase();
-    if(tag==="br"){ out.push(""); return; }
-    if(tag==="div"||tag==="p"||tag==="li"){
-      String(n.innerHTML).split(/<br\s*\/?>/i).forEach(function(part,i){ if(i>0) out.push(""); add(part); });
-      out.push("");
-      return;
-    }
-    add(n.outerHTML);
-  });
+  function add(part){ if(part) out[out.length-1]+=part; }
+  function newline(){ if(out[out.length-1]!=="") out.push(""); }
+  function splitBr(html){
+    String(html).split(/<br\s*\/?>/i).forEach(function(part,i){ if(i>0) newline(); add(part); });
+  }
+  var BLOCK_SEL="div,p,li,ul,ol,table,h1,h2,h3,h4,h5,h6,blockquote,pre";
+  function walk(node){
+    Array.prototype.forEach.call(node.childNodes, function(n){
+      if(n.nodeType===3){ add(esc(n.nodeValue)); return; }
+      if(n.nodeType!==1) return;
+      var tag=n.tagName.toLowerCase();
+      if(tag==="br"){ newline(); return; }
+      if(tag==="ul"||tag==="ol"){ walk(n); newline(); return; }
+      if(tag==="table"){
+        Array.prototype.forEach.call(n.querySelectorAll("td,th"), function(td){
+          splitBr(td.innerHTML); newline();
+        });
+        return;
+      }
+      if(tag==="div"||tag==="p"||tag==="li"){
+        newline();
+        if(n.querySelector(BLOCK_SEL)){ walk(n); newline(); return; }
+        splitBr(n.innerHTML); newline();
+        return;
+      }
+      if(/^h[1-6]$/.test(tag)||tag==="blockquote"||tag==="pre"){
+        newline(); walk(n); newline(); return;
+      }
+      add(n.outerHTML);
+    });
+  }
+  walk(editor);
   return out.map(function(s){ return String(s).replace(/&nbsp;/g," ").trim(); })
             .filter(function(s){ return s && !/^<br\s*\/?>$/i.test(s); });
 }
@@ -518,8 +540,9 @@ function closeLogicEdit(){ document.getElementById("modalLogic").style.display="
 function saveLogicEdit(){
   var ed=document.getElementById("logicInput");
   var lines=editorHtmlToLines(ed).map(function(s){ return sanitizeLogicHtml(s); })
-            .filter(function(s){ return s && s.replace(/<[^>]*>/g,"").trim(); });
-  if(!lines.length) return;
+    // 行内有文字 或 含图片 都保留（纯图片行不能被当空行丢弃）
+    .filter(function(s){ return s && (s.replace(/<img\s[^>]*>/gi,"").replace(/<[^>]*>/g,"").trim() || /<img/i.test(s)); });
+  if(!lines.length){ alert("未识别到内容：请输入文字，或重新粘贴图片后保存。"); return; }
   if(JSON.stringify(lines)!==JSON.stringify(logicText||DEFAULT_LOGIC)){
     // 历史记录不保存图片 base64，避免 localStorage 膨胀
     var hist=lines.map(function(l){ return l.replace(/<img\s[^>]*>/gi, "[图片]"); });
