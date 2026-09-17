@@ -326,7 +326,7 @@ function layoutEnvelope(){ return {v:layout, savedAtISO:new Date().toISOString()
 function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(layoutEnvelope())); }catch(e){} }
 function loadLayout(){
   // 图表改名后的旧 key 自动迁移（如 9-1月差 → 11-1月差），避免存档卡片因 key 失效变成「未加载」
-  var KEY_ALIASES={"9-1月差":"11-1月差"};
+  var KEY_ALIASES={"9-1月差":"11-1月差","碳酸锂总库存":"碳酸锂总库存（中样本）","碳酸锂：周度库存":"碳酸锂：周度库存（大样本）"};
   function norm(it){
     var key=it.key;
     if(key && KEY_ALIASES[key]) key=KEY_ALIASES[key];
