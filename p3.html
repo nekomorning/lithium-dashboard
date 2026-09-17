@@ -146,7 +146,7 @@ tr.abn td{background:#fff7f0;}
 
 <script>
 (function(){
-  Promise.all([fetch('p3.json?v=1789639339').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('p3.json?v=1789655279').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -176,9 +176,9 @@ var charts=[];
 
 // 指定图表下方追加的小字备注（仅图表区，不影响速览/一览表）
 var NOTE_KEYS={
-  "碳酸锂总库存":"26.3.5起调增库存样本",
+  "碳酸锂总库存（中样本）":"26.3.5起调增库存样本",
   "碳酸锂：贸易商及电芯厂库存":"26.3.5起调增库存样本",
-  "碳酸锂：周度库存":"9.3起调增库存样本+9.4wt库存",
+  "碳酸锂：周度库存（大样本）":"9.3起调增库存样本+9.4wt库存",
   "碳酸锂：周度表需":"9.3起调增库存样本+9.4wt库存"
 };
 var yearVisible={};
@@ -239,7 +239,7 @@ function buildSummary(){
   var dateTxt=parseInt(d[0],10)+"月"+parseInt(d[1],10)+"日";
 
   var html="<h2>核心变化速览</h2><div>";
-  html+=dateTxt+"，碳酸锂总库存 "+seg("碳酸锂总库存")+" 吨、锂盐厂库存 "+seg("碳酸锂：锂盐厂库存")+" 吨、下游正极厂库存 "+seg("碳酸锂：下游正极厂库存")+" 吨、贸易商及电芯厂库存 "+seg("碳酸锂：贸易商及电芯厂库存")+" 吨、周度表需 "+seg("碳酸锂：周度表需")+" 吨。";
+  html+=dateTxt+"，碳酸锂总库存（中样本） "+seg("碳酸锂总库存（中样本）")+" 吨、锂盐厂库存 "+seg("碳酸锂：锂盐厂库存")+" 吨、下游正极厂库存 "+seg("碳酸锂：下游正极厂库存")+" 吨、贸易商及电芯厂库存 "+seg("碳酸锂：贸易商及电芯厂库存")+" 吨、周度表需 "+seg("碳酸锂：周度表需")+" 吨。";
   html+="<br>环比涨幅居前："+(ups.length?ups.slice(0,3).map(li).join("、"):"无")+"；";
   html+="跌幅居前："+(dns.length?dns.slice(0,3).map(li).join("、"):"无")+"。";
   html+="</div>";
