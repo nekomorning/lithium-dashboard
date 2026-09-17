@@ -146,7 +146,7 @@ tr.abn td{background:#fff7f0;}
 
 <script>
 (function(){
-  Promise.all([fetch('p3.json?v=1789564710').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('p3.json?v=1789632357').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -178,8 +178,8 @@ var charts=[];
 var NOTE_KEYS={
   "碳酸锂总库存":"26.3.5起调增库存样本",
   "碳酸锂：贸易商及电芯厂库存":"26.3.5起调增库存样本",
-  "碳酸锂：周度库存":"26.3.5起调增库存样本",
-  "碳酸锂：周度表需":"26.3.5起调增库存样本"
+  "碳酸锂：周度库存":"9.3起调增库存样本+9.4wt库存",
+  "碳酸锂：周度表需":"9.3起调增库存样本+9.4wt库存"
 };
 var yearVisible={};
 var PALETTE=["#1E6FFF","#F59A23","#8B5CF6","#0FB5AE","#D63FA6","#7A6A53"];
