@@ -304,7 +304,7 @@ th .arr.up{color:var(--down);}
 
   <!-- 中国出口（海关 HS8703 乘用车 / HS8704 货车 · 分车型/大洲/国家 季节图） -->
   <div id="sheetExport" style="display:none;">
-    <div class="caliber"><span class="ico">ℹ</span><span>中国整车出口（海关 HS8703 乘用车 / HS8704 货车；按商品名称含「驱动电动机」区分新能源/燃油）· 单位：万辆 · 最新年黑线、前一年红线 · 大洲由出口目的国映射（底稿「贸易大洲」列空缺）</span></div>
+    <div class="caliber"><span class="ico">ℹ</span><span>中国整车出口（海关 HS8703 乘用车 / HS8704 货车；按商品名称含「驱动电动机」区分新能源/燃油）· 单位：万辆 · 最新年黑线、前一年红线 · 大洲由出口目的国映射、底稿「贸易洲编号」兜底</span></div>
 
     <div class="filterbar" id="exportFilterbar">
       <span class="lbl">车辆类别：</span><select id="expCat"></select>
@@ -325,7 +325,7 @@ th .arr.up{color:var(--down);}
 
 <script>
 (function(){
-  Promise.all([fetch('p5.json?v=1789722406').then(function(r){return r.json();}),fetch('clh.json?v=1789722406').then(function(r){return r.json();}),fetch('export.json?v=1789722406').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('p5.json?v=1789916310').then(function(r){return r.json();}),fetch('clh.json?v=1789916310').then(function(r){return r.json();}),fetch('export.json?v=1789916310').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; window.CLH=rs[1]; window.EXPORT=rs[2]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
