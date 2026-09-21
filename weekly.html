@@ -98,18 +98,18 @@ body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple
 /* 合并板块含多行子分组时，外层容器改为块级，内部每个 sec--charts 仍保持网格 */
 .sec--charts.has-rows{display:block;}
 .sec--charts.has-rows .sec--row-label{display:block;width:100%;}
-.citem{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 14px 6px;min-width:0;}
-.citem .ttl{font-size:14px;font-weight:700;color:#2a3345;}
-.citem .meta{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:4px 0 2px;}
-.citem .val{font-size:20px;font-weight:700;color:var(--text);}
-.citem .unit{font-size:11px;color:var(--sub);}
-.citem .chg{font-size:13px;font-weight:600;}
+.citem{background:#fff;border:1px solid var(--border);border-radius:10px;padding:9px 12px 4px;min-width:0;}
+.citem .ttl{font-size:12px;font-weight:700;color:#2a3345;line-height:1.3;}
+.citem .meta{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;margin:2px 0 1px;}
+.citem .val{font-size:15px;font-weight:700;color:var(--text);}
+.citem .unit{font-size:10px;color:var(--sub);}
+.citem .chg{font-size:10.5px;font-weight:600;}
 .citem .chg.up{color:var(--red);} .citem .chg.down{color:var(--green);} .citem .chg.flat{color:var(--sub);}
-.citem .dt{font-size:11px;color:var(--sub);}
+.citem .dt{font-size:10px;color:var(--sub);}
 /* 图表采用宽屏长方形；默认 16:10 比日度价格页（16:9）略高，c4/c5 列数多时进一步拉高，避免折线区域过小 */
-.citem .chart{width:100%;display:block;aspect-ratio:16 / 10;height:auto;min-width:0;}
-.sec--charts.c4 .chart{aspect-ratio:16 / 10.5;}
-.sec--charts.c5 .chart{aspect-ratio:16 / 11;}
+.citem .chart{width:100%;display:block;aspect-ratio:16 / 11;height:auto;min-width:0;}
+.sec--charts.c4 .chart{aspect-ratio:16 / 11.5;}
+.sec--charts.c5 .chart{aspect-ratio:16 / 12;}
 /* p5 汽车板块紧凑样式：标题/统计区更窄、折线图区域更大 */
 .p5-compact .citem{padding:6px 8px 4px;}
 .p5-compact .citem .ttl{font-size:11px;margin-bottom:2px;line-height:1.25;}
@@ -211,7 +211,7 @@ window.__DATA__ = /*DATA*/null/*DATA_END*/;
 </script>
 <script>
 (function(){
-  Promise.all([fetch('weekly.json?v=1789962139').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('weekly.json?v=1789962898').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -994,8 +994,8 @@ function buildOption(c){
   if(c.bar || isMonthly){
     return {
       animation:false,
-      grid:{left:'1%',right:'1%',top:26,bottom:4,containLabel:true},
-      legend:{show:true, top:0, right:0, itemWidth:14, itemHeight:2, icon:'rect', textStyle:{fontSize:11,color:'#6b7686'}, data:legend, selected:selected},
+      grid:{left:'1%',right:'1%',top:20,bottom:4,containLabel:true},
+      legend:{show:true, top:0, right:0, itemWidth:10, itemHeight:2, icon:'rect', textStyle:{fontSize:10,color:'#6b7686'}, data:legend, selected:selected},
       tooltip:{trigger:'axis', confine:true,
         formatter:function(ps){
           if(!ps.length) return '';
@@ -1014,8 +1014,8 @@ function buildOption(c){
   }
   return {
     animation:false,
-    grid:{left:'1%',right:'1%',top:26,bottom:4,containLabel:true},
-    legend:{show:true, top:0, right:0, itemWidth:14, itemHeight:2, icon:'rect', textStyle:{fontSize:11,color:'#6b7686'}, data:legend, selected:selected},
+    grid:{left:'1%',right:'1%',top:20,bottom:4,containLabel:true},
+    legend:{show:true, top:0, right:0, itemWidth:10, itemHeight:2, icon:'rect', textStyle:{fontSize:10,color:'#6b7686'}, data:legend, selected:selected},
     tooltip:{trigger:'axis', confine:true,
       formatter:function(ps){
         if(!ps.length) return '';
