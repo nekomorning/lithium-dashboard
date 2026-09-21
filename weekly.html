@@ -211,7 +211,7 @@ window.__DATA__ = /*DATA*/null/*DATA_END*/;
 </script>
 <script>
 (function(){
-  Promise.all([fetch('weekly.json?v=1789963349').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('weekly.json?v=1789969622').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -1207,6 +1207,13 @@ function saveLayout(){
 }
 
 /* ===== init ===== */
+/* 指标改名后的旧 chart_id → 新 chart_id 迁移映射（避免已保存布局出现缺失卡片） */
+var CHART_ALIASES={
+  "p3_碳酸锂总库存":"p3_碳酸锂总库存（中样本）",
+  "p3_碳酸锂：周度库存":"p3_碳酸锂：周度库存（大样本）"
+};
+function aliasCid(cid){ return CHART_ALIASES[cid]||cid; }
+
 function init(){
   WEEKLY = window.__DATA__;
   if(!WEEKLY || !WEEKLY.sections) return;
@@ -1226,10 +1233,10 @@ function init(){
                 title:x.title||s.name, analysis:x.analysis||'', images:x.images||[]};
       }
       return {id:x.id, name:x.title||x.name||'新板块', desc:x.desc||'',
-              chart_ids:(x.chart_ids||[]).slice(), tables:(x.tables||[]).slice(),
+              chart_ids:(x.chart_ids||[]).map(aliasCid), tables:(x.tables||[]).slice(),
               charts_rendered:false, title:x.title||x.name||'新板块',
               analysis:x.analysis||'', images:x.images||[],
-              rows:(x.rows&&x.rows.length)?x.rows.map(function(r){return {label:r.label||'', chart_ids:(r.chart_ids||[]).slice()};}):[]};
+              rows:(x.rows&&x.rows.length)?x.rows.map(function(r){return {label:r.label||'', chart_ids:(r.chart_ids||[]).map(aliasCid)};}):[]};
     }).filter(Boolean);
   } else {
     selected = (WEEKLY.defaultLayout || []).map(function(id){
