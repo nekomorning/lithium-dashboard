@@ -211,7 +211,7 @@ window.__DATA__ = /*DATA*/null/*DATA_END*/;
 </script>
 <script>
 (function(){
-  Promise.all([fetch('weekly.json?v=1789960620').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('weekly.json?v=1789961116').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -1143,12 +1143,12 @@ function saveLayout(){
     selected.forEach(function(s){ if(String(s.id).indexOf('custom_')===0 && s.images && s.images.length) n+=s.images.length; });
     return n;
   }
-  function compressAll(maxW, q){
+  function compressAll(maxW, q, force){
     var tasks=[];
     selected.forEach(function(s){
       if(String(s.id).indexOf('custom_')===0 && s.images && s.images.length){
         s.images.forEach(function(url, i){
-          tasks.push(compressDataURL(url, maxW, q).then(function(u){ s.images[i]=u; }));
+          tasks.push(compressDataURL(url, maxW, q, force).then(function(u){ s.images[i]=u; }));
         });
       }
     });
@@ -1161,18 +1161,18 @@ function saveLayout(){
     return '保存失败：'+e.message+'\n当前本站点已用 localStorage 约 '+used+' KB，本次布局约 '+payload+' KB。\n建议：减少自定义板块截图、或点击下方「清理本地缓存」按钮清空历史布局后重试。';
   }
 
-  // 预检查：若 payload 超过 4MB，直接走压缩
+  // 预检查：若 payload 超过 4MB，直接走压缩（第一档只缩不重编码，避免画质损失；第二档强制压缩）
   var pl = buildPayload();
   var str = JSON.stringify(pl);
   if(str.length > 4*1024*1024){
     var n = customImageCount();
     if(n>0){
       document.getElementById('saveStatus').textContent = '布局数据 '+Math.round(str.length/1024)+' KB，超过 4MB，正在压缩 '+n+' 张截图…';
-      compressAll(1000, 0.8).then(function(){
+      compressAll(1600, 0.9, false).then(function(){
         try{ doSave(buildPayload()); }
         catch(e2){
           document.getElementById('saveStatus').textContent = '空间仍不足，进一步压缩中…';
-          compressAll(600, 0.65).then(function(){
+          compressAll(800, 0.7, true).then(function(){
             try{ doSave(buildPayload()); }
             catch(e3){ alert(failMsg(e3)); }
           }).catch(function(){ alert(failMsg(e2)); });
@@ -1185,16 +1185,16 @@ function saveLayout(){
   try{
     doSave(pl);
   }catch(e){
-    // 首次失败：压缩到 1000/0.8 重试
+    // 首次失败：温和压缩（仅缩超宽图）重试
     var n = customImageCount();
     if(n>0){
       document.getElementById('saveStatus').textContent = '保存空间不足，正在压缩 '+n+' 张截图…';
-      compressAll(1000, 0.8).then(function(){
+      compressAll(1600, 0.9, false).then(function(){
         try{ doSave(buildPayload()); }
         catch(e2){
-          // 第二次失败：进一步压缩到 600/0.65
+          // 第二次失败：强制压缩到 800/0.7
           document.getElementById('saveStatus').textContent = '空间仍不足，进一步压缩中…';
-          compressAll(600, 0.65).then(function(){
+          compressAll(800, 0.7, true).then(function(){
             try{ doSave(buildPayload()); }
             catch(e3){ alert(failMsg(e3)); }
           }).catch(function(){ alert(failMsg(e2)); });
@@ -1246,13 +1246,16 @@ function init(){
   renderLib(); renderCanvas();
 }
 
-/* 将 base64 图片压缩，避免 localStorage 超限；返回 Promise<dataURL> */
-function compressDataURL(dataURL, maxWidth, quality){
+/* 将 base64 图片压缩，避免 localStorage 超限；返回 Promise<dataURL>
+   always=true 时无论尺寸是否超限都重新编码（用于粘贴时的首次压缩，控制体积）；
+   always=false 时若宽度未超限则原样返回，避免对已压缩图片二次 JPEG 编码导致画质劣化 */
+function compressDataURL(dataURL, maxWidth, quality, always){
   maxWidth = maxWidth || 1200; quality = quality || 0.85;
   return new Promise(function(resolve, reject){
     var img = new Image();
     img.onload = function(){
       var w = img.width, h = img.height;
+      if(!always && w <= maxWidth){ resolve(dataURL); return; }  // 尺寸够用则不重编码，防止越压越糊
       if(w > maxWidth){ h = Math.round(h * maxWidth / w); w = maxWidth; }
       var canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
@@ -1281,8 +1284,9 @@ document.addEventListener('paste', function(e){
       var blob = items[i].getAsFile();
       var reader = new FileReader();
       reader.onload = function(ev){
-        // 自定义板块只保留一张截图：新粘贴覆盖旧图，并压缩避免 localStorage 超限
-        compressDataURL(ev.target.result, 1000, 0.8).then(function(url){
+        // 自定义板块只保留一张截图：新粘贴覆盖旧图
+        // 粘贴时一次性压缩到 1600px/0.9（always=true 保证首次编码控制体积），保存环节不再重复压缩
+        compressDataURL(ev.target.result, 1600, 0.9, true).then(function(url){
           selected[idx].images = [url];
           renderCanvas();
         });
