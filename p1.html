@@ -521,7 +521,8 @@ function makeCard(ch,ticks,grid){
         {title:"产量开工利润", file:"./p2.json", mode:"week"},
         {title:"产业链库存", file:"./p3.json", mode:"week"}
       ];
-      var Ds=await Promise.all(sheets.map(function(s){ return fetch(s.file).then(function(r){ return r.json(); }); }));
+      var _vb=Date.now();
+      var Ds=await Promise.all(sheets.map(function(s){ return fetch(s.file+'?v='+_vb).then(function(r){ return r.json(); }); }));
       var host=document.getElementById("expHost");
       var tiles=[];
       Ds.forEach(function(D,si){
