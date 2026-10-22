@@ -3417,7 +3417,7 @@ window.RP7 = (function(){
   function headCells(ctx, G){
     var h="<tr><th class='date-col' rowspan='2'>"+(G.firstCol||"月份")+"</th>";
     G.groups.forEach(function(g){
-      h+="<th colspan='"+G.span+"' style='background:"+g.color+";color:#fff;'>"+g.label+"</th>";
+      h+="<th colspan='"+g.span+"' style='background:"+g.color+";color:#fff;'>"+g.label+"</th>";
     });
     h+="</tr><tr>";
     G.cols.forEach(function(col){
