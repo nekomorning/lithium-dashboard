@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>碳酸锂数据看板 · 周报</title>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<style>
+:root{--accent:#1E6FFF;--border:#dde3ec;--bg:#f4f6fa;--card:#fff;--text:#1f2733;--sub:#6b7686;--red:#d92626;--green:#0a9a5c;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",-apple-system,sans-serif;font-size:14px;}
+.wrap{max-width:1400px;margin:0 auto;padding:16px 20px 60px;}
+.tabs{margin-bottom:14px;}
+.tabs a{display:inline-block;padding:6px 14px;margin-right:6px;border-radius:16px;text-decoration:none;color:var(--sub);font-size:13px;border:1px solid var(--border);background:#fff;}
+.tabs a:hover{border-color:var(--accent);color:var(--accent);}
+.tabs a.active{background:var(--accent);color:#fff;font-weight:600;border-color:var(--accent);}
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.toolbar .title{font-size:18px;font-weight:700;color:var(--accent);}
+.btn{padding:7px 16px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text);font-size:13px;cursor:pointer;transition:all .15s;}
+.btn:hover{border-color:var(--accent);color:var(--accent);}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;}
+.btn.warn{background:var(--red);border-color:var(--red);color:#fff;font-weight:600;}
+
+.editor-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:16px;}
+.editor-card .card-ttl{font-size:15px;font-weight:700;color:var(--text);margin-bottom:8px;}
+.editor-card .card-ttl span{font-size:12px;color:var(--sub);font-weight:400;}
+#noteInput{width:100%;min-height:120px;border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:14px;line-height:1.8;resize:vertical;font-family:inherit;}
+#noteInput:focus{outline:none;border-color:var(--accent);}
+.note-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+.note-toolbar .tl{font-size:12px;color:var(--sub);}
+.color-btn{padding:4px 14px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-size:12px;font-weight:700;user-select:none;}
+.color-btn:hover{border-color:var(--accent);}
+.color-btn.red{color:#d92626;}
+.color-btn.green{color:#0a9a5c;}
+.color-btn.blue{color:#1E6FFF;}
+.color-btn.black{color:#000;}
+.color-btn:active{transform:translateY(1px);}
+.editor-actions{display:flex;gap:10px;align-items:center;margin-top:10px;}
+#notePreview{line-height:2;font-size:14px;margin-top:10px;padding:10px 12px;background:#f8fafd;border-radius:6px;display:none;}
+#notePreview .nl-sub{font-weight:700;color:var(--accent);border-left:3px solid var(--accent);padding-left:8px;margin:8px 0 3px;}
+#notePreview .nl-pt{margin:2px 0;}
+#notePreview .nl-b{color:var(--accent);margin-right:6px;}
+/* 手动字体颜色：红/绿/蓝默认加粗，黑色不加粗 */
+.c-red{color:var(--red);font-weight:600;}
+.c-green{color:var(--green);font-weight:600;}
+.c-blue{color:var(--accent);font-weight:600;}
+.c-black{color:#000;font-weight:400;}
+.up{color:var(--red);font-weight:600;}
+.down{color:var(--green);font-weight:600;}
+.key{color:var(--accent);font-weight:700;text-decoration:underline;}
+
+.lib-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:16px;}
+.lib-card .card-ttl{font-size:15px;font-weight:700;margin-bottom:10px;}
+.lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;max-height:300px;overflow-y:auto;padding-right:6px;}
+.lib-item{border:1px solid var(--border);border-radius:6px;padding:6px 8px;cursor:pointer;font-size:13px;color:var(--text);transition:all .15s;background:#fff;display:flex;justify-content:space-between;align-items:center;}
+.lib-item:hover{border-color:var(--accent);color:var(--accent);}
+.lib-item .pg{font-size:10px;color:#9aa5b5;display:block;margin-top:2px;}
+.lib-item .txt{flex:1;min-width:0;line-height:1.5;}
+.lib-item.added{border-color:var(--green);color:var(--green);background:#f0faf5;}
+.lib-item .lib-ctrl{display:flex;gap:4px;margin-left:8px;}
+.lib-item .lib-ctrl button{font-size:10px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:#fff;color:var(--sub);cursor:pointer;line-height:1.2;}
+.lib-item .lib-ctrl button:hover{color:var(--accent);border-color:var(--accent);}
+.lib-item .lib-ctrl button.del:hover{color:var(--red);border-color:var(--red);}
+.lib-item .lib-ctrl button:disabled{opacity:0.4;cursor:not-allowed;}
+.lib-item .chkwrap{display:flex;align-items:center;margin-right:8px;flex-shrink:0;}
+.lib-item .chk{width:15px;height:15px;cursor:pointer;accent-color:var(--accent);}
+.lib-item.added .chk{accent-color:var(--green);}
+.lib-group{font-size:12px;color:var(--accent);font-weight:700;margin:10px 0 4px;display:none;}
+.sec--images{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px;}
+.sec--images img{width:100%;border:1px solid var(--border);border-radius:6px;background:#fff;}
+.sec--images.full{grid-template-columns:1fr;width:100%;}
+.sec--images.full img{width:100%;height:auto;display:block;}
+.custom-tip{font-size:12px;color:var(--sub);padding:8px 10px;background:#f4f6fa;border:1px dashed var(--border);border-radius:6px;text-align:center;}
+
+/* 画布板块 */
+.canvas-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:14px;}
+.canvas-card .card-ttl{font-size:15px;font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
+.sec{border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;background:#fbfcfe;page-break-inside:avoid;break-inside:avoid;}
+.sec .sec-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.sec--ttl{font-size:18px;font-weight:700;color:var(--accent);border:none;background:transparent;outline:none;width:80%;font-family:inherit;border-bottom:1px dashed transparent;}
+.sec--ttl:focus{border-bottom-color:var(--accent);}
+.sec--ctrl button{font-size:11px;padding:2px 8px;margin-left:4px;border:1px solid var(--border);border-radius:4px;background:#fff;color:var(--sub);cursor:pointer;}
+.sec--ctrl button:hover{color:var(--accent);border-color:var(--accent);}
+.sec--ctrl button.del:hover{color:var(--red);border-color:var(--red);}
+.sec--desc{width:100%;border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:14px;color:#000;min-height:56px;background:#fff;font-family:inherit;resize:vertical;white-space:pre-wrap;word-break:break-word;line-height:1.7;overflow:hidden;}
+.sec--desc:focus{outline:none;border-color:var(--accent);}
+.sec--charts{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:10px;}
+/* 按每行图表数自动列数：5 图一行显示，避免 4+1 留白 */
+.sec--charts.c1{grid-template-columns:repeat(1,minmax(0,1fr));}
+.sec--charts.c2{grid-template-columns:repeat(2,minmax(0,1fr));}
+.sec--charts.c3{grid-template-columns:repeat(3,minmax(0,1fr));}
+.sec--charts.c4{grid-template-columns:repeat(4,minmax(0,1fr));}
+.sec--charts.c5{grid-template-columns:repeat(5,minmax(0,1fr));}
+@media (max-width:1200px){ .sec--charts.c5{grid-template-columns:repeat(3,minmax(0,1fr));} }
+@media (max-width:800px){ .sec--charts.c4,.sec--charts.c5{grid-template-columns:repeat(2,minmax(0,1fr));} }
+@media (max-width:600px){ .sec--charts.c1,.sec--charts.c2,.sec--charts.c3,.sec--charts.c4,.sec--charts.c5{grid-template-columns:1fr;} }
+/* 合并板块含多行子分组时，外层容器改为块级，内部每个 sec--charts 仍保持网格 */
+.sec--charts.has-rows{display:block;}
+.sec--charts.has-rows .sec--row-label{display:block;width:100%;}
+.citem{background:#fff;border:1px solid var(--border);border-radius:10px;padding:9px 12px 4px;min-width:0;}
+.citem .ttl{font-size:12px;font-weight:700;color:#2a3345;line-height:1.3;}
+.citem .meta{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;margin:2px 0 1px;}
+.citem .val{font-size:15px;font-weight:700;color:var(--text);}
+.citem .unit{font-size:10px;color:var(--sub);}
+.citem .chg{font-size:10.5px;font-weight:600;}
+.citem .chg.up{color:var(--red);} .citem .chg.down{color:var(--green);} .citem .chg.flat{color:var(--sub);}
+.citem .dt{font-size:10px;color:var(--sub);}
+/* 图表采用宽屏长方形；默认 16:10 比日度价格页（16:9）略高，c4/c5 列数多时进一步拉高，避免折线区域过小 */
+.citem .chart{width:100%;display:block;aspect-ratio:16 / 11;height:auto;min-width:0;}
+.sec--charts.c4 .chart{aspect-ratio:16 / 11.5;}
+.sec--charts.c5 .chart{aspect-ratio:16 / 12;}
+/* p5 汽车板块紧凑样式：标题/统计区更窄、折线图区域更大 */
+.p5-compact .citem{padding:6px 8px 4px;}
+.p5-compact .citem .ttl{font-size:11px;margin-bottom:2px;line-height:1.25;}
+.p5-compact .citem .meta{margin:2px 0 2px;gap:6px;}
+.p5-compact .citem .val{font-size:14px;}
+.p5-compact .citem .unit{font-size:9px;}
+.p5-compact .citem .chg{font-size:10px;}
+.p5-compact .citem .dt{font-size:9px;}
+.p5-compact .citem .chart{aspect-ratio:16 / 8.5;}
+.p5-compact.sec--charts.c4 .chart,.p5-compact.sec--charts.c5 .chart{aspect-ratio:16 / 8.5;}
+.sec--tables{margin-top:12px;}
+.sec--row-label{font-size:12px;color:var(--accent);font-weight:700;margin:8px 0 4px;padding-left:2px;}
+.sec--tables table{width:100%;border-collapse:collapse;font-size:12px;}
+.sec--tables th,.sec--tables td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;}
+.sec--tables th{background:#f0f3f8;color:#44506a;font-weight:600;text-align:center;}
+.sec--tables td:first-child{text-align:left;color:var(--accent);font-weight:600;}
+.sec--tables caption{caption-side:top;text-align:left;font-size:13px;font-weight:700;color:var(--text);padding-bottom:6px;}
+.empty-tip{color:#9aa5b5;text-align:center;padding:30px 0;font-size:13px;}
+
+@media (max-width:1100px){.sec--charts{grid-template-columns:repeat(3,1fr);}}
+@media (max-width:800px){.sec--charts{grid-template-columns:repeat(2,1fr);}}
+@media (max-width:600px){.sec--charts{grid-template-columns:1fr;}}
+
+.note{font-size:12px;color:var(--sub);margin-top:12px;line-height:1.7;}
+
+/* 年份筛选条（默认隐藏 2023，可点击切换） */
+.ybar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;}
+.ybar .ylab{font-size:12px;color:var(--sub);}
+.ybtn{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:16px;
+  border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px;user-select:none;transition:all .15s;}
+.ybtn .dot{width:10px;height:10px;border-radius:50%;}
+.ybtn.off{opacity:.35;filter:grayscale(.6);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="tabs" id="navTabs"></div>
+
+  <div class="toolbar">
+    <div class="title">周报</div>
+    <span style="font-size:12px;color:var(--sub)">数据截止：<span id="latestDate"></span></span>
+    <span style="flex:1"></span>
+    <button class="btn primary" onclick="saveLayout()">保存布局</button>
+    <button class="btn primary" onclick="exportPDF()">导出周报 PDF</button>
+  </div>
+
+  <div class="ybar" id="yearBar">
+    <span class="ylab">显示年份：</span>
+  </div>
+
+  <div class="editor-card">
+    <div class="card-ttl">本周核心变化 <span>（选中文字 → 点颜色按钮手动上色：红/绿/蓝默认加粗、黑不加粗；行首缩进形成层级；【】或以"："结尾的短行为子标题）</span></div>
+    <div class="note-toolbar">
+      <span class="tl">字体颜色：</span>
+      <button type="button" class="color-btn red" onclick="applyNoteColor('red')">红</button>
+      <button type="button" class="color-btn green" onclick="applyNoteColor('green')">绿</button>
+      <button type="button" class="color-btn blue" onclick="applyNoteColor('blue')">蓝</button>
+      <button type="button" class="color-btn black" onclick="applyNoteColor('black')">黑</button>
+      <span class="tl">（先选中文字再点按钮；已上色的文字再点同色按钮可取消颜色）</span>
+    </div>
+    <textarea id="noteInput" oninput="updateNotePreview()" placeholder="例：
+一、价格：
+  电碳现货上涨3.2%，利好价格。
+  云母矿价下跌，负面拖累。
+二、供给：
+  重点关注：某大厂减停产、某装置检修。
+【提示】选中文字后点上方颜色按钮上色；行首每 4 空格或 1 个 Tab 为一级缩进，可嵌套；【】或以"："结尾的短行会自动渲染为子标题。"></textarea>
+    <div class="editor-actions">
+      <button class="btn primary" onclick="saveNote()">保存</button>
+      <button class="btn" onclick="loadNote()">载入</button>
+      <span id="saveStatus" style="font-size:12px;color:var(--sub)"></span>
+    </div>
+    <div id="notePreview"></div>
+  </div>
+
+  <div class="lib-card">
+    <div class="card-ttl" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>板块库 <span style="font-size:12px;color:var(--sub);font-weight:400">（点击左侧名称加入画布；勾选多个板块后点「合并选中板块」可合并为一张卡片；卡片按钮可调整/删除画布中的对应板块）</span></span>
+      <span style="display:inline-flex;gap:8px;align-items:center">
+        <span id="mergeCount" style="font-size:12px;color:var(--sub)"></span>
+        <button class="btn" onclick="mergeChecked()">⊞ 合并选中板块</button>
+        <button class="btn" onclick="addCustomSection()">＋ 添加板块</button>
+      </span>
+    </div>
+    <div id="libGrid" class="lib-grid"></div>
+  </div>
+
+  <div class="canvas-card">
+    <div class="card-ttl">周报画布 <span style="font-size:12px;color:var(--sub);font-weight:400">（共 <span id="chartCount">0</span> 个图表，<span id="secCount">0</span> 个板块）</span></div>
+    <div id="canvas"></div>
+  </div>
+
+  <p class="note">说明：① 点击板块库左侧名称加入画布；勾选多个板块后点「合并选中板块」可把它们合并为一张卡片（含全部图表、保留原板块分组），再点卡片上的 ▲▼✕ 可调整/删除。② 自定义板块可编辑标题、分析文字并粘贴截图（Ctrl+V），截图将铺满卡片宽度。③ 导出 PDF 按屏幕所见 A4 横向排版（一行 4 图）。④ 点击顶部「保存布局」后，板块顺序、标题、分析文字、截图、合并板块等会保存在浏览器本地，下次打开自动恢复。</p>
+</div>
+
+<script>
+/* 数据占位（由 build_site.py 注入 fetch 引导后填充 window.__DATA__） */
+window.__DATA__ = /*DATA*/null/*DATA_END*/;
+</script>
+<script>
+(function(){
+  Promise.all([fetch('weekly.json?v=99953ff194').then(function(r){return r.json();})]).then(function(rs){
+    window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
+  }).catch(function(){
+    document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
+  });
+})();
+
+function loadECharts(){
+  var urls=[
+    "https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js",
+    "https://cdn.bootcdn.net/ajax/libs/echarts/5.5.0/echarts.min.js",
+    "https://unpkg.com/echarts@5.5.0/dist/echarts.min.js"
+  ];
+  var i=0;
+  function tryNext(){
+    if(i>=urls.length){document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>ECharts 加载失败，请检查网络后刷新。</div>");return;}
+    var s=document.createElement("script");
+    s.src=urls[i++];
+    s.onload=init;
+    s.onerror=tryNext;
+    document.head.appendChild(s);
+  }
+  tryNext();
+}
+
+var WEEKLY = null;
+var echarts;
+var PALETTE=["#1E6FFF","#F59A23","#8B5CF6","#0FB5AE","#D63FA6","#7A6A53"];
+/* 年份可见性：默认展示 2023 年起近年份（p5 汽车板块需看 2023-2026），可点击年份条切换 */
+var yearVisible = {};
+
+/* ===== 导航 ===== */
+function renderNav(){
+  var navs=[
+    ['core.html','核心逻辑'],['p7.html','中国锂产业链平衡'],['event.html','事件及政策跟踪'],['p6.html','全球年度平衡'],
+    ['p5.html','全球汽车'],['p3.html','产业链库存'],['p2.html','产量开工利润'],
+    ['p1.html','日度价格'],['weekly.html','周报']
+  ];
+  document.getElementById('navTabs').innerHTML = navs.map(function(n){
+    return '<a class="'+(n[0]==='weekly.html'?'active':'')+'" href="'+n[0]+'">'+n[1]+'</a>';
+  }).join('');
+}
+
+/* ===== 文本格式化（参考日报汇总格式：要点列表 + 子标题 + 缩进层级；颜色由用户手动标记） ===== */
+function escHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;'); }
+function noteIndent(line){
+  var ws = (line.match(/^\s*/)||[''])[0];
+  return Math.min(Math.round(ws.replace(/\t/g,'    ').length / 4), 4);
+}
+/* 手动颜色标记渲染：§red§…§/§ §green§…§/§ §blue§…§/§ §black§…§/§ */
+function renderMarkup(s){
+  return escHtml(s)
+    .replace(/§red§([^§]+)§\/§/g, '<span class="c-red">$1</span>')
+    .replace(/§green§([^§]+)§\/§/g, '<span class="c-green">$1</span>')
+    .replace(/§blue§([^§]+)§\/§/g, '<span class="c-blue">$1</span>')
+    .replace(/§black§([^§]+)§\/§/g, '<span class="c-black">$1</span>');
+}
+function fmtNote(text){
+  if(!text) return '';
+  var bullets = ['▪','▸','▹','·','·'];
+  var out = [];
+  text.split('\n').forEach(function(line){
+    if(!line.trim()) return;
+    var m = line.match(/^(\s*)(.*)$/);
+    var lvl = noteIndent(m[1]);
+    var content = (m[2]||'').trim();
+    if(!content) return;
+    var isSub = /^【.+】$/.test(content) || /^[^。！？；]{1,26}[:：]$/.test(content);
+    if(isSub){
+      out.push('<div class="nl-sub" style="margin-left:'+(lvl*12)+'px">'+escHtml(content.replace(/^【|】$/g,''))+'</div>');
+    } else {
+      out.push('<div class="nl-pt" style="padding-left:'+(lvl*18)+'px"><span class="nl-b">'+bullets[lvl]+'</span>'+renderMarkup(content)+'</div>');
+    }
+  });
+  return out.join('');
+}
+/* 给 textarea 选中文字加颜色标记（红/绿/蓝/黑）；已上色文字再点同色按钮 = 取消颜色 */
+function applyNoteColor(c){
+  var ta = document.getElementById('noteInput');
+  var s = ta.selectionStart, e = ta.selectionEnd;
+  if(s===null || e===null || s===e){
+    document.getElementById('saveStatus').textContent = '请先选中要上色的文字，再点颜色按钮';
+    return;
+  }
+  var marks = {red:'§red§', green:'§green§', blue:'§blue§', black:'§black§'};
+  var open = marks[c] || '';
+  if(!open) return;
+  var close = '§/§';
+  var val = ta.value;
+  var sel = val.slice(s, e);
+  // 若选中内容恰好是同色的整段标记 → 取消颜色
+  var unwrap = new RegExp('^'+open+'([\\s\\S]+)'+close+'$');
+  var m2 = sel.match(unwrap);
+  if(m2){
+    ta.value = val.slice(0, s) + m2[1] + val.slice(e);
+    ta.focus();
+    ta.selectionStart = s;
+    ta.selectionEnd = s + m2[1].length;
+    updateNotePreview();
+    document.getElementById('saveStatus').textContent = '已取消该段颜色';
+    return;
+  }
+  if(sel.indexOf('§') >= 0){
+    document.getElementById('saveStatus').textContent = '选中内容里含颜色标记，请只选中纯文字再上色';
+    return;
+  }
+  var body = open + sel + close;
+  ta.value = val.slice(0, s) + body + val.slice(e);
+  ta.focus();
+  ta.selectionStart = s + open.length;
+  ta.selectionEnd = s + open.length + sel.length;
+  updateNotePreview();
+  document.getElementById('saveStatus').textContent = '';
+}
+function updateNotePreview(){
+  var v = document.getElementById('noteInput').value;
+  var pv = document.getElementById('notePreview');
+  pv.innerHTML = fmtNote(v);
+  pv.style.display = v.trim() ? 'block' : 'none';
+}
+
+function saveNote(){
+  var v = document.getElementById('noteInput').value;
+  try { localStorage.setItem('lc_weekly_note', v); } catch(e){}
+  updateNotePreview();
+  document.getElementById('saveStatus').textContent = '✓ 已保存到本机（'+new Date().toLocaleString()+'）';
+}
+function loadNote(){
+  var v = '';
+  try { v = localStorage.getItem('lc_weekly_note') || ''; } catch(e){}
+  document.getElementById('noteInput').value = v;
+  updateNotePreview();
+}
+
+function autoResizeDesc(ta){
+  if(!ta) return;
+  ta.style.height = 'auto';
+  ta.style.height = ta.scrollHeight + 'px';
+}
+function replaceDescForExport(container){
+  // html2canvas 对 textarea 的换行/高度支持不稳定，导出前临时替换成 div 以保证多行文字完整渲染
+  // 空分析文字时：隐藏文本框，避免 PDF 出现空白框，图表直接顶上来
+  var tas = container.querySelectorAll ? container.querySelectorAll('textarea.sec--desc') : [];
+  var backups = [];
+  tas.forEach(function(ta){
+    var txt = ta.value.trim();
+    if(!txt){
+      backups.push({ta:ta, display:ta.style.display});
+      ta.style.display = 'none';
+      return;
+    }
+    var div = document.createElement('div');
+    div.className = 'sec--desc';
+    div.textContent = ta.value;
+    var style = window.getComputedStyle(ta);
+    div.style.cssText = 'width:'+ta.offsetWidth+'px;min-height:'+ta.offsetHeight+'px;height:auto;white-space:pre-wrap;word-break:break-word;line-height:'+style.lineHeight+';font-size:'+style.fontSize+';font-family:'+style.fontFamily+';padding:'+style.padding+';border:'+style.border+';border-radius:'+style.borderRadius+';background:'+style.background+';color:'+style.color+';box-sizing:'+style.boxSizing+';';
+    ta.parentNode.replaceChild(div, ta);
+    backups.push({div:div, ta:ta, parent:div.parentNode});
+  });
+  return function restore(){
+    backups.forEach(function(b){
+      if(b.div){ b.parent.replaceChild(b.ta, b.div); }
+      else { b.ta.style.display = b.display; }
+    });
+  };
+}
+
+/* ===== 板块库 ===== */
+var selected = []; // [{id, name, desc, chart_ids, tables, title, analysis, images, rows }，前端可改 title/desc]
+var checkedIds = {}; // 板块库勾选状态 {id:true}
+function renderLib(){
+  var g = document.getElementById('libGrid');
+  var html = '';
+  var addedIds = {};
+  selected.forEach(function(sec, idx){
+    addedIds[sec.id] = true;
+    var isCustom = String(sec.id).indexOf('custom_') === 0;
+    var s = findSec(sec.id);
+    var name = isCustom ? sec.title : (s ? s.name : sec.name);
+    var desc = isCustom ? '自定义板块' : (s ? s.desc : sec.desc);
+    var canUp = idx > 0;
+    var canDown = idx < selected.length - 1;
+    var chk = checkedIds[sec.id] ? 'checked' : '';
+    html += '<div class="lib-item added">'+
+      '<label class="chkwrap"><input type="checkbox" class="chk" '+chk+' onchange="toggleCheck(\''+sec.id+'\')"></label>'+
+      '<div class="txt" onclick="focusSec(\''+sec.id+'\')">'+esc(name)+'<span class="pg">'+esc(desc)+'</span></div>'+
+      '<div class="lib-ctrl">'+
+      '<button title="移到最前" '+(canUp?'':'disabled')+' onclick="event.stopPropagation();moveSecToFront(\''+sec.id+'\')">⇈</button>'+
+      '<button title="上移" '+(canUp?'':'disabled')+' onclick="event.stopPropagation();moveSecById(\''+sec.id+'\',-1)">▲</button>'+
+      '<button title="下移" '+(canDown?'':'disabled')+' onclick="event.stopPropagation();moveSecById(\''+sec.id+'\',1)">▼</button>'+
+      '<button title="移到最后" '+(canDown?'':'disabled')+' onclick="event.stopPropagation();moveSecToEnd(\''+sec.id+'\')">⇊</button>'+
+      '<button class="del" title="删除" onclick="event.stopPropagation();removeSecById(\''+sec.id+'\')">✕</button>'+
+      '</div></div>';
+  });
+  html += WEEKLY.sections.map(function(s){
+    if(addedIds[s.id]) return '';
+    var chk = checkedIds[s.id] ? 'checked' : '';
+    return '<div class="lib-item">'+
+      '<label class="chkwrap"><input type="checkbox" class="chk" '+chk+' onchange="toggleCheck(\''+s.id+'\')"></label>'+
+      '<div class="txt" onclick="toggleSection(\''+s.id+'\')">'+esc(s.name)+'<span class="pg">'+esc(s.desc)+'</span></div>'+
+      '<div class="lib-ctrl">'+
+      '<button title="上移" disabled onclick="event.stopPropagation();">▲</button>'+
+      '<button title="下移" disabled onclick="event.stopPropagation();">▼</button>'+
+      '<button class="del" title="删除" disabled onclick="event.stopPropagation();">✕</button>'+
+      '</div></div>';
+  }).join('');
+  g.innerHTML = html;
+  var cnt = Object.keys(checkedIds).filter(function(k){return checkedIds[k];}).length;
+  document.getElementById('mergeCount').textContent = cnt ? ('已选 '+cnt+' 个板块') : '';
+}
+
+function toggleCheck(id){
+  if(checkedIds[id]) delete checkedIds[id];
+  else checkedIds[id] = true;
+  var cnt = Object.keys(checkedIds).filter(function(k){return checkedIds[k];}).length;
+  document.getElementById('mergeCount').textContent = cnt ? ('已选 '+cnt+' 个板块') : '';
+}
+
+/* 合并勾选的多个板块为新板块（持久化在画布布局中） */
+function mergeChecked(){
+  var ids = Object.keys(checkedIds).filter(function(k){return checkedIds[k];});
+  if(ids.length < 2){ alert('请至少勾选 2 个板块再合并'); return; }
+  var mergedChartIds = [];
+  var mergedRows = [];
+  var names = [];
+  ids.forEach(function(id){
+    var inCanvas = selected.find(function(x){return x.id===id;});
+    var src = inCanvas || findSec(id);
+    if(!src) return;
+    var srcName = inCanvas ? inCanvas.title : (src.name || src.title);
+    names.push(srcName);
+    var rows = src.rows && src.rows.length ? src.rows : [{label:'', chart_ids:(src.chart_ids||[]).slice()}];
+    rows.forEach(function(r){
+      var label = r.label || srcName;
+      var cids = (r.chart_ids||[]).slice();
+      mergedRows.push({label:label, chart_ids:cids});
+      cids.forEach(function(c){ if(mergedChartIds.indexOf(c)<0) mergedChartIds.push(c); });
+    });
+  });
+  if(!mergedChartIds.length){ alert('所选板块均无图表，无法合并'); return; }
+  // 从画布移除被合并的原板块，新增合并板块
+  selected = selected.filter(function(x){ return ids.indexOf(x.id) < 0; });
+  var mid = 'custom_merge_' + Date.now();
+  selected.push({
+    id: mid, name: '合并：' + names.join(' + '), desc: '合并板块',
+    chart_ids: mergedChartIds, tables: [], rows: mergedRows,
+    title: '合并：' + names.join(' + '), analysis: '', images: []
+  });
+  checkedIds = {};
+  renderLib(); renderCanvas();
+  setTimeout(function(){
+    var secs = document.querySelectorAll('.sec');
+    if(secs.length){ secs[secs.length-1].scrollIntoView({behavior:'smooth', block:'center'}); }
+  }, 60);
+}
+
+function focusSec(id){
+  var idx = selected.findIndex(function(x){return x.id === id;});
+  if(idx < 0) return;
+  var secs = document.querySelectorAll('.sec');
+  if(secs[idx]){
+    secs[idx].scrollIntoView({behavior:'smooth', block:'center'});
+    secs[idx].style.boxShadow = '0 0 0 2px var(--accent)';
+    setTimeout(function(){ secs[idx].style.boxShadow = ''; }, 1200);
+  }
+}
+
+function findSec(id){ return WEEKLY.sections.find(function(s){return s.id===id;}); }
+
+function toggleSection(id){
+  var i = selected.findIndex(function(x){return x.id===id;});
+  if(i>=0) selected.splice(i,1);
+  else {
+    var s = findSec(id);
+    if(!s) return;
+    selected.push({
+      id: s.id, name: s.name, desc: s.desc,
+      chart_ids: s.chart_ids.slice(), tables: (s.tables||[]).slice(),
+      charts_rendered: false,
+      title: s.name,
+      analysis: '',
+      images: []
+    });
+  }
+  renderLib(); renderCanvas();
+}
+
+function moveSecById(id, d){
+  var i = selected.findIndex(function(x){return x.id===id;});
+  if(i<0) return;
+  var j = i + d;
+  if(j<0 || j>=selected.length) return;
+  var t = selected[i]; selected[i] = selected[j]; selected[j] = t;
+  renderLib(); renderCanvas();
+}
+function moveSecToFront(id){
+  var i = selected.findIndex(function(x){return x.id===id;});
+  if(i<=0) return;
+  var t = selected.splice(i, 1)[0];
+  selected.unshift(t);
+  renderLib(); renderCanvas();
+}
+function moveSecToEnd(id){
+  var i = selected.findIndex(function(x){return x.id===id;});
+  if(i<0 || i===selected.length-1) return;
+  var t = selected.splice(i, 1)[0];
+  selected.push(t);
+  renderLib(); renderCanvas();
+}
+function removeSecById(id){
+  var i = selected.findIndex(function(x){return x.id===id;});
+  if(i<0) return;
+  selected.splice(i, 1);
+  renderLib(); renderCanvas();
+}
+
+/* 自定义板块 */
+function addCustomSection(){
+  var id = 'custom_'+Date.now();
+  selected.push({
+    id: id, name: '新板块', desc: '',
+    chart_ids: [], tables: [],
+    charts_rendered: false,
+    title: '新板块',
+    analysis: '',
+    images: []
+  });
+  renderLib(); renderCanvas();
+  setTimeout(function(){
+    var secs = document.querySelectorAll('.sec');
+    if(secs.length){ secs[secs.length-1].scrollIntoView({behavior:'smooth', block:'center'}); }
+  }, 60);
+}
+
+/* ===== 画布 ===== */
+var charts = [];
+function disposeAll(){ charts.forEach(function(c){try{c.dispose();}catch(e){}}); charts=[]; }
+
+function renderCanvas(){
+  disposeAll();
+  var wrap = document.getElementById('canvas');
+  document.getElementById('chartCount').textContent = selected.reduce(function(s,x){return s+x.chart_ids.length;},0);
+  document.getElementById('secCount').textContent = selected.length;
+  if(!selected.length){ wrap.innerHTML = '<div class="empty-tip">从上方板块库点击添加板块到画布</div>'; return; }
+  wrap.innerHTML = '';
+  selected.forEach(function(sec, idx){
+    var div = document.createElement('div');
+    div.className = 'sec' + ((sec.id === 'sec_p5_中国汽车' || sec.id === 'sec_p5_全球新能源') ? ' p5-compact' : '');
+    div.setAttribute('data-idx', idx);
+    div.innerHTML =
+      '<div class="sec-hd"><input class="sec--ttl" value="'+esc(sec.title)+'"></div>'+
+      '<textarea class="sec--desc" placeholder="简要分析文字（可写多行）">'+esc(sec.analysis)+'</textarea>'+
+      '<div class="sec--charts" id="sec_chart_'+idx+'"></div>'+
+      '<div class="sec--images" id="sec_img_'+idx+'" style="display:none"></div>'+
+      '<div class="sec--tables" id="sec_table_'+idx+'"></div>';
+    wrap.appendChild(div);
+    div.querySelector('.sec--ttl').addEventListener('input', function(){ sec.title = this.value; if(String(sec.id).indexOf('custom_')===0) renderLib(); });
+    var descTa = div.querySelector('.sec--desc');
+    descTa.addEventListener('input', function(){ sec.analysis = this.value; autoResizeDesc(this); });
+    autoResizeDesc(descTa);
+    var chartBox = div.querySelector('.sec--charts');
+    var isMerge = String(sec.id).indexOf('custom_merge_') === 0;
+    if(sec.rows && sec.rows.length && !isMerge){ chartBox.classList.add('has-rows'); }
+    if(sec.chart_ids.length===0){
+      if(String(sec.id).indexOf('custom_')===0){
+        if(sec.images && sec.images.length){ chartBox.innerHTML = ''; }
+        else { chartBox.innerHTML = '<div class="custom-tip" style="grid-column:span 4">在此粘贴截图（Ctrl+V），图片将显示在该板块中</div>'; }
+      } else { chartBox.innerHTML = '<div class="empty-tip" style="grid-column:span 4">（该板块无图表）</div>'; }
+    } else if(sec.rows && sec.rows.length && isMerge){
+      // 合并板块：把各子行图表平铺到一个统一 grid，自动填补上一行空白
+      var flatIds = [];
+      sec.rows.forEach(function(row){
+        row.chart_ids.forEach(function(cid){
+          flatIds.push(cid);
+        });
+      });
+      var n = flatIds.length;
+      var mColCnt = bestGrid(n);
+      chartBox.className += ' c' + mColCnt;
+      var mergeCards = [];
+      flatIds.forEach(function(cid, mi){
+        var c = WEEKLY.charts[cid];
+        if(!c) return;
+        var card = document.createElement('div');
+        card.className = 'citem';
+        card.innerHTML = '<div class="ttl">'+esc(c.title)+'</div>'+
+          '<div class="meta">'+statsHtml(c)+'</div>'+
+          '<div class="chart" id="wchart_'+idx+'_'+mi+'"></div>';
+        chartBox.appendChild(card);
+        mergeCards.push({card:card, c:c});
+      });
+      mergeCards.forEach(function(o){
+        var el = o.card.querySelector('.chart');
+        var ch = mkChart(el);
+        ch.setOption(buildOption(o.c));
+        ch.resize();
+        charts.push(ch);
+      });
+    } else if(sec.rows && sec.rows.length){
+      // 普通多行板块：按子行独立换行
+      sec.rows.forEach(function(row, ri){
+        if(row.label){
+          var sub = document.createElement('div');
+          sub.className = 'sec--row-label';
+          sub.textContent = row.label;
+          chartBox.appendChild(sub);
+        }
+        var grid = document.createElement('div');
+        var colCnt = row.colCnt || bestGrid(row.chart_ids.length);
+        grid.className = 'sec--charts c' + colCnt;
+        grid.style.marginTop = '4px';
+        chartBox.appendChild(grid);
+        var rowCards = [];
+        row.chart_ids.forEach(function(cid){
+          var c = WEEKLY.charts[cid];
+          if(!c) return;
+          var card = document.createElement('div');
+          card.className = 'citem';
+          card.innerHTML = '<div class="ttl">'+esc(c.title)+'</div>'+
+            '<div class="meta">'+statsHtml(c)+'</div>'+
+            '<div class="chart" id="wchart_'+idx+'_'+ri+'_'+cid.replace(/[^a-z0-9]/gi,'_')+'"></div>';
+          grid.appendChild(card);
+          rowCards.push({card:card, c:c});
+        });
+        rowCards.forEach(function(o){
+          var el = o.card.querySelector('.chart');
+          var ch = mkChart(el);
+          ch.setOption(buildOption(o.c));
+          ch.resize();
+          charts.push(ch);
+        });
+      });
+    } else {
+      var flatCnt = bestGrid(sec.chart_ids.length);
+      chartBox.className += ' c' + flatCnt;
+      var flatCards = [];
+      sec.chart_ids.forEach(function(cid, i){
+        var c = WEEKLY.charts[cid];
+        if(!c) return;
+        var card = document.createElement('div');
+        card.className = 'citem';
+        card.innerHTML = '<div class="ttl">'+esc(c.title)+'</div>'+
+          '<div class="meta">'+statsHtml(c)+'</div>'+
+          '<div class="chart" id="wchart_'+idx+'_'+i+'"></div>';
+        chartBox.appendChild(card);
+        flatCards.push({card:card, c:c});
+      });
+      flatCards.forEach(function(o){
+        var el = o.card.querySelector('.chart');
+        var ch = mkChart(el);
+        ch.setOption(buildOption(o.c));
+        ch.resize();
+        charts.push(ch);
+      });
+    }
+    var imgBox = div.querySelector('.sec--images');
+    if(String(sec.id).indexOf('custom_')===0) imgBox.classList.add('full');
+    if(sec.images && sec.images.length){
+      imgBox.style.display = 'grid';
+      imgBox.innerHTML = sec.images.map(function(src){ return '<img src="'+esc(src)+'">'; }).join('');
+    }
+    var tableBox = div.querySelector('.sec--tables');
+    var tables = (WEEKLY.charts && WEEKLY.charts._tables) ? WEEKLY.charts._tables : {};
+    (sec.tables||[]).forEach(function(tid){
+      var tbl = tables[tid];
+      if(!tbl) return;
+      if(tid === 'maint_table'){ tableBox.innerHTML += renderMaintTable(tbl); }
+      else if(tid === 'cap_table'){ tableBox.innerHTML += renderCapTable(tbl); }
+      else if(tbl.rows){ tableBox.innerHTML += renderBalanceTable(tbl); }
+    });
+  });
+}
+
+/* 根据图表数量返回最均匀的网格列数：行×列尽量接近、避免太扁/太竖、浪费格最少。
+   规则（已逐条验算）：1→1×1, 2→1×2, 3→1×3, 4→2×2, 5→2×3, 6→2×3, 7→2×4,
+   8→2×4, 9→3×3, 10→2×5, 11→3×4, 12→3×4（>12 自动延续：浪费最少且偏宽屏）。 */
+function bestGrid(n){
+  n = n || 1; if(n < 1) n = 1;
+  if(n === 1) return 1;
+  var best = null, maxC = 5;
+  for(var c = 1; c <= Math.min(n, maxC); c++){
+    var r = Math.ceil(n / c);
+    if(r === 1 && c >= 4) continue;            // 单行 ≥4 列太扁，跳过
+    if(c === 1 && n > 1) continue;            // 单列竖条（n>1）不美观，跳过
+    if(r > c) continue;                        // 排除竖条（行>列），统一宽屏网格
+    var waste = r * c - n;
+    var score = waste * 1000 + Math.abs(r - c) * 10;
+    if(best === null || score < best.score){ best = {c:c, score:score}; }
+  }
+  return best ? best.c : Math.min(n, 4);
+}
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmt(v,dec){
+  if(v===null||v===undefined||isNaN(v)) return '—';
+  return Number(v).toLocaleString('zh-CN',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+}
+function chgCls(c){ if(c===null||c===undefined||c===0) return 'flat'; return c>0?'up':'down'; }
+function arrow(c){ if(c===null||c===undefined||c===0) return '→'; return c>0?'▲':'▼'; }
+function isNum(v){ return v!==null && v!==undefined && !isNaN(v); }
+/* 计算图表实际数据累计值与累计同比（参考 p7 平衡表排版）
+   - 月度图：按 latestDate(YYYY-MM) 取 cutoff 月，汇总当年与上年 1~cutoff 月
+   - 日/周频图：按当年最后数据点 dayIndex 为 cutoff，汇总当年与上年同口径 dayIndex 范围 */
+function cumulativeStats(c){
+  if(!c || !c.data || !c.years || !c.years.length || !c.stat || !c.stat.latestDate) return null;
+  var years = c.years.slice().sort();
+  var curY = years[years.length-1];
+  var prevY = String(+curY - 1);
+  var ld = c.stat.latestDate;
+  var unit = c.unit || '';
+  var dec = c.dec === undefined ? 1 : c.dec;
+  if(c.monthly){
+    var parts = ld.split('-');
+    if(parts.length < 2) return null;
+    var cy = +parts[0], cm = +parts[1];
+    if(String(cy) !== curY) return null;
+    var arrCur = c.data[curY] || [];
+    var arrPrev = c.data[prevY] || [];
+    // 找到实际有数据的最后一个月（不超过 latestDate），避免 latestDate 所在月数据缺失导致标签误导
+    var actualCm = cm;
+    while(actualCm > 0 && !isNum(arrCur[actualCm-1])){
+      actualCm--;
+    }
+    if(actualCm <= 0) return null;
+    var sCur=0, sPrev=0, hasCur=false, hasPrev=false;
+    for(var i=0; i<actualCm && i<12; i++){
+      if(isNum(arrCur[i])){ sCur += arrCur[i]; hasCur = true; }
+      if(isNum(arrPrev[i])){ sPrev += arrPrev[i]; hasPrev = true; }
+    }
+    if(!hasCur) return null;
+    return {val:sCur, prev:hasPrev?sPrev:null, label:'累计（1-'+actualCm+'月）', unit:unit, dec:dec};
+  }
+  // 日/周频：data[y] = [[dayIndex, value], ...]
+  var curPts = c.data[curY] || [];
+  if(!curPts.length) return null;
+  var maxDay = 0;
+  curPts.forEach(function(p){ if(p && p[0] > maxDay) maxDay = p[0]; });
+  if(maxDay <= 0) return null;
+  var prevPts = c.data[prevY] || [];
+  var sCur=0, sPrev=0, hasCur=false, hasPrev=false;
+  curPts.forEach(function(p){ if(p && p[0] <= maxDay && isNum(p[1])){ sCur += p[1]; hasCur = true; }});
+  prevPts.forEach(function(p){ if(p && p[0] <= maxDay && isNum(p[1])){ sPrev += p[1]; hasPrev = true; }});
+  if(!hasCur) return null;
+  var d = new Date(+curY, 0, maxDay);
+  var endLabel = (d.getMonth()+1)+'月'+d.getDate()+'日';
+  return {val:sCur, prev:hasPrev?sPrev:null, label:'累计（1月1日-'+endLabel+'）', unit:unit, dec:dec};
+}
+function statsHtml(c){
+  if(!c.stat) return '<span class="dt">暂无数据</span>';
+  var st = c.stat;
+  // 按数据源/业务类型决定展示口径
+  var type = c.statType || (st.freq === 'month' ? 'latest_mom' : 'latest_wow');
+  if(type === 'ytd'){
+    var cs = cumulativeStats(c);
+    if(cs){
+      var diff = cs.prev !== null ? cs.val - cs.prev : null;
+      var pct = (diff !== null && cs.prev !== 0) ? diff / Math.abs(cs.prev) * 100 : null;
+      var cls = chgCls(diff);
+      var wc = diff === null ? '—' : ((diff>0?'+':'')+fmt(diff, cs.dec));
+      var wp = pct === null ? '—' : ((pct>0?'+':'')+pct.toFixed(1)+'%');
+      return '<span class="dt">'+esc(cs.label)+'</span>'+
+        '<span class="val">'+fmt(cs.val,cs.dec)+'<span class="unit"> '+esc(cs.unit)+'</span></span>'+
+        '<span class="chg '+cls+'">同比 '+arrow(diff)+' '+wc+'（'+wp+'）</span>';
+    }
+    // 累计无法计算时降级
+    type = st.freq === 'month' ? 'latest_mom' : 'latest_wow';
+  }
+  if(type === 'latest_pen'){
+    // 渗透率类：最新值 + 环比pp + 同比pp
+    var dChg = st.chg, yChg = st.yoyChg;
+    var cls = chgCls(dChg);
+    var wc = (dChg===null||dChg===undefined) ? '—' : ((dChg>0?'+':'')+fmt(dChg,c.dec)+'pp');
+    var yc = (yChg===null||yChg===undefined) ? '—' : ((yChg>0?'+':'')+fmt(yChg,c.dec)+'pp');
+    return '<span class="val">'+fmt(st.latest,c.dec)+'<span class="unit"> '+esc(c.unit)+'</span></span>'+
+      '<span class="chg '+cls+'">环比 '+arrow(dChg)+' '+wc+'</span>'+
+      '<span class="chg '+chgCls(yChg)+'">同比 '+arrow(yChg)+' '+yc+'</span>'+
+      '<span class="dt">'+(st.latestDate||'')+'</span>';
+  }
+  if(type === 'latest_mom_yoy'){
+    // 库存/库存天数类：最新值 + 环比 + 同比（平衡表月度数据）
+    var dChg = st.chg, dPct = st.pct;
+    var yChg = st.yoyChg, yPct = st.yoyPct;
+    var cls = chgCls(dChg);
+    var wc = (dChg===null||dChg===undefined) ? '—' : ((dChg>0?'+':'')+fmt(dChg,c.dec));
+    var wp = (dPct===null||dPct===undefined) ? '—' : ((dPct>0?'+':'')+dPct.toFixed(2)+'%');
+    var yc = (yChg===null||yChg===undefined) ? '—' : ((yChg>0?'+':'')+fmt(yChg,c.dec));
+    var yp = (yPct===null||yPct===undefined) ? '—' : ((yPct>0?'+':'')+yPct.toFixed(2)+'%');
+    return '<span class="val">'+fmt(st.latest,c.dec)+'<span class="unit"> '+esc(c.unit)+'</span></span>'+
+      '<span class="chg '+cls+'">环比 '+arrow(dChg)+' '+wc+'（'+wp+'）</span>'+
+      '<span class="chg '+chgCls(yChg)+'">同比 '+arrow(yChg)+' '+yc+'（'+yp+'）</span>'+
+      '<span class="dt">'+(st.latestDate||'')+'</span>';
+  }
+  if(type === 'latest_mom'){
+    // 月度频率数据：最新值 + 月环比
+    var dChg = st.chg, dPct = st.pct;
+    var cls = chgCls(dChg);
+    var wc = (dChg===null||dChg===undefined) ? '—' : ((dChg>0?'+':'')+fmt(dChg,c.dec));
+    var wp = (dPct===null||dPct===undefined) ? '—' : ((dPct>0?'+':'')+dPct.toFixed(2)+'%');
+    return '<span class="val">'+fmt(st.latest,c.dec)+'<span class="unit"> '+esc(c.unit)+'</span></span>'+
+      '<span class="chg '+cls+'">'+arrow(dChg)+' '+wc+'（'+wp+' 月环比）</span>'+
+      '<span class="dt">'+(st.latestDate||'')+'</span>';
+  }
+  // 日/周频数据：最新值 + 周环比
+  var dChg = st.weekChg, dPct = st.weekPct;
+  var cls = chgCls(dChg);
+  var wc = (dChg===null||dChg===undefined) ? '—' : ((dChg>0?'+':'')+fmt(dChg,c.dec));
+  var wp = (dPct===null||dPct===undefined) ? '—' : ((dPct>0?'+':'')+dPct.toFixed(2)+'%');
+  return '<span class="val">'+fmt(st.latest,c.dec)+'<span class="unit"> '+esc(c.unit)+'</span></span>'+
+    '<span class="chg '+cls+'">'+arrow(dChg)+' '+wc+'（'+wp+' 周环比）</span>'+
+    '<span class="dt">'+(st.latestDate||'')+'</span>';
+}
+
+function moveSec(i, d){ var j=i+d; if(j<0||j>=selected.length) return; var t=selected[i]; selected[i]=selected[j]; selected[j]=t; renderCanvas(); }
+function removeSec(i){ selected.splice(i,1); renderCanvas(); }
+
+/* 装置检修明细表（预留，锂目前无此数据则不会渲染） */
+function renderMaintTable(tbl){
+  var ops = tbl.ops || [];
+  var rows = ops.map(function(op){
+    var note = op.note ? ' · ' + op.note : '';
+    return '<tr><td>'+esc(op.co)+'</td><td>'+esc(op.start)+'</td><td>'+esc(op.end||'')+'</td><td>'+(op.days||'—')+'</td><td>'+(op.loss!==null?(op.loss):'—')+'</td><td>'+(op.reason||'—')+(note?'<div style="font-size:11px;color:var(--sub)">'+esc(op.note||'')+'</div>':'')+'</td></tr>';
+  }).join('');
+  return '<table class="maint-tbl"><caption>'+esc(tbl.title||'装置检修明细')+'（共 '+ops.length+' 条）</caption>'+
+    '<thead><tr><th>装置</th><th>停车</th><th>开车</th><th>天数</th><th>损失(万吨)</th><th>原因备注</th></tr></thead><tbody>'+rows+'</tbody></table>';
+}
+
+/* 产能投放表（预留） */
+function renderCapTable(tbl){
+  var ys = tbl.years || [];
+  var cap = tbl.data || {};
+  var ws = tbl.weights || {};
+  var rows = ['<tr><td>丁二烯产能</td>'];
+  ys.forEach(function(y){
+    var v = cap[y] && cap[y]['丁二烯'] !== undefined ? Math.round(cap[y]['丁二烯']) : 0;
+    rows.push('<td>'+v+'</td>');
+  });
+  rows.push('</tr>');
+  rows.push('<tr><td>下游产能折丁二烯需求</td>');
+  ys.forEach(function(y){
+    var dem = 0;
+    if(cap[y]) Object.keys(ws).forEach(function(p){ dem += (cap[y][p]||0) * ws[p]; });
+    rows.push('<td>'+Math.round(dem)+'</td>');
+  });
+  rows.push('</tr>');
+  rows.push('<tr><td><b>供需差</b></td>');
+  ys.forEach(function(y){
+    var bta = cap[y] && cap[y]['丁二烯'] !== undefined ? cap[y]['丁二烯'] : 0;
+    var dem = 0;
+    if(cap[y]) Object.keys(ws).forEach(function(p){ dem += (cap[y][p]||0) * ws[p]; });
+    var diff = Math.round(bta - dem);
+    var cls = diff >= 0 ? 'style="color:var(--green)"' : 'style="color:var(--red)"';
+    rows.push('<td '+cls+'><b>'+(diff>=0?'+':'')+diff+'</b></td>');
+  });
+  rows.push('</tr>');
+  var headerRow ='<tr><th>指标</th>'+ ys.map(function(y){return '<th>'+y+'</th>';}).join('')+'</tr>';
+  return '<table class="maint-tbl"><caption>'+esc(tbl.title||'丁二烯产能与下游需求')+'</caption><thead>'+headerRow+'</thead><tbody>'+rows.join('')+'</tbody></table>';
+}
+
+function renderBalanceTable(tbl){
+  var html = '<table class="data" style="margin-top:10px"><caption>'+esc(tbl.title)+'</caption><thead><tr><th>指标</th>';
+  if(tbl.rows.length){
+    var years = Object.keys(tbl.rows[0].series || {}).sort();
+    years.forEach(function(y){ html += '<th>'+y+'</th>'; });
+    html += '</tr></thead><tbody>';
+    tbl.rows.forEach(function(r){
+      html += '<tr><td>'+esc(r.name)+'</td>';
+      years.forEach(function(y){
+        var s = (r.series[y]||[]);
+        var v = s.length ? s[0][1] : null;
+        html += '<td>'+(v===null?'—':(r.unit||'')+v.toLocaleString())+'</td>';
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+  }
+  return html;
+}
+
+/* ===== ECharts ===== */
+function mkChart(el){
+  // 显式提高 devicePixelRatio 上限，避免高 DPI 屏或容器非整数尺寸导致折线/文字发虚
+  var dpr = window.devicePixelRatio || 1;
+  return echarts.init(el, null, {renderer:'canvas', devicePixelRatio: Math.min(dpr * 1.25, 2.5)});
+}
+function yearColor(y){
+  var ys = WEEKLY.years || [];
+  var n = ys.length, idx = ys.indexOf(y);
+  if(idx === n-1) return "#000000";
+  if(idx === n-2) return "#E60000";
+  return PALETTE[idx % PALETTE.length];
+}
+
+/* ===== 年份筛选条（默认隐藏 2023，与日度价格页一致） ===== */
+function buildYearBar(){
+  var bar = document.getElementById('yearBar');
+  if(!bar) return;
+  var html = '<span class="ylab">显示年份：</span>';
+  (WEEKLY.years || []).forEach(function(y){
+    if(parseInt(y,10) < 2023) return; // 图例条展示 2023 年起年份，p5 汽车板块同步显示 2023-2026
+    var on = yearVisible[String(y)] !== false;
+    html += '<span class="ybtn'+(on?'':' off')+'" data-year="'+esc(y)+'" onclick="toggleYear(this.dataset.year)">'+
+      '<span class="dot" style="background:'+yearColor(y)+'"></span>'+esc(y)+'年</span>';
+  });
+  bar.innerHTML = html;
+}
+function toggleYear(y){
+  y = String(y);
+  yearVisible[y] = !(yearVisible[y] !== false);
+  buildYearBar();
+  renderCanvas();
+}
+function monthTicks(xlabels){
+  var idx={};
+  (xlabels||[]).forEach(function(l,i){ if(l.slice(3)==='01') idx[i]=parseInt(l.slice(0,2),10)+'月'; });
+  return idx;
+}
+function buildOption(c){
+  var isP5 = String(c.id).indexOf('p5_') === 0;
+  var minYear = isP5 ? 2023 : 2024;
+  var years = Object.keys(c.data || {}).sort().filter(function(y){ return parseInt(y,10) >= minYear; });
+  var series = [], legend = [];
+  var xData = c.bar ? (c.xlabels || years) : (c.xlabels || []);
+  var ticks = c.bar ? {} : monthTicks(xData);
+  var isMonthly = !!c.monthly;
+  var now = new Date();
+  var CUR_Y = now.getFullYear();
+  var CUR_M = now.getMonth() + 1;
+  var CUR_DOY = Math.floor((now - new Date(CUR_Y,0,0)) / 86400000);
+  /* tooltip 去重：同年份的 actual/pred 两个 series 同名，只保留一条 */
+  function dedupTooltip(ps){
+    var seen = {}, out = [];
+    ps.forEach(function(p){ if(!seen[p.seriesName]){ seen[p.seriesName] = true; out.push(p); } });
+    return out;
+  }
+  years.forEach(function(y){
+    var pts = c.data[y];
+    if(!pts) return;
+    legend.push(y);
+    var isLast = (y === years[years.length-1]);
+    var yi = +y, col = yearColor(y);
+    if(c.bar){
+      series.push({
+        name:y, type:'bar', data:pts.map(function(p){return (p&&p.y!==undefined)?p.y:null;}),
+        itemStyle:{color:col}, barWidth:'50%', label:{show:false},
+      });
+    } else if(isMonthly){
+      // 月度季节图：data = [1月值, ..., 12月值]；当年当前月及之后为预测（虚线）
+      var predStart = yi < CUR_Y ? 13 : (yi === CUR_Y ? CUR_M : 1);
+      var actual = [], pred = [];
+      for(var mi=0; mi<12; mi++){
+        var mnum = mi + 1;
+        actual.push(mnum <= predStart - 1 ? pts[mi] : null);
+        pred.push(mnum >= predStart - 1 ? pts[mi] : null);
+      }
+      series.push({name:y, type:'line', showSymbol:false, connectNulls:false, data:actual,
+        lineStyle:{width:isLast?2.2:1.4, color:col}, itemStyle:{color:col}, z:isLast?10:5});
+      if(pred.some(function(v){ return v!==null && v!==undefined; })){
+        series.push({name:y, type:'line', showSymbol:false, connectNulls:false, data:pred,
+          lineStyle:{width:isLast?2.2:1.4, type:'dashed', color:col}, itemStyle:{color:col}, z:isLast?10:5});
+      }
+    } else {
+      // 日/周频季节图：当年当前日期及之后为预测（虚线），过往年份全实线，未来年份全虚线
+      var predStartDOY = yi < CUR_Y ? 366 : (yi === CUR_Y ? CUR_DOY : 1);
+      var actual = [], pred = [];
+      pts.forEach(function(p){
+        if(!p) return;
+        if(p[0] <= predStartDOY - 1) actual.push(p);
+        if(p[0] >= predStartDOY - 1) pred.push(p);
+      });
+      series.push({name:y, type:'line', showSymbol:false, connectNulls:false, data:actual,
+        lineStyle:{width:isLast?2.2:1.4, color:col}, itemStyle:{color:col}, z:isLast?10:5});
+      if(pred.length){
+        series.push({name:y, type:'line', showSymbol:false, connectNulls:false, data:pred,
+          lineStyle:{width:isLast?2.2:1.4, type:'dashed', color:col}, itemStyle:{color:col}, z:isLast?10:5});
+      }
+    }
+  });
+  var selected = {};
+  // 图例/数据按板块类型过滤：p5 汽车展示 2023 年起，其他板块 2024 年起
+  legend = legend.filter(function(y){ return parseInt(y,10) >= minYear; });
+  legend.forEach(function(y){ selected[y] = yearVisible[y] !== false; });
+  if(c.bar || isMonthly){
+    return {
+      animation:false,
+      grid:{left:'1%',right:'1%',top:20,bottom:4,containLabel:true},
+      legend:{show:true, top:0, right:0, itemWidth:10, itemHeight:2, icon:'rect', textStyle:{fontSize:10,color:'#6b7686'}, data:legend, selected:selected},
+      tooltip:{trigger:'axis', confine:true,
+        formatter:function(ps){
+          if(!ps.length) return '';
+          ps = dedupTooltip(ps);
+          var s = xData[ps[0].dataIndex] || '';
+          ps.sort(function(a,b){return Number(b.seriesName)-Number(a.seriesName);});
+          ps.forEach(function(p){
+            s += '<br>'+p.marker+p.seriesName+'年： <b>'+fmt(p.value,c.dec)+'</b>';
+          });
+          return s;
+        }},
+      xAxis:{type:'category', data:xData, axisLabel:{fontSize:10,color:'#8a93a3'}, axisTick:{show:false}, axisLine:{lineStyle:{color:'#dde3ec'}}},
+      yAxis:{type:'value', scale:true, axisLabel:{fontSize:10,color:'#8a93a3', formatter:function(v){ return Math.abs(v)>=10000?(v/10000)+'万':(Math.abs(v)>=1000?(v/1000)+'k':v); }}, splitLine:{lineStyle:{color:'#eef1f6'}}},
+      series:series,
+    };
+  }
+  return {
+    animation:false,
+    grid:{left:'1%',right:'1%',top:20,bottom:4,containLabel:true},
+    legend:{show:true, top:0, right:0, itemWidth:10, itemHeight:2, icon:'rect', textStyle:{fontSize:10,color:'#6b7686'}, data:legend, selected:selected},
+    tooltip:{trigger:'axis', confine:true,
+      formatter:function(ps){
+        if(!ps.length) return '';
+        ps = dedupTooltip(ps);
+        var lab = xData[ps[0].value[0]] || '';
+        var s = lab ? (parseInt(lab.slice(0,2),10)+'月'+parseInt(lab.slice(3),10)+'日') : '';
+        ps.sort(function(a,b){return Number(b.seriesName)-Number(a.seriesName);});
+        ps.forEach(function(p){
+          s += '<br>'+p.marker+p.seriesName+'年： <b>'+fmt(p.value[1],c.dec)+'</b>';
+        });
+        return s;
+      }},
+    xAxis:{type:'value', min:0, max:365, interval:1,
+      axisLabel:{fontSize:10,color:'#8a93a3', formatter:function(v){ return ticks[v]||''; }},
+      axisTick:{show:false}, axisLine:{lineStyle:{color:'#dde3ec'}}, splitLine:{show:false}},
+    yAxis:{type:'value', scale:true,
+      axisLabel:{fontSize:10,color:'#8a93a3',
+        formatter:function(v){ return Math.abs(v)>=10000?(v/10000)+'万':(Math.abs(v)>=1000?(v/1000)+'k':v); }},
+      splitLine:{lineStyle:{color:'#eef1f6'}}},
+    series:series,
+  };
+}
+
+/* ===== PDF 导出：所见即所得（html2canvas 截图 + jsPDF A4 横向排版） ===== */
+async function exportPDF(){
+  var btn = event && event.target ? event.target : null;
+  var orig = btn ? btn.textContent : '';
+  if(btn){ btn.textContent = '生成中...'; btn.disabled = true; }
+  try{
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
+    var pageW = doc.internal.pageSize.getWidth();
+    var pageH = doc.internal.pageSize.getHeight();
+    var margin = 8;
+    var pxPerMm = 3.7795;
+    var today = new Date();
+    var exportDate = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+    var titleText = '碳酸锂周报_' + exportDate;
+
+    var cover = document.createElement('div');
+    cover.style.cssText = 'position:fixed;left:-9999px;top:0;width:'+((pageW-margin*2)*pxPerMm)+'px;background:#fff;padding:20px;font-family:"Microsoft YaHei",PingFang SC,sans-serif;box-sizing:border-box;';
+    var note = document.getElementById('noteInput').value.trim();
+    var noteHtml = note ? fmtNote(note) : '<span style="color:#8a93a3">（未填写本周核心变化）</span>';
+    cover.innerHTML =
+      '<div style="text-align:center;font-size:22px;font-weight:700;color:#1e6fff;margin-bottom:18px;">'+esc(titleText)+'</div>'+
+      '<div style="font-size:14px;font-weight:700;color:#1f2733;margin-bottom:8px;">本周核心变化</div>'+
+      '<div style="line-height:2;font-size:13px;color:#1f2733;background:#f8fafd;border-radius:6px;padding:10px 12px;">'+noteHtml+'</div>';
+    document.body.appendChild(cover);
+    var coverCanvas = await html2canvas(cover, {backgroundColor:'#fff', scale:2.5, useCORS:true});
+    document.body.removeChild(cover);
+    /* 一个板块就放在一页里：不拆页。内容能放下则按自然比例；放不下就把高度压低、宽度仍撑满整页 */
+    var availH = pageH - margin*2;
+    function placeImage(doc, canvas, firstPage, quality){
+      quality = quality === undefined ? 0.88 : quality;
+      var w = pageW - margin*2;
+      var h = canvas.height * w / canvas.width;
+      if(!firstPage) doc.addPage();
+      if(h > availH + 0.5){ h = availH; }   // 高度压到一页内，宽度不变
+      doc.addImage(canvas.toDataURL('image/jpeg', quality), 'JPEG', margin, margin, w, h);
+    }
+
+    placeImage(doc, coverCanvas, true, 0.92);
+
+    var secEls = document.querySelectorAll('.sec');
+    // PDF 导出前强制所有图表按当前容器尺寸重绘，避免 ECharts canvas 与容器宽度不一致导致窄边
+    charts.forEach(function(ch){ if(ch && ch.resize) ch.resize(); });
+    // 等字体/布局稳定后再 resize 一次，确保每个 .sec 里的图表都撑满容器；否则 PDF 会留下大片空白
+    await new Promise(function(r){ setTimeout(r, 180); });
+    charts.forEach(function(ch){ if(ch && ch.resize) ch.resize(); });
+    for(var i=0; i<secEls.length; i++){
+      // 每页截图前：把该 section 滚到视口里、强制所有图表按当前容器尺寸 resize，确保 ECharts canvas 与容器同宽
+      try{ secEls[i].scrollIntoView({block:'start'}); }catch(e){}
+      await new Promise(function(r){ setTimeout(r, 120); });
+      charts.forEach(function(ch){ if(ch && ch.resize) ch.resize(); });
+      await new Promise(function(r){ setTimeout(r, 60); });
+      var restore = replaceDescForExport(secEls[i]);
+      var canvas = await html2canvas(secEls[i], {backgroundColor:'#fff', scale:2.5, useCORS:true});
+      restore();
+      placeImage(doc, canvas, false, 0.88);
+    }
+    doc.save(titleText+'.pdf');
+  }catch(e){
+    alert('导出失败：'+e.message);
+    console.error(e);
+  }finally{
+    if(btn){ btn.textContent = orig; btn.disabled = false; }
+  }
+}
+
+/* ===== localStorage 已用空间估算（字符数） ===== */
+function usedStorage(){
+  var total = 0;
+  for(var i=0;i<localStorage.length;i++){
+    var k = localStorage.key(i);
+    if(k) total += (localStorage.getItem(k)||'').length + k.length;
+  }
+  return total;
+}
+
+/* ===== 保存当前布局 ===== */
+function saveLayout(){
+  var note = document.getElementById('noteInput').value;
+  function buildPayload(){
+    return {
+      note: note,
+      layout: selected.map(function(s){
+        return {
+          id:s.id, title:s.title, analysis:s.analysis,
+          name:s.name, desc:s.desc,
+          chart_ids:s.chart_ids.slice(), tables:(s.tables||[]).slice(),
+          images:(s.images||[]).slice(),
+          rows:(s.rows&&s.rows.length)?s.rows.map(function(r){return {label:r.label||'', chart_ids:(r.chart_ids||[]).slice()};}):[]
+        };
+      }),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+  function doSave(pl){
+    localStorage.setItem('lc_weekly_payload', JSON.stringify(pl));
+    localStorage.setItem('lc_weekly_note', note);
+    document.getElementById('saveStatus').textContent = '✓ 布局已保存到本地（'+new Date().toLocaleString()+'），下次打开自动恢复';
+  }
+  function customImageCount(){
+    var n=0;
+    selected.forEach(function(s){ if(String(s.id).indexOf('custom_')===0 && s.images && s.images.length) n+=s.images.length; });
+    return n;
+  }
+  function compressAll(maxW, q, force){
+    var tasks=[];
+    selected.forEach(function(s){
+      if(String(s.id).indexOf('custom_')===0 && s.images && s.images.length){
+        s.images.forEach(function(url, i){
+          tasks.push(compressDataURL(url, maxW, q, force).then(function(u){ s.images[i]=u; }));
+        });
+      }
+    });
+    return Promise.all(tasks);
+  }
+  function failMsg(e){
+    var used = Math.round(usedStorage()/1024);
+    var payload = 0;
+    try{ payload = Math.round(JSON.stringify(buildPayload()).length/1024); }catch(_){}
+    return '保存失败：'+e.message+'\n当前本站点已用 localStorage 约 '+used+' KB，本次布局约 '+payload+' KB。\n建议：减少自定义板块截图、或点击下方「清理本地缓存」按钮清空历史布局后重试。';
+  }
+
+  // 预检查：若 payload 超过 4MB，直接走压缩（第一档只缩不重编码，避免画质损失；第二档强制压缩）
+  var pl = buildPayload();
+  var str = JSON.stringify(pl);
+  if(str.length > 4*1024*1024){
+    var n = customImageCount();
+    if(n>0){
+      document.getElementById('saveStatus').textContent = '布局数据 '+Math.round(str.length/1024)+' KB，超过 4MB，正在压缩 '+n+' 张截图…';
+      compressAll(1600, 0.9, false).then(function(){
+        try{ doSave(buildPayload()); }
+        catch(e2){
+          document.getElementById('saveStatus').textContent = '空间仍不足，进一步压缩中…';
+          compressAll(800, 0.7, true).then(function(){
+            try{ doSave(buildPayload()); }
+            catch(e3){ alert(failMsg(e3)); }
+          }).catch(function(){ alert(failMsg(e2)); });
+        }
+      }).catch(function(e){ alert(failMsg(e)); });
+      return;
+    }
+  }
+
+  try{
+    doSave(pl);
+  }catch(e){
+    // 首次失败：温和压缩（仅缩超宽图）重试
+    var n = customImageCount();
+    if(n>0){
+      document.getElementById('saveStatus').textContent = '保存空间不足，正在压缩 '+n+' 张截图…';
+      compressAll(1600, 0.9, false).then(function(){
+        try{ doSave(buildPayload()); }
+        catch(e2){
+          // 第二次失败：强制压缩到 800/0.7
+          document.getElementById('saveStatus').textContent = '空间仍不足，进一步压缩中…';
+          compressAll(800, 0.7, true).then(function(){
+            try{ doSave(buildPayload()); }
+            catch(e3){ alert(failMsg(e3)); }
+          }).catch(function(){ alert(failMsg(e2)); });
+        }
+      }).catch(function(){ alert(failMsg(e)); });
+    }else{
+      alert(failMsg(e));
+    }
+  }
+}
+
+/* ===== init ===== */
+/* 指标改名后的旧 chart_id → 新 chart_id 迁移映射（避免已保存布局出现缺失卡片） */
+var CHART_ALIASES={
+  "p3_碳酸锂总库存":"p3_碳酸锂总库存（中样本）",
+  "p3_碳酸锂：周度库存":"p3_碳酸锂：周度库存（大样本）"
+};
+function aliasCid(cid){ return CHART_ALIASES[cid]||cid; }
+
+function init(){
+  WEEKLY = window.__DATA__;
+  if(!WEEKLY || !WEEKLY.sections) return;
+  // 年份默认可见性：p5 汽车板块展示 2023-2026，其他板块展示 2024 年起
+  (WEEKLY.years || []).forEach(function(y){ yearVisible[String(y)] = (parseInt(y,10) >= 2023); });
+  renderNav();
+  document.getElementById('latestDate').textContent = WEEKLY.latestDataDate || '';
+  buildYearBar();
+  var saved = null;
+  try{ saved = JSON.parse(localStorage.getItem('lc_weekly_payload') || 'null'); }catch(e){}
+  if(saved && saved.layout && saved.layout.length){
+    selected = saved.layout.map(function(x){
+      var s = findSec(x.id);
+      if(s){
+        return {id:s.id, name:s.name, desc:s.desc, chart_ids:s.chart_ids.slice(),
+                tables:(s.tables||[]).slice(), charts_rendered:false,
+                title:x.title||s.name, analysis:x.analysis||'', images:x.images||[]};
+      }
+      return {id:x.id, name:x.title||x.name||'新板块', desc:x.desc||'',
+              chart_ids:(x.chart_ids||[]).map(aliasCid), tables:(x.tables||[]).slice(),
+              charts_rendered:false, title:x.title||x.name||'新板块',
+              analysis:x.analysis||'', images:x.images||[],
+              rows:(x.rows&&x.rows.length)?x.rows.map(function(r){return {label:r.label||'', chart_ids:(r.chart_ids||[]).map(aliasCid)};}):[]};
+    }).filter(Boolean);
+  } else {
+    selected = (WEEKLY.defaultLayout || []).map(function(id){
+      var s = findSec(id);
+      return s ? {id:s.id, name:s.name, desc:s.desc, chart_ids:s.chart_ids.slice(),
+                  tables:(s.tables||[]).slice(), charts_rendered:false,
+                  title:s.name, analysis:'', images:[]} : null;
+    }).filter(Boolean);
+  }
+  if(saved && saved.note !== undefined){
+    document.getElementById('noteInput').value = saved.note;
+  }
+  loadNote();
+  renderLib(); renderCanvas();
+}
+
+/* 将 base64 图片压缩，避免 localStorage 超限；返回 Promise<dataURL>
+   always=true 时无论尺寸是否超限都重新编码（用于粘贴时的首次压缩，控制体积）；
+   always=false 时若宽度未超限则原样返回，避免对已压缩图片二次 JPEG 编码导致画质劣化 */
+function compressDataURL(dataURL, maxWidth, quality, always){
+  maxWidth = maxWidth || 1200; quality = quality || 0.85;
+  return new Promise(function(resolve, reject){
+    var img = new Image();
+    img.onload = function(){
+      var w = img.width, h = img.height;
+      if(!always && w <= maxWidth){ resolve(dataURL); return; }  // 尺寸够用则不重编码，防止越压越糊
+      if(w > maxWidth){ h = Math.round(h * maxWidth / w); w = maxWidth; }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0,0,w,h);
+      ctx.drawImage(img,0,0,w,h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = function(){ resolve(dataURL); };
+    img.src = dataURL;
+  });
+}
+
+/* 粘贴截图到当前自定义板块 */
+document.addEventListener('paste', function(e){
+  if(!e.clipboardData || !e.clipboardData.items) return;
+  var target = e.target;
+  var secEl = target && target.closest ? target.closest('.sec') : null;
+  if(!secEl) return;
+  var idx = parseInt(secEl.getAttribute('data-idx'), 10);
+  if(isNaN(idx) || !selected[idx] || String(selected[idx].id).indexOf('custom_') !== 0) return;
+  var items = e.clipboardData.items;
+  for(var i=0;i<items.length;i++){
+    if(items[i].type.indexOf('image') !== -1){
+      e.preventDefault();
+      var blob = items[i].getAsFile();
+      var reader = new FileReader();
+      reader.onload = function(ev){
+        // 自定义板块只保留一张截图：新粘贴覆盖旧图
+        // 粘贴时一次性压缩到 1600px/0.9（always=true 保证首次编码控制体积），保存环节不再重复压缩
+        compressDataURL(ev.target.result, 1600, 0.9, true).then(function(url){
+          selected[idx].images = [url];
+          renderCanvas();
+        });
+      };
+      reader.readAsDataURL(blob);
+      break;
+    }
+  }
+});
+</script>
+</body>
+</html>

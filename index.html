@@ -649,15 +649,15 @@ a.btab{text-decoration:none; display:inline-block;}
 }
 
 /* ================= 周报 tab ================= */
-.wr-hero{background:linear-gradient(135deg,#14324d,#1d4a76);color:#fff;border-radius:12px;
-  padding:18px 22px 16px;margin:0 0 18px;box-shadow:0 3px 14px rgba(15,30,50,.16);position:relative;}
-.wr-hero h2{font-size:19px;margin:0 0 5px;font-weight:700;letter-spacing:.3px;padding-right:132px;}
+.wr-hero{background:#ffffff;color:#1f2733;border:1px solid #e5e9f0;border-radius:12px;
+  padding:18px 22px 16px;margin:0 0 18px;box-shadow:0 2px 10px rgba(31,55,84,.07);position:relative;}
+.wr-hero h2{font-size:19px;margin:0 0 5px;font-weight:700;letter-spacing:.3px;padding-right:132px;color:#0f4c81;}
 /* 「导出周报 PDF」按钮：页面右上角 */
 .wr-exp-btn{position:absolute;right:16px;top:15px;font-family:inherit;font-size:12.5px;letter-spacing:.3px;
-  padding:7px 14px;border-radius:8px;cursor:pointer;color:#fff;background:rgba(255,255,255,.14);
-  border:1px solid rgba(255,255,255,.42);transition:background .15s,border-color .15s;}
-.wr-exp-btn:hover{background:rgba(255,255,255,.26);border-color:rgba(255,255,255,.7);}
-.wr-exp-btn.busy{background:rgba(255,255,255,.24);cursor:progress;}
+  padding:7px 14px;border-radius:8px;cursor:pointer;color:#2b7cff;background:#f5f8ff;
+  border:1px solid #bcd2f7;transition:background .15s,border-color .15s;}
+.wr-exp-btn:hover{background:#e8f0ff;border-color:#2b7cff;}
+.wr-exp-btn.busy{background:#eef2f8;cursor:progress;color:#6b7686;}
 .wr-exp-btn:disabled{cursor:progress;opacity:.85;}
 @media (max-width:760px){
   .wr-hero h2{padding-right:0;margin-bottom:32px;}
@@ -665,17 +665,17 @@ a.btab{text-decoration:none; display:inline-block;}
 }
 @media print{ .wr-exp-btn{display:none !important;} }
 body.wr-exporting .wr-exp-btn{visibility:hidden;}
-.wr-hero .wr-dt{font-size:12px;opacity:.72;margin-bottom:14px;}
+.wr-hero .wr-dt{font-size:12px;color:#6b7686;margin-bottom:14px;}
 .wr-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:10px;margin-bottom:15px;}
-.wk-kpi{background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:9px 12px;}
-.wk-kpi .k-lbl{font-size:11.5px;opacity:.78;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.wk-kpi .k-val{font-size:18px;font-weight:700;letter-spacing:.2px;}
-.wk-kpi .k-val small{font-size:11.5px;font-weight:400;opacity:.72;margin-left:3px;}
+.wk-kpi{background:#f7f9fc;border:1px solid #e5e9f0;border-radius:10px;padding:9px 12px;}
+.wk-kpi .k-lbl{font-size:11.5px;color:#6b7686;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wk-kpi .k-val{font-size:18px;font-weight:700;letter-spacing:.2px;color:#1f2733;}
+.wk-kpi .k-val small{font-size:11.5px;font-weight:400;color:#8a93a3;margin-left:3px;}
 .wk-kpi .k-chg{font-size:11.5px;margin-top:3px;}
-.wk-kpi .up{color:#ff9d9d;} .wk-kpi .down{color:#7fe0b4;} .wk-kpi .flat{color:#cfd8e3;}
-.wr-lead p{margin:0 0 7px;font-size:13px;line-height:1.9;opacity:.95;}
+.wk-kpi .up{color:#d92626;} .wk-kpi .down{color:#0a9a5c;} .wk-kpi .flat{color:#8a93a3;}
+.wr-lead p{margin:0 0 7px;font-size:13px;line-height:1.9;color:#3a4553;}
 .wr-lead p:last-child{margin-bottom:0;}
-.wr-lead b{color:#a9d4ff;}
+.wr-lead b{color:#0f4c81;}
 .wr-note{background:#fff;border:1px solid #e5e9f0;border-left:4px solid #2b7cff;border-radius:10px;
   padding:12px 16px;margin:0 0 14px;font-size:13px;line-height:1.9;color:#3a4553;}
 .wr-note.evt{border-left-color:#e08a2b;background:#fffdf8;}
@@ -784,7 +784,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
   <button class="ttab" data-t="bal">平衡表<span class="tn">6 张平衡表</span></button>
   <button class="ttab" data-t="auto">汽车<span class="tn">6 子页</span></button>
   <button class="ttab" data-t="core">核心逻辑<span class="tn">4 板块</span></button>
-  <button class="ttab" data-t="wr">周报<span class="tn">小结 + 归因</span></button>
+  <button class="ttab" data-t="wr">周报<span class="tn">小结 + 全量图表</span></button>
 </div>
 
 <div class="toc-dock" id="dock-hf" style="display:none">
@@ -856,7 +856,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
 <script>
 
 /* ================= 全览页调度 ================= */
-var BOARDS = [{"pid": "wr1", "rpid": "p1", "sub": "主力收盘价 / 基差 / 月差 / 持仓 / 仓单", "keys": ["主力收盘价", "基差", "11-1月差", "1-5月差", "总持仓量", "仓单"], "intro": "<span class=\"t\">盘面：跌价、陡 Back、增仓</span>主力收 <b>94,180</b> 元/吨（周 4.70%，-4,640 元）。基差 <b>1,150</b>（周 -250），现货升水结构未破，说明现货跌幅与期货基本同步（电碳 4.84%，主力 4.70%），期现未背离。月差是本板块最强的信号：11-1 月差 <b>2,880</b>（周 +82%）、1-5 月差 <b>2,820</b>（周 +124%），近月对远月的溢价快速抬升 —— 市场并不否认当前紧张，只是在给远月定更低的价。持仓 747,158 手（+6.82%）配合价格下跌，属空头主动增仓；仓单 20,952 手（-21.62%），11 月合约交割前的注销与现货消化同步进行，短期对盘面的实货压力在减轻。", "tab": "wr", "label": "价格与期限结构", "kind": "std", "cnt": 6, "cntTxt": "6 图", "noexp": true}, {"pid": "wr2", "rpid": "p1", "sub": "锂矿 / 锂盐 / 正极 / 电解液", "keys": ["锂矿：辉石价格（美元）", "锂矿：云母价格", "锂盐：电碳价格", "锂盐价差：电碳-工碳", "锂盐价差：内外价差", "正极：磷酸铁锂价格", "正极：三元材料价格", "六氟磷酸锂价格"], "intro": "<span class=\"t\">传导：成本端先跌，中游跟跌但幅度收敛</span>锂矿领跌：辉石 CIF <b>1,485</b> 美元（-1.33%）、云母 <b>2,450</b>（-8.07%）—— 矿价先行走弱是「成本支撑失效」的直接证据。锂盐电碳 <b>99,350</b>（-4.84%），工碳同步，电碳-工碳价差 3,500（-500），品质溢价收窄说明电池级供应并不紧缺。内外价差 2,502（-29.8%）大幅收敛，海外货源相对转弱，进口窗口对国内价格的压制边际减弱。中游跌幅明显小于原料：LFP 43,870（-3.26%）、三元 142,650（-3.58%）、六氟 111,000（-5.53%）—— 加工环节价差被动走阔，短期反而缓和了正极厂的成本压力，也解释了为什么「锂价跌、电池涨」的股期分化会出现。", "tab": "wr", "label": "现货价格与产业链传导", "kind": "std", "cnt": 8, "cntTxt": "8 图", "noexp": true}, {"pid": "wr3", "rpid": "p2", "sub": "周度总产量 / 分工艺产量 / 开工率", "keys": ["碳酸锂总产量", "碳酸锂产量：辉石来源", "碳酸锂产量：云母来源", "碳酸锂产量：盐湖来源", "碳酸锂产量：回收来源", "碳酸锂总开工", "碳酸锂开工：辉石来源"], "intro": "<span class=\"t\">供给：增量集中在辉石路线</span>周度总产量 <b>26,375</b> 吨（+845，3.31%），开工率 <b>52.72%</b>（+1.69pp）。拆分看，辉石产 <b>14,967</b> 吨（+814，5.75%）、开工 65.19%（+3.55pp），是唯一显著放量的工艺 —— 对应津巴布韦矿到港与 9 月以来检修产能复产；云母 3,184（+29）、盐湖 5,741（+20）基本走平，回收 2,483（-18）小幅回落。云母端的弹性还没释放，这也是「复产预期」尚未完全体现在产量上的原因。", "tab": "wr", "label": "供给：产量与开工", "kind": "std", "cnt": 7, "cntTxt": "7 图", "noexp": true}, {"pid": "wr4", "rpid": "p2", "sub": "外采辉石 / 云母 / 回收 成本与单吨利润", "keys": ["碳酸锂外采辉石生产成本", "碳酸锂外采云母生产成本", "碳酸锂回收生产成本", "碳酸锂外采辉石生产利润", "碳酸锂外采云母生产利润", "碳酸锂回收生产利润"], "intro": "<span class=\"t\">利润：三种工艺的成本线同时下移</span>外采辉石成本 <b>110,542</b>（-1.15%），对应单吨利润 <b>-12,705</b>，亏损周环比扩大 3,641 元；外采云母成本 93,038（-5.06%）、利润 1,855（+365）；回收成本 94,110（-7.32%）、利润 2,790。关键点：<b>利润恶化与成本下移同时发生</b>。矿价随锂价同步回落，使得「跌破成本 → 减产 → 价格反弹」的负反馈链条被削弱，这是本轮价格能顺畅下破 10 万、并未在成本线附近止跌的机制性原因。只有当矿端出现滞后（矿价跌幅小于锂盐）时，亏损才会真正转化为减产，届时才是成本支撑重新生效的时点。", "tab": "wr", "label": "成本与利润", "kind": "std", "cnt": 6, "cntTxt": "6 图", "noexp": true}, {"pid": "wr5", "rpid": "p3", "sub": "新口径总库存 / 原口径样本 / 库存天数", "keys": ["碳酸锂：周度库存（大样本）", "碳酸锂总库存（中样本）", "碳酸锂：锂盐厂库存", "碳酸锂：下游正极厂库存", "碳酸锂：贸易商及电芯厂库存", "碳酸锂总库存天数"], "intro": "<span class=\"t\">库存：绝对量继续降，结构在往上游转移</span>新口径库存 <b>130,279</b> 吨（-4,093，-3.05%），库存天数 <b>13.2</b> 天（-0.7 天）；原口径样本 58,793 吨（-3,605，-5.78%）。结构分化是关键：锂盐厂 7,314（+634，9.49%）<b>逆势累库</b>，正极厂 29,804（-1,487）、贸易商及电芯厂 21,675（-2,752）同步去库。冶炼端在价格急跌中被动累库、贸易商在下跌中集中抛售 —— 这正是「下跌—抛售—加速下跌」负反馈的微观证据；而下游正极厂库存下降，说明补库意愿弱、以刚需采购为主，短期不具备主动补库驱动的反弹条件。", "tab": "wr", "label": "库存：去库节奏", "kind": "std", "cnt": 6, "cntTxt": "6 图", "noexp": true}, {"pid": "wr6", "rpid": "p3", "sub": "周度表需 / 库存变化 / 锂矿港口 / 正极厂库", "keys": ["碳酸锂：周度产量", "碳酸锂：周度表需", "碳酸锂：周度库存变化", "锂矿库存：港口（吨LCE）", "锂矿库存：贸易商总库存（吨LCE）", "正极材料：磷酸铁锂厂库"], "intro": "<span class=\"t\">需求：表需高位微降，周度仍缺口</span>周度表需 <b>30,956</b> 吨（-276，-0.88%），周度产量 26,863 吨，库存变化 -4,093 吨 —— 本周仍是净缺口，但缺口较 8 月单周 3 万吨量级明显收窄，去库斜率放缓。原料端出现反向信号：锂矿港口库存 43,375 吨（+3,625，9.12%）、贸易商总库存 26,125 吨（+3,500，15.47%）双双累积，对应津巴布韦到港与矿端发运恢复，是「供给宽松」预期最扎实的实物证据。LFP 厂库 134,415 吨（+2,115），小幅回补，正极端并不缺原料。", "tab": "wr", "label": "需求强度与原料库存", "kind": "std", "cnt": 6, "cntTxt": "6 图", "noexp": true}, {"pid": "wr7", "rpid": "p7", "sub": "碳酸锂平衡表 · 月度表 + 季节图（实测 2026-09 止）", "kind": "p7", "sheets": ["碳酸锂"], "cnt": 41, "cntTxt": "39 图 · 2 表", "intro": "<span class=\"t\">平衡表：9 月仍缺 2.5 万吨，Q4 模型转过剩</span>实测末月 2026-09：供给 <b>150,488</b> 吨、需求 <b>175,027</b> 吨，供需差 <b>-24,538</b> 吨（缺口）；总库存降至 72,859 吨、可用 12.5 天，为近三年低位。模型对 10 / 11 / 12 的推演为 10 +15,431 / 11 +26,650 / 12 +26,408 吨 —— 由缺转剩的拐点就在 10 月。两条腿同时走：① 辉石产 11 月跳升至 80,354 吨（9 月 66,400，+21%）；② 需求自 9 月旺季高点回落至 13.5 万吨/月附近。12 月末总库存回升至 141,347 吨、31.5 天。盘面当前的下跌，本质是把这份「Q4 转宽松」的平衡表提前定价 —— 也解释了为什么价格跌、库存降可以同时发生。", "tab": "wr", "label": "月度供需平衡：从缺口到过剩"}, {"pid": "wr8", "rpid": "p5", "sub": "NEV 销量与渗透率 · 2026 年 9 月同比", "kind": "html", "cnt": 1, "cntTxt": "表格", "intro": "<span class=\"t\">汽车：外需强、内需弱，是四季度最大的预期差</span>全球 NEV 9 月 <b>241.2</b> 万辆、同比 +9.7%，渗透率 35.8%、同比 +5.3pp；中国 167.3 万辆、同比 +11.6%，渗透率 64.9%、同比 +12.4pp。但中国<b>总销量</b>同比 −9.8% —— 批发的正增长几乎全部来自出口，国内零售（乘联会 10/1–18 同比 −13%）在走弱。美国是最大拖累：NEV 10.9 万辆、同比 −42.9%、渗透率回落 6.9pp，补贴退出后的需求断层已经体现在数据上。对锂需求的含义：中国渗透率 64.9% 后增速必然放缓，全球边际增量更多依赖西欧（+24.2%）与新兴市场；一旦出口增速回落，NEV 批发的高增长叙事就会松动 —— 这正是盘面「远期需求下修」的数据基础。", "html": "<div class=\"xnote\">口径：销量为批发销量（含出口），单位万辆；渗透率 = 新能源 / 总体；同比为 2026 年 9 月 vs 2025 年 9 月。</div><div class=\"wr-tbl-wrap\"><table class=\"wr-tbl\"><thead><tr><th>地区</th><th>NEV 销量（万辆）</th><th>同比</th><th>渗透率</th><th>同比变化</th><th>总销量（万辆）</th><th>同比</th></tr></thead><tbody><tr><td>全球</td><td>241.2</td><td class=\"up\">+9.7%</td><td>35.8%</td><td class=\"up\">+5.3pp</td><td>673.5</td><td class=\"down\">-6.5%</td></tr><tr><td>中国</td><td>167.3</td><td class=\"up\">+11.6%</td><td>64.9%</td><td class=\"up\">+12.4pp</td><td>257.9</td><td class=\"down\">-9.8%</td></tr><tr><td>西欧</td><td>46.1</td><td class=\"up\">+24.2%</td><td>41.2%</td><td class=\"up\">+7.8pp</td><td>111.9</td><td class=\"up\">+0.6%</td></tr><tr><td>美国</td><td>10.9</td><td class=\"down\">-42.9%</td><td>8.2%</td><td class=\"down\">-6.9pp</td><td>132.6</td><td class=\"up\">+4.8%</td></tr></tbody></table></div>", "tab": "wr", "label": "终端需求：全球汽车"}, {"pid": "wr9", "rpid": "core", "sub": "下周证伪点 / 定价链条 / 跟踪清单", "kind": "html", "cnt": 1, "cntTxt": "框架", "html": "<div class=\"wr-note\"><span class=\"t\">下周（10/23–10/30）四个证伪点</span><ul><li><b>枧下窝环评批复</b>　公示期结束后是否正式批复；选矿厂、尾矿库环评若同步推进，云母复产将从预期变成产量。</li><li><b>11 月排产落地</b>　323GWh（环比 −5%）是当前锚点；若继续下修至 −8% 以下，Q4 转过剩将被坐实。</li><li><b>仓单与月差</b>　仓单若继续快速注销、11-1 月差再走阔，近月挤仓风险上升，反弹弹性会被放大。</li><li><b>成本与矿价</b>　关注矿价跌幅是否小于锂盐（滞后），一旦出现，外采辉石的亏损才会真正转化为减产。</li></ul></div><div class=\"wr-fw\"><div class=\"c\"><h4>定价链条（本页核心假设）</h4><ul><li><b>中间环节无定价权</b>：正极、电解液、电芯都是加工费模式，价格由上游矿与终端需求两端决定。</li><li><b>锂价 = 矿端边际成本 + 供需缺口</b>：缺口决定方向，成本决定底部区域。</li><li><b>库存是缺口的积分</b>：周度库存变化 ≈ 周度产量 − 周度表需，两者需交叉验证。</li><li><b>盘面交易预期、现货交易现实</b>：基差与月差是两者分歧的量化度量。</li></ul></div><div class=\"c\"><h4>四层跟踪顺序</h4><ol><li><b>终端</b>：全球 NEV 销量与渗透率（批发 vs 零售口径必须分开看）。</li><li><b>电池与正极</b>：排产 → 产量 → 厂库，排产是先行、厂库是验证。</li><li><b>锂盐</b>：产量 / 开工 / 库存天数，判断缺口是否闭合。</li><li><b>矿端</b>：出矿、进口、港口与贸易商库存，决定成本曲线与远期供给。</li></ol></div><div class=\"c\"><h4>指标清单（全部在本页可查）</h4><ul><li><b>价格</b>：主力收盘、基差、11-1 / 1-5 月差、电碳、辉石 CIF。</li><li><b>供给</b>：周度总产量与分工艺、开工率、月度平衡表供给项。</li><li><b>需求</b>：周度表需、LFP/三元产量、电池排产、NEV 销量与渗透率。</li><li><b>库存</b>：新口径 / 原口径社库、库存天数、锂矿港口与贸易商库存。</li><li><b>利润</b>：外采辉石 / 云母 / 回收单吨利润，判断减产触发条件。</li></ul></div></div><div class=\"xnote\" style=\"margin-top:14px\">本框架对应「核心逻辑」标签的 4 张原图（研究框架 / 基本面数据 / 动力电池数据体系 / 储能电池数据体系），需要看方法论细节可切换到该标签。</div>", "tab": "wr", "label": "附录：关注点与核心逻辑框架"}, {"tab": "hf", "pid": "p1", "label": "日度价格", "sub": "盘面结构 / 现货价格价差 / 仓单 / 电解液与电芯", "kind": "std", "cnt": 22}, {"tab": "hf", "pid": "p2", "label": "产量开工利润", "sub": "周度产量 / 开工率 / 加工利润", "kind": "std", "cnt": 16}, {"tab": "hf", "pid": "p3", "label": "产业链库存", "sub": "周度库存 / 库存天数（锂矿、锂盐、正极、电池）", "kind": "std", "cnt": 24}, {"tab": "bal", "pid": "p7", "label": "中国锂产业链平衡", "sub": "锂矿 → 碳酸锂 → 电池 → 正极 → 氢氧化锂 → 锂元素（先表后图）", "kind": "p7", "cnt": 212, "sheets": ["锂矿", "碳酸锂", "电池", "正极", "氢氧化锂", "锂元素"], "cntTxt": "200 图 · 12 表", "subs": [{"anchor": "ov-p7-锂矿", "label": "锂矿"}, {"anchor": "ov-p7-碳酸锂", "label": "碳酸锂"}, {"anchor": "ov-p7-电池", "label": "电池"}, {"anchor": "ov-p7-正极", "label": "正极"}, {"anchor": "ov-p7-氢氧化锂", "label": "氢氧化锂"}, {"anchor": "ov-p7-锂元素", "label": "锂元素"}]}, {"tab": "auto", "pid": "p5", "label": "全球汽车", "sub": "中国汽车 / 全球乘用车 / 车企排名 / 车企细分 / 价格带 / 中国出口", "kind": "p5", "cnt": 71, "cntTxt": "6 子页", "subs": [{"anchor": "ov-p5-c", "label": "中国汽车"}, {"anchor": "ov-p5-g", "label": "全球乘用车"}, {"anchor": "ov-p5-r", "label": "车企排名"}, {"anchor": "ov-p5-m", "label": "车企细分"}, {"anchor": "ov-p5-p", "label": "价格带"}, {"anchor": "ov-p5-e", "label": "中国出口"}]}];
+var BOARDS = [{"pid": "wr1", "rpid": "p1", "sub": "盘面 / 现货价格价差 / 电解液电芯 / 仓单 · p1 全部 22 图", "keys": ["主力收盘价", "11-1月差", "1-5月差", "基差", "总持仓量", "总成交量", "锂矿：辉石价格（美元）", "锂矿：云母价格", "锂盐：电碳价格", "锂盐价差：电碳-工碳", "锂盐价差：碳酸锂-氢氧化锂", "锂盐价差：内外价差", "正极：磷酸铁锂价格", "正极：三元材料价格", "正极：锰酸锂价格", "正极：钴酸锂价格", "六氟磷酸锂价格", "电解液价格", "电芯：磷酸铁锂动力型价格", "电芯：磷酸铁锂储能型价格", "电芯：三元电芯价格", "仓单"], "intros": ["<span class=\"t\">盘面：跌价、陡 Back、增仓</span>主力收 <b>94,180</b> 元/吨（周 4.70%，-4,640 元）。基差 <b>1,150</b>（周 -250），现货升水结构未破，说明现货跌幅与期货基本同步（电碳 4.84%，主力 4.70%），期现未背离。月差是本板块最强的信号：11-1 月差 <b>2,880</b>（周 +82%）、1-5 月差 <b>2,820</b>（周 +124%），近月对远月的溢价快速抬升 —— 市场并不否认当前紧张，只是在给远月定更低的价。持仓 747,158 手（+6.82%）配合价格下跌，属空头主动增仓；仓单 20,952 手（-21.62%），11 月合约交割前的注销与现货消化同步进行，短期对盘面的实货压力在减轻。", "<span class=\"t\">传导：成本端先跌，中游跟跌但幅度收敛</span>锂矿领跌：辉石 CIF <b>1,485</b> 美元（-1.33%）、云母 <b>2,450</b>（-8.07%）—— 矿价先行走弱是「成本支撑失效」的直接证据。锂盐电碳 <b>99,350</b>（-4.84%），工碳同步，电碳-工碳价差 3,500（-500），品质溢价收窄说明电池级供应并不紧缺。内外价差 2,502（-29.8%）大幅收敛，海外货源相对转弱，进口窗口对国内价格的压制边际减弱。中游跌幅明显小于原料：LFP 43,870（-3.26%）、三元 142,650（-3.58%）、六氟 111,000（-5.53%）—— 加工环节价差被动走阔，短期反而缓和了正极厂的成本压力，也解释了为什么「锂价跌、电池涨」的股期分化会出现。"], "tab": "wr", "label": "价格与现货传导", "kind": "std", "cnt": 22, "cntTxt": "22 图", "noexp": true}, {"pid": "wr2", "rpid": "p2", "sub": "周度产量 / 开工率 / 三工艺成本与单吨利润 · p2 全部 16 图", "keys": ["碳酸锂总产量", "碳酸锂产量：辉石来源", "碳酸锂产量：云母来源", "碳酸锂产量：盐湖来源", "碳酸锂产量：回收来源", "碳酸锂总开工", "碳酸锂开工：辉石来源", "碳酸锂开工：云母来源", "碳酸锂开工：盐湖来源", "碳酸锂开工：回收来源", "碳酸锂外采辉石生产成本", "碳酸锂外采云母生产成本", "碳酸锂回收生产成本", "碳酸锂外采辉石生产利润", "碳酸锂外采云母生产利润", "碳酸锂回收生产利润"], "intros": ["<span class=\"t\">供给：增量集中在辉石路线</span>周度总产量 <b>26,375</b> 吨（+845，3.31%），开工率 <b>52.72%</b>（+1.69pp）。拆分看，辉石产 <b>14,967</b> 吨（+814，5.75%）、开工 65.19%（+3.55pp），是唯一显著放量的工艺 —— 对应津巴布韦矿到港与 9 月以来检修产能复产；云母 3,184（+29）、盐湖 5,741（+20）基本走平，回收 2,483（-18）小幅回落。云母端的弹性还没释放，这也是「复产预期」尚未完全体现在产量上的原因。", "<span class=\"t\">利润：三种工艺的成本线同时下移</span>外采辉石成本 <b>110,542</b>（-1.15%），对应单吨利润 <b>-12,705</b>，亏损周环比扩大 3,641 元；外采云母成本 93,038（-5.06%）、利润 1,855（+365）；回收成本 94,110（-7.32%）、利润 2,790。关键点：<b>利润恶化与成本下移同时发生</b>。矿价随锂价同步回落，使得「跌破成本 → 减产 → 价格反弹」的负反馈链条被削弱，这是本轮价格能顺畅下破 10 万、并未在成本线附近止跌的机制性原因。只有当矿端出现滞后（矿价跌幅小于锂盐）时，亏损才会真正转化为减产，届时才是成本支撑重新生效的时点。"], "tab": "wr", "label": "供给、成本与利润", "kind": "std", "cnt": 16, "cntTxt": "16 图", "noexp": true}, {"pid": "wr3", "rpid": "p3", "sub": "锂矿 / 锂盐 / 正极 / 电池库存与天数 / 周度供需 · p3 全部 24 图", "keys": ["锂矿库存：锂盐厂原料库存（吨LCE）", "锂矿库存：贸易商总库存（吨LCE）", "锂矿库存：贸易商可售部分（吨LCE）", "锂矿库存：港口（吨LCE）", "碳酸锂总库存（中样本）", "碳酸锂：锂盐厂库存", "碳酸锂：下游正极厂库存", "碳酸锂：贸易商及电芯厂库存", "碳酸锂总库存天数", "碳酸锂：锂盐厂库存天数", "碳酸锂：下游正极厂库存天数", "碳酸锂：贸易商及电芯厂库存天数", "碳酸锂：周度产量", "碳酸锂：周度库存（大样本）", "碳酸锂：周度库存变化", "碳酸锂：周度表需", "正极材料：磷酸铁锂厂库", "正极材料：三元材料厂库", "电池：磷酸铁锂电池厂库", "电池：三元电池厂库", "正极材料：磷酸铁锂库存天数", "正极材料：三元材料库存天数", "电池：磷酸铁锂电池库存天数", "电池：三元电池库存天数"], "intros": ["<span class=\"t\">库存：绝对量继续降，结构在往上游转移</span>新口径库存 <b>130,279</b> 吨（-4,093，-3.05%），库存天数 <b>13.2</b> 天（-0.7 天）；原口径样本 58,793 吨（-3,605，-5.78%）。结构分化是关键：锂盐厂 7,314（+634，9.49%）<b>逆势累库</b>，正极厂 29,804（-1,487）、贸易商及电芯厂 21,675（-2,752）同步去库。冶炼端在价格急跌中被动累库、贸易商在下跌中集中抛售 —— 这正是「下跌—抛售—加速下跌」负反馈的微观证据；而下游正极厂库存下降，说明补库意愿弱、以刚需采购为主，短期不具备主动补库驱动的反弹条件。", "<span class=\"t\">需求：表需高位微降，周度仍缺口</span>周度表需 <b>30,956</b> 吨（-276，-0.88%），周度产量 26,863 吨，库存变化 -4,093 吨 —— 本周仍是净缺口，但缺口较 8 月单周 3 万吨量级明显收窄，去库斜率放缓。原料端出现反向信号：锂矿港口库存 43,375 吨（+3,625，9.12%）、贸易商总库存 26,125 吨（+3,500，15.47%）双双累积，对应津巴布韦到港与矿端发运恢复，是「供给宽松」预期最扎实的实物证据。LFP 厂库 134,415 吨（+2,115），小幅回补，正极端并不缺原料。"], "tab": "wr", "label": "库存与需求强度", "kind": "std", "cnt": 24, "cntTxt": "24 图", "noexp": true}, {"pid": "wr4", "rpid": "p7", "sub": "碳酸锂平衡表 · 月度表 + 季节图（实测 2026-09 止）", "kind": "p7", "sheets": ["碳酸锂"], "cnt": 41, "cntTxt": "39 图 · 2 表", "intro": "<span class=\"t\">平衡表：9 月仍缺 2.5 万吨，Q4 模型转过剩</span>实测末月 2026-09：供给 <b>150,488</b> 吨、需求 <b>175,027</b> 吨，供需差 <b>-24,538</b> 吨（缺口）；总库存降至 72,859 吨、可用 12.5 天，为近三年低位。模型对 10 / 11 / 12 的推演为 10 +15,431 / 11 +26,650 / 12 +26,408 吨 —— 由缺转剩的拐点就在 10 月。两条腿同时走：① 辉石产 11 月跳升至 80,354 吨（9 月 66,400，+21%）；② 需求自 9 月旺季高点回落至 13.5 万吨/月附近。12 月末总库存回升至 141,347 吨、31.5 天。盘面当前的下跌，本质是把这份「Q4 转宽松」的平衡表提前定价 —— 也解释了为什么价格跌、库存降可以同时发生。", "tab": "wr", "label": "月度供需平衡：从缺口到过剩"}, {"pid": "wr5", "rpid": "p5", "sub": "NEV 销量与渗透率 · 2026 年 9 月同比", "kind": "html", "cnt": 1, "cntTxt": "表格", "intro": "<span class=\"t\">汽车：外需强、内需弱，是四季度最大的预期差</span>全球 NEV 9 月 <b>241.2</b> 万辆、同比 +9.7%，渗透率 35.8%、同比 +5.3pp；中国 167.3 万辆、同比 +11.6%，渗透率 64.9%、同比 +12.4pp。但中国<b>总销量</b>同比 −9.8% —— 批发的正增长几乎全部来自出口，国内零售（乘联会 10/1–18 同比 −13%）在走弱。美国是最大拖累：NEV 10.9 万辆、同比 −42.9%、渗透率回落 6.9pp，补贴退出后的需求断层已经体现在数据上。对锂需求的含义：中国渗透率 64.9% 后增速必然放缓，全球边际增量更多依赖西欧（+24.2%）与新兴市场；一旦出口增速回落，NEV 批发的高增长叙事就会松动 —— 这正是盘面「远期需求下修」的数据基础。", "html": "<div class=\"xnote\">口径：销量为批发销量（含出口），单位万辆；渗透率 = 新能源 / 总体；同比为 2026 年 9 月 vs 2025 年 9 月。</div><div class=\"wr-tbl-wrap\"><table class=\"wr-tbl\"><thead><tr><th>地区</th><th>NEV 销量（万辆）</th><th>同比</th><th>渗透率</th><th>同比变化</th><th>总销量（万辆）</th><th>同比</th></tr></thead><tbody><tr><td>全球</td><td>241.2</td><td class=\"up\">+9.7%</td><td>35.8%</td><td class=\"up\">+5.3pp</td><td>673.5</td><td class=\"down\">-6.5%</td></tr><tr><td>中国</td><td>167.3</td><td class=\"up\">+11.6%</td><td>64.9%</td><td class=\"up\">+12.4pp</td><td>257.9</td><td class=\"down\">-9.8%</td></tr><tr><td>西欧</td><td>46.1</td><td class=\"up\">+24.2%</td><td>41.2%</td><td class=\"up\">+7.8pp</td><td>111.9</td><td class=\"up\">+0.6%</td></tr><tr><td>美国</td><td>10.9</td><td class=\"down\">-42.9%</td><td>8.2%</td><td class=\"down\">-6.9pp</td><td>132.6</td><td class=\"up\">+4.8%</td></tr></tbody></table></div>", "tab": "wr", "label": "终端需求：全球汽车"}, {"pid": "wr6", "rpid": "wrauto", "kind": "std", "sub": "全球 / 主要市场 NEV 销量与渗透率（与「汽车」标签同源 JSON）", "cnt": 4, "cntTxt": "4 图", "intro": "<span class=\"t\">汽车月度图组：与「汽车」标签同源</span>以下 4 图取自汽车底稿 JSON 的核心月度序列：全球 NEV 月度销量（2025 vs 2026）、主要市场月度销量、渗透率（2026 实线 / 2025 虚线）、全球月度同比。车企排名、车型细分、价格带、中国出口等完整子页图表请切换「汽车」标签查看。", "tab": "wr", "label": "终端汽车月度图组", "noexp": true}, {"pid": "wr7", "rpid": "core", "sub": "下周证伪点 / 定价链条 / 跟踪清单", "kind": "html", "cnt": 1, "cntTxt": "框架", "html": "<div class=\"wr-note\"><span class=\"t\">下周（10/23–10/30）四个证伪点</span><ul><li><b>枧下窝环评批复</b>　公示期结束后是否正式批复；选矿厂、尾矿库环评若同步推进，云母复产将从预期变成产量。</li><li><b>11 月排产落地</b>　323GWh（环比 −5%）是当前锚点；若继续下修至 −8% 以下，Q4 转过剩将被坐实。</li><li><b>仓单与月差</b>　仓单若继续快速注销、11-1 月差再走阔，近月挤仓风险上升，反弹弹性会被放大。</li><li><b>成本与矿价</b>　关注矿价跌幅是否小于锂盐（滞后），一旦出现，外采辉石的亏损才会真正转化为减产。</li></ul></div><div class=\"wr-fw\"><div class=\"c\"><h4>定价链条（本页核心假设）</h4><ul><li><b>中间环节无定价权</b>：正极、电解液、电芯都是加工费模式，价格由上游矿与终端需求两端决定。</li><li><b>锂价 = 矿端边际成本 + 供需缺口</b>：缺口决定方向，成本决定底部区域。</li><li><b>库存是缺口的积分</b>：周度库存变化 ≈ 周度产量 − 周度表需，两者需交叉验证。</li><li><b>盘面交易预期、现货交易现实</b>：基差与月差是两者分歧的量化度量。</li></ul></div><div class=\"c\"><h4>四层跟踪顺序</h4><ol><li><b>终端</b>：全球 NEV 销量与渗透率（批发 vs 零售口径必须分开看）。</li><li><b>电池与正极</b>：排产 → 产量 → 厂库，排产是先行、厂库是验证。</li><li><b>锂盐</b>：产量 / 开工 / 库存天数，判断缺口是否闭合。</li><li><b>矿端</b>：出矿、进口、港口与贸易商库存，决定成本曲线与远期供给。</li></ol></div><div class=\"c\"><h4>指标清单（本页全量图表 + 「汽车」标签）</h4><ul><li><b>价格</b>：主力收盘、基差、11-1 / 1-5 月差、电碳、辉石 CIF。</li><li><b>供给</b>：周度总产量与分工艺、开工率、月度平衡表供给项。</li><li><b>需求</b>：周度表需、正极 / 电池厂库与库存天数、NEV 销量与渗透率（车企细分见「汽车」标签）。</li><li><b>库存</b>：新口径 / 原口径社库、库存天数、锂矿港口与贸易商库存。</li><li><b>利润</b>：外采辉石 / 云母 / 回收单吨利润，判断减产触发条件。</li></ul></div></div><div class=\"xnote\" style=\"margin-top:14px\">本框架对应「核心逻辑」标签的 4 张原图（研究框架 / 基本面数据 / 动力电池数据体系 / 储能电池数据体系），需要看方法论细节可切换到该标签。</div>", "tab": "wr", "label": "附录：关注点与核心逻辑框架"}, {"tab": "hf", "pid": "p1", "label": "日度价格", "sub": "盘面结构 / 现货价格价差 / 仓单 / 电解液与电芯", "kind": "std", "cnt": 22}, {"tab": "hf", "pid": "p2", "label": "产量开工利润", "sub": "周度产量 / 开工率 / 加工利润", "kind": "std", "cnt": 16}, {"tab": "hf", "pid": "p3", "label": "产业链库存", "sub": "周度库存 / 库存天数（锂矿、锂盐、正极、电池）", "kind": "std", "cnt": 24}, {"tab": "bal", "pid": "p7", "label": "中国锂产业链平衡", "sub": "锂矿 → 碳酸锂 → 电池 → 正极 → 氢氧化锂 → 锂元素（先表后图）", "kind": "p7", "cnt": 212, "sheets": ["锂矿", "碳酸锂", "电池", "正极", "氢氧化锂", "锂元素"], "cntTxt": "200 图 · 12 表", "subs": [{"anchor": "ov-p7-锂矿", "label": "锂矿"}, {"anchor": "ov-p7-碳酸锂", "label": "碳酸锂"}, {"anchor": "ov-p7-电池", "label": "电池"}, {"anchor": "ov-p7-正极", "label": "正极"}, {"anchor": "ov-p7-氢氧化锂", "label": "氢氧化锂"}, {"anchor": "ov-p7-锂元素", "label": "锂元素"}]}, {"tab": "auto", "pid": "p5", "label": "全球汽车", "sub": "中国汽车 / 全球乘用车 / 车企排名 / 车企细分 / 价格带 / 中国出口", "kind": "p5", "cnt": 71, "cntTxt": "6 子页", "subs": [{"anchor": "ov-p5-c", "label": "中国汽车"}, {"anchor": "ov-p5-g", "label": "全球乘用车"}, {"anchor": "ov-p5-r", "label": "车企排名"}, {"anchor": "ov-p5-m", "label": "车企细分"}, {"anchor": "ov-p5-p", "label": "价格带"}, {"anchor": "ov-p5-e", "label": "中国出口"}]}];
 var TABS = [{"id": "hf", "label": "高频数据"}, {"id": "bal", "label": "平衡表"}, {"id": "auto", "label": "汽车"}, {"id": "core", "label": "核心逻辑"}, {"id": "wr", "label": "周报"}];
 var BYID = {};
 BOARDS.forEach(function(b){ BYID['b-' + b.pid] = b; });
@@ -1074,13 +1074,14 @@ function buildShell(tab){
     if(bd.tab !== tab) return;
     _idx++;
     bd.n = _idx;
-    /* 周报板块：板块前先放一段归因文字（静态，不随懒加载消失） */
-    if(bd.intro){
+    /* 周报板块：板块前先放归因文字（可多段，静态，不随懒加载消失） */
+    var intros = bd.intros || (bd.intro ? [bd.intro] : []);
+    intros.forEach(function(tx){
       var note = document.createElement('div');
       note.className = 'wr-note';
-      note.innerHTML = bd.intro;
+      note.innerHTML = tx;
       root.appendChild(note);
-    }
+    });
     var sec = document.createElement('section');
     sec.className = 'board is-lazy'; sec.id = 'b-' + bd.pid;
     var ph = (bd.kind === 'html') ? '' : ('<div class="board-ph">滚动到此处时加载 ' + bd.cnt + ' 张图…</div>');
@@ -3460,6 +3461,95 @@ window.__RENDERERS__["p5"] = {render: renderBoard, getCharts: function(){ return
 
 })();
 
+/* ---------- 周报·终端汽车月度图组 ---------- */
+(function(){
+  var BASE = null;
+  window.__DATA__['wrauto'] = Object.assign({}, window.__DATA__['p5'], {years: ['2023','2024','2025','2026']});
+  function sec(ds,id){ var a=ds.sections||[]; for(var i=0;i<a.length;i++) if(a[i].id===id) return a[i]; return null; }
+  function arr(ds,sid,ent,y){ var s=sec(ds,sid); if(!s) return []; var o=(s.data||{})[ent]||{}; return (o.series||{})[String(y)]||[]; }
+  function nMonth(ds){ var a=arr(ds,'nev','全球',2026), n=0; for(var i=0;i<a.length;i++){ if(a[i]!=null) n=i+1; } return n||12; }
+  var PAL = {'2023':'#c3cad6','2024':'#8a93a3','2025':'#2b7cff','2026':'#d92626',
+             中国:'#d92626',西欧:'#2b7cff',美国:'#e08a2b',全球:'#0f4c81'};
+  var charts = [];
+  function card(grid, cap, opt){
+    var cell=document.createElement('div'); cell.className='chart-cell';
+    var c=document.createElement('div'); c.className='cap'; c.textContent=cap; cell.appendChild(c);
+    var e=document.createElement('div'); e.className='ech'; cell.appendChild(e);
+    grid.appendChild(cell);
+    var ch=echarts.init(e); ch.setOption(opt); charts.push(ch); return ch;
+  }
+  function lineOpt(ds, sid, ent, unit){
+    var N=nMonth(ds), xs=[], m;
+    for(m=0;m<N;m++) xs.push((m+1)+'月');
+    var ys=(ds.years||[]).filter(function(y){ return window.__YEAR_STATE__[String(y)]!==false; });
+    var series=[], legend=[];
+    ys.forEach(function(y){
+      var a=arr(ds,sid,ent,y).slice(0,N);
+      if(!a.some(function(v){ return v!=null; })) return;
+      legend.push(y);
+      series.push({name:String(y), type:'line', symbolSize:4, smooth:false,
+        data:a, itemStyle:{color:PAL[y]||'#8a93a3'}, lineStyle:{color:PAL[y]||'#8a93a3', width:(String(y)==='2026'?2.4:1.6)}});
+    });
+    return {grid:{left:8,right:14,top:34,bottom:4,containLabel:true},
+      tooltip:{trigger:'axis'}, legend:{data:legend, top:2, textStyle:{fontSize:11}},
+      xAxis:{type:'category', data:xs, axisLabel:{fontSize:11}},
+      yAxis:{type:'value', scale:true, axisLabel:{fontSize:11}},
+      series:series, unit:unit};
+  }
+  function render(body, ds, ctx){
+    ctx.charts = ctx.charts || [];
+    var N=nMonth(ds), xs=[], m;
+    for(m=0;m<N;m++) xs.push((m+1)+'月');
+    var grid=document.createElement('div'); grid.className='grid c2'; body.appendChild(grid);
+
+    /* 1) 全球 NEV 月度销量 2025 vs 2026 */
+    card(grid, '全球新能源乘用车月度销量（万辆）', (function(){
+      var o=lineOpt(ds,'nev','全球'); return o; })());
+
+    /* 2) 主要市场 NEV 月度（2026） */
+    var s2=[], l2=[];
+    ['全球','中国','西欧','美国'].forEach(function(ent){
+      var a=arr(ds,'nev',ent,2026).slice(0,N);
+      if(!a.some(function(v){return v!=null;})) return;
+      l2.push(ent);
+      s2.push({name:ent, type:'line', symbolSize:4, data:a, itemStyle:{color:PAL[ent]||'#8a93a3'}});
+    });
+    card(grid, '主要市场 NEV 月度销量 · 2026（万辆）', {grid:{left:8,right:14,top:34,bottom:4,containLabel:true},
+      tooltip:{trigger:'axis'}, legend:{data:l2, top:2, textStyle:{fontSize:11}},
+      xAxis:{type:'category', data:xs, axisLabel:{fontSize:11}},
+      yAxis:{type:'value', scale:true, axisLabel:{fontSize:11}}, series:s2});
+
+    /* 3) 渗透率：全球/中国，2025 虚线 2026 实线 */
+    var s3=[], l3=[];
+    ['全球','中国'].forEach(function(ent){
+      [2025,2026].forEach(function(y){
+        var a=arr(ds,'pen',ent,y).slice(0,N);
+        if(!a.some(function(v){return v!=null;})) return;
+        l3.push(ent+' '+y);
+        s3.push({name:ent+' '+y, type:'line', symbolSize:4, data:a,
+          itemStyle:{color:PAL[ent]}, lineStyle:{color:PAL[ent], type:(y===2025?'dashed':'solid'), width:(y===2026?2.2:1.5)}});
+      });
+    });
+    card(grid, 'NEV 渗透率 · 2026 实线 / 2025 虚线（%）', {grid:{left:8,right:14,top:34,bottom:4,containLabel:true},
+      tooltip:{trigger:'axis', valueFormatter:function(v){ return v+'%'; }}, legend:{data:l3, top:2, textStyle:{fontSize:11}},
+      xAxis:{type:'category', data:xs, axisLabel:{fontSize:11}},
+      yAxis:{type:'value', axisLabel:{fontSize:11, formatter:'{value}%'}}, series:s3});
+
+    /* 4) 全球 NEV 月度同比（2026，红涨绿跌） */
+    var a26=arr(ds,'nev','全球',2026).slice(0,N), a25=arr(ds,'nev','全球',2025).slice(0,N);
+    var yv=[], yx=[];
+    for(m=0;m<N;m++){ if(a26[m]!=null && a25[m]){ yv.push(+((a26[m]/a25[m]-1)*100).toFixed(1)); yx.push((m+1)+'月'); } }
+    card(grid, '全球 NEV 月度销量同比 · 2026（%）', {grid:{left:8,right:14,top:14,bottom:4,containLabel:true},
+      tooltip:{trigger:'axis', valueFormatter:function(v){ return v+'%'; }},
+      xAxis:{type:'category', data:yx, axisLabel:{fontSize:11}},
+      yAxis:{type:'value', axisLabel:{fontSize:11, formatter:'{value}%'}},
+      series:[{type:'bar', data:yv.map(function(v){ return {value:v, itemStyle:{color:(v>=0?'#d92626':'#0a9a5c')}}; }), barMaxWidth:26}]});
+  }
+  window.__RENDERERS__ = window.__RENDERERS__ || {};
+  window.__RENDERERS__['wrauto'] = {render: render, getCharts: function(){ return charts; }};
+})();
+
+
 /* ================= p7 平衡表渲染器（多 sheet 顺序展开）================= */
 window.RP7 = (function(){
   function signColor(v){
@@ -4001,7 +4091,7 @@ window.RP7 = (function(){
   function swapCharts(root){
     var restores = [], imgs = [];
     if(!window.echarts) return {restore:function(){}, ready:Promise.resolve()};
-    Array.prototype.forEach.call(root.querySelectorAll('.chart'), function(dom){
+    Array.prototype.forEach.call(root.querySelectorAll('.chart, .ech'), function(dom){
       var inst = null;
       try{ inst = echarts.getInstanceByDom(dom); }catch(e){}
       if(!inst) return;

@@ -1,0 +1,1595 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>碳酸锂数据看板 · 核心逻辑</title>
+<style>
+:root{
+  --bg:#f4f6fa; --card:#ffffff; --border:#e5e9f0; --text:#1f2733; --sub:#6b7686;
+  --up:#d92626; --down:#0a9a5c; --flat:#8a93a3; --accent:#0f4c81; --focus:#2b7cff;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{background:var(--bg); color:var(--text);
+  font-family:"Microsoft YaHei","PingFang SC","Helvetica Neue",Arial,sans-serif; font-size:14px;}
+.wrap{max-width:1560px; margin:0 auto; padding:18px 22px 60px;}
+.header{display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:14px;}
+.header h1{font-size:24px; color:var(--accent); letter-spacing:1px;}
+.header .date{color:var(--sub); font-size:13px;}
+.tabs{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;}
+.tab{padding:7px 20px; border-radius:8px 8px 0 0; border:1px solid var(--border); border-bottom:none;
+  background:#e9edf3; color:var(--sub); cursor:default; font-size:14px; text-decoration:none;}
+.tab.active{background:var(--accent); color:#fff; font-weight:600;}
+.tab:hover:not(.active){color:var(--accent);}
+.sec-title{font-size:18px; color:var(--accent); font-weight:700; margin:24px 0 6px;}
+.sec-sub{color:var(--sub); font-size:13px; margin:0 0 12px;}
+/* 定价逻辑 */
+.logic{background:var(--card); border:1px solid var(--border); border-left:4px solid var(--accent);
+  border-radius:10px; padding:16px 20px; line-height:1.9; margin-top:6px;}
+.logic ul{list-style:none; padding:0; margin:0;}
+.logic li{position:relative; padding-left:18px; margin:8px 0; color:var(--text); font-size:16px; line-height:1.6;}
+.logic li::before{content:"●"; position:absolute; left:2px; color:var(--accent); font-size:9px; top:6px;}
+.logic b{color:var(--accent);}
+.logic li img{max-width:100%; max-height:320px; border-radius:8px; border:1px solid var(--border); display:block; margin:6px 0;}
+.logic li.li-img{padding-left:0;}
+.logic li.li-img::before{content:"";}
+/* 定价逻辑编辑区（contenteditable，支持粘贴图片） */
+.logic-editor{min-height:150px; max-height:340px; overflow:auto; background:#fff;
+  border:1px solid var(--border); border-radius:8px; padding:10px; font-size:14px; line-height:1.7;
+  font-family:inherit; resize:vertical; box-sizing:border-box;}
+.logic-editor:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 2px rgba(43,124,255,.12);}
+.logic-editor img{max-width:100%; max-height:240px; border-radius:8px; border:1px solid var(--border); display:block; margin:6px 0;}
+.logic-editor.dragover{border-color:var(--accent); background:#f2f7ff;}
+/* 年份筛选 */
+.ybar{display:flex; gap:8px; flex-wrap:wrap; margin:4px 0 14px;}
+.ybtn{display:inline-flex; align-items:center; gap:6px; padding:5px 14px; border-radius:16px;
+  border:1px solid var(--border); background:#fff; color:var(--sub); font-size:13px; cursor:pointer;}
+.ybtn .dot{width:10px; height:10px; border-radius:50%;}
+.ybtn.off{opacity:.35; filter:grayscale(.6);}
+/* 顶部工具条 */
+.topbar{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0 0 10px;}
+.topbar .sec-sub{margin:0; flex:1; min-width:260px;}
+.abtn{padding:6px 14px; border:1px solid var(--border); background:#fff; border-radius:8px; cursor:pointer; font-size:13px; color:var(--accent);}
+.abtn:hover{background:#eef3f9;}
+.abtn.saved{color:#0a9a5c; border-color:#0a9a5c; background:#f0faf4;}
+/* 图表栅格 + 行标题 */
+.grid{display:grid; gap:14px;}
+.grid.c4{grid-template-columns:repeat(4,1fr);}
+.crow{display:grid; gap:14px; margin-bottom:18px;}
+.crow .row-header{grid-column:1/-1; display:flex; align-items:center; gap:8px; margin-bottom:4px;}
+.crow .row-note{flex:1; font-size:18px; color:var(--accent); font-weight:700; background:transparent; border:none; border-bottom:1px solid var(--border); border-radius:0; padding:8px 4px; min-height:34px; outline:none; cursor:text; line-height:1.5;}
+.crow .row-note:focus{border-bottom-color:var(--accent); color:var(--accent);}
+.crow .row-note:empty::before{content:attr(data-ph); color:#b3bcc9; font-weight:400;}
+.crow .row-tools{display:flex; align-items:center; gap:6px;}
+.crow .row-tools button{font-size:12px; line-height:1; padding:4px 8px; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; color:var(--sub);}
+.crow .row-tools button:hover{background:#f0f3f8; color:var(--accent); border-color:var(--accent);}
+.crow .row-tools button:disabled{opacity:.4; cursor:not-allowed;}
+.logic-tools{display:flex; gap:8px; margin:24px 0 6px;}
+@media (max-width:1200px){ .grid.c4{grid-template-columns:repeat(2,1fr);} }
+@media (max-width:720px){ .grid.c4{grid-template-columns:1fr;} .crow{grid-template-columns:1fr;} .wrap{padding:12px 10px 40px;} }
+.card{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:8px 12px 6px; min-width:0; position:relative;}
+.card.focus{box-shadow:0 0 0 2px var(--focus); border-color:var(--focus);}
+.card.empty{border-style:dashed; display:flex; align-items:center; justify-content:center; min-height:230px;}
+.card-head{display:flex; align-items:center; justify-content:space-between; gap:6px; margin:0 0 4px; cursor:grab; position:relative;}
+.card-head .ttl{font-size:14px; font-weight:700; color:#2a3345; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.4;}
+.menu-btn{width:24px; height:22px; display:inline-flex; align-items:center; justify-content:center; padding:0; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; color:var(--sub); font-size:14px; line-height:1; flex-shrink:0;}
+.menu-btn:hover{background:#f0f3f8; color:var(--accent); border-color:var(--accent);}
+.menu{position:absolute; top:calc(100% + 4px); right:0; background:#fff; border:1px solid var(--border); border-radius:8px; padding:4px; box-shadow:0 4px 12px rgba(0,0,0,.12); display:none; flex-direction:column; gap:2px; z-index:10; min-width:92px;}
+.menu.show{display:flex;}
+.menu button{font-size:12px; line-height:1.2; padding:5px 8px; border:1px solid transparent; background:#fff; border-radius:6px; cursor:pointer; color:var(--sub); text-align:left; white-space:nowrap;}
+.menu button:hover{background:#f0f3f8; color:var(--accent); border-color:var(--border);}
+.menu button.on{background:var(--focus); color:#fff; border-color:var(--focus);}
+.card .meta{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin:4px 0 2px;}
+.card .val{font-size:20px; font-weight:700;}
+.card .unit{font-size:11px; color:var(--sub);}
+.card .chg{font-size:13px; font-weight:600;}
+.card .chg.up{color:var(--up);} .card .chg.down{color:var(--down);} .card .chg.flat{color:var(--flat);}
+.card .dt{font-size:11px; color:var(--sub);}
+.card .sub{font-size:13px; font-weight:600; color:var(--text);}
+.card .chart{width:100%; height:220px;}
+.card.empty .pick{padding:12px 18px; border:1px dashed var(--border); background:#fafbfd; border-radius:10px; cursor:pointer; color:var(--sub); font-size:14px;}
+.card.empty .pick:hover{color:var(--accent); border-color:var(--accent);}
+.card .err{color:#c0392b; font-size:12px; padding:10px 4px;}
+/* 选择图表 modal */
+.modal{position:fixed; inset:0; background:rgba(20,30,45,.45); display:none; align-items:center; justify-content:center; z-index:50;}
+.modal-box{background:#fff; width:min(660px,92vw); max-height:82vh; border-radius:12px; display:flex; flex-direction:column; overflow:hidden;}
+.modal-head{padding:12px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-weight:700;}
+.modal-head button{border:none; background:none; font-size:18px; cursor:pointer; color:var(--sub); line-height:1;}
+.modal-search{padding:10px 16px; border-bottom:1px solid var(--border);}
+.modal-search input{width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:8px; font-size:13px;}
+.modal-list{overflow:auto; padding:8px 10px 16px;}
+.src-group{font-size:12px; color:var(--sub); padding:10px 6px 4px; font-weight:700;}
+.src-sub{font-size:11px; color:var(--sub); padding:8px 6px 2px; font-weight:600;}
+.chart-item{padding:9px 12px; border-radius:8px; cursor:pointer; font-size:13px; border:1px solid transparent; display:flex; justify-content:space-between; gap:10px;}
+.chart-item:hover{background:#f0f3f8; border-color:var(--border);}
+.chart-item .k{color:var(--sub); font-size:11px;}
+/* 复盘板块 */
+.review-section{margin-top:10px;}
+.review-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:stretch;}
+.review-card{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px 14px; min-height:420px; display:flex; flex-direction:column;}
+.review-card .card-head{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; flex-shrink:0; cursor:default;}
+.review-card .card-head .ttl{font-size:15px; font-weight:700; color:#2a3345;}
+.review-card .card-head .actions{display:flex; gap:8px;}
+.review-selectors{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; flex-shrink:0;}
+.review-selectors select{flex:1; min-width:110px; padding:6px 8px; border:1px solid var(--border); border-radius:6px; background:#fff; font-size:12px; color:var(--text); outline:none;}
+.review-selectors select:focus{border-color:var(--accent);}
+.review-chart{flex:1; min-height:0; border:1px solid var(--border); border-radius:8px; background:#fff; margin-top:4px;}
+.review-text{flex:1; display:flex; flex-direction:column;}
+.review-text .logic{flex:1; margin:0; min-height:0; overflow:auto;}
+.review-grid-bottom{margin-top:16px;}
+.review-card .card-head .ttl[contenteditable="true"]{cursor:text; outline:none; border-radius:4px; padding:1px 5px; transition:background .15s, box-shadow .15s;}
+.review-card .card-head .ttl[contenteditable="true"]:hover{background:#f0f3f8;}
+.review-card .card-head .ttl[contenteditable="true"]:focus{background:#eef4ff; box-shadow:0 0 0 1px var(--accent);}
+.review-card .card-head .actions{display:flex; gap:8px; align-items:center;}
+.review-card .card-head .yaxis-toggle{font-size:12px; color:#5a6675; display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none; padding:3px 6px; border-radius:6px; transition:background .15s;}
+.review-card .card-head .yaxis-toggle:hover{background:#f0f3f8;}
+.review-card .card-head .yaxis-toggle input{width:14px; height:14px; margin:0; accent-color:var(--accent); cursor:pointer;}
+@media (max-width:1100px){ .review-grid{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1>碳酸锂数据看板 · 核心逻辑</h1>
+    <div class="date" id="dataDate">数据加载中…</div>
+  </div>
+  <div class="tabs">
+    <a class="tab" href="index.html">全览</a>
+    <a class="tab active" href="core.html">核心逻辑</a>
+    <a class="tab" href="p7.html">中国锂产业链平衡</a>
+    <a class="tab" href="event.html">事件及政策跟踪</a>
+    <a class="tab" href="p6.html">全球年度平衡</a>
+    <a class="tab" href="p5.html">全球汽车</a>
+    <a class="tab" href="p3.html">产业链库存</a>
+    <a class="tab" href="p2.html">产量开工利润</a>
+    <a class="tab" href="p1.html">日度价格</a>
+    <a class="tab" href="weekly.html">周报</a>
+  </div>
+
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+    <h2 class="sec-title" style="margin:24px 0 6px;">定价逻辑</h2>
+    <div class="logic-tools">
+      <button class="abtn" id="editLogic">编辑</button>
+      <button class="abtn" id="historyLogic">历史</button>
+    </div>
+  </div>
+  <div class="logic" id="logicBox">
+    <ul id="logicList"></ul>
+  </div>
+
+  <h2 class="sec-title">核心数据跟踪图表</h2>
+  <div class="topbar">
+    <span class="sec-sub">数据来源于各看板页（日度价格 / 产量开工利润 / 产业链库存 / 中国锂产业链平衡 / 全球锂资源），跟随每日刷新同步更新 · 点卡片右上角按钮可自定义（选择 / 清空 / 上移 / 下移 / 关注蓝框 / 删除），卡片可拖拽排序</span>
+    <button class="abtn" id="addCard">＋ 新增一行</button>
+    <button class="abtn" id="saveLayout">保存布局</button>
+    <button class="abtn" id="saveContent">保存内容</button>
+    <button class="abtn" id="publishCore" style="background:#0f4c81;color:#fff;border-color:#0f4c81">⇧ 发布到线上</button>
+    <button class="abtn" id="ghTokenBtn">⚙ 令牌</button>
+  </div>
+  <div class="ybar" id="ybar"></div>
+  <div id="charts"></div>
+
+  <!-- 复盘板块 -->
+  <section class="review-section">
+    <h2 class="sec-title">复盘</h2>
+    <div class="review-grid" id="reviewGridTop"></div>
+    <div class="review-grid review-grid-bottom" id="reviewGridBottom"></div>
+  </section>
+
+  <div class="modal" id="modal">
+    <div class="modal-box">
+      <div class="modal-head"><span>选择图表</span><button id="modalClose">×</button></div>
+      <div class="modal-search"><input id="modalSearch" placeholder="搜索图表名称…"></div>
+      <div class="modal-list" id="modalList"></div>
+    </div>
+  </div>
+
+  <div class="modal" id="modalLogic" style="display:none">
+    <div class="modal-box">
+      <div class="modal-head"><span>编辑定价逻辑</span><button id="logicClose">×</button></div>
+      <div class="modal-search" style="font-size:12px;color:var(--sub)">每行一条。三种加粗标记：<code>**红**</code> 红色加粗 · <code>@@蓝@@</code> 蓝色加粗 · <code>%%绿%%</code> 绿色加粗。行首「供应：/需求：/核心：」自动蓝色加粗。可直接 <b>粘贴 / 拖拽图片</b>（自动压缩为内嵌图）。</div>
+      <div class="modal-list" style="padding:10px 16px 16px;">
+        <div id="logicInput" class="logic-editor" contenteditable="true" spellcheck="false"></div>
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:10px;">
+          <button class="abtn" id="logicSave">保存</button>
+          <button class="abtn" id="logicCancel">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modalHistory" style="display:none">
+    <div class="modal-box">
+      <div class="modal-head"><span>定价逻辑 · 历史编辑记录</span><button id="historyClose">×</button></div>
+      <div class="modal-list" id="historyList" style="padding:10px 16px 16px;"></div>
+    </div>
+  </div>
+
+  <div class="modal" id="modalReviewNote" style="display:none">
+    <div class="modal-box">
+      <div class="modal-head"><span>编辑复盘笔记</span><button id="reviewNoteClose">×</button></div>
+      <div class="modal-search" style="font-size:12px;color:var(--sub)">每行一条。三种加粗标记：<code>**红**</code> 红色加粗 · <code>@@蓝@@</code> 蓝色加粗 · <code>%%绿%%</code> 绿色加粗。</div>
+      <div class="modal-list" style="padding:10px 16px 16px;">
+        <textarea id="reviewNoteInput" style="width:100%; height:200px; border:1px solid var(--border); border-radius:8px; padding:10px; font-size:14px; line-height:1.7; font-family:inherit; resize:vertical; box-sizing:border-box;"></textarea>
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:10px;">
+          <button class="abtn" id="reviewNoteSave">保存</button>
+          <button class="abtn" id="reviewNoteCancel">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function loadECharts(){
+  var urls=[
+    "echarts.min.js",
+    "https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js",
+    "https://cdn.bootcdn.net/ajax/libs/echarts/5.5.0/echarts.min.js",
+    "https://unpkg.com/echarts@5.5.0/dist/echarts.min.js"
+  ];
+  var i=0;
+  function tryNext(){
+    if(i>=urls.length){document.getElementById("charts").innerHTML="<div style='padding:20px;color:#c00'>ECharts 加载失败，请检查网络后刷新。</div>";return;}
+    var s=document.createElement("script");
+    s.src=urls[i++];
+    s.onload=function(){ window.echarts ? init() : tryNext(); };
+    s.onerror=tryNext;
+    document.head.appendChild(s);
+  }
+  tryNext();
+})();
+
+var MONTHS=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+var PALETTE=['#5B8FF9','#61C6B5','#F6BD16','#9661BC','#78D3F8','#F08BB4','#65789B','#7cb305','#d48265','#E60000'];
+var YEAR_COLORS={"2016":"#94a3b8","2017":"#60a5fa","2018":"#34d399","2019":"#fbbf24","2020":"#f472b6","2021":"#12B5A6","2022":"#8B5CF6","2023":"#1E6FFF","2024":"#F59A23","2025":"#E60000","2026":"#1A1A1A"};
+function yearColor(y){ return YEAR_COLORS[String(y)] || "#888888"; }
+function fmt(v,dec){
+  if(v===null||v===undefined||isNaN(v)) return "—";
+  if(dec===0||dec===undefined||dec===null) return Math.round(v).toLocaleString('zh-CN');
+  return Number(v).toFixed(dec);
+}
+function chgCls(c){ if(c===null||c===undefined||c===0) return "flat"; return c>0?"up":"down"; }
+function arrow(c){ if(c===null||c===undefined||c===0) return "→"; return c>0?"▲":"▼"; }
+function dispCore(v, unit){
+  if(v===null||v===undefined||isNaN(v)) return "—";
+  if(unit==="万吨LCE") return (v/10000).toFixed(1);
+  return Number(v).toFixed(1);
+}
+function fmtByUnit(v, dec, unit){
+  if(unit==="万吨LCE") return dispCore(v, unit);
+  return fmt(v, dec);
+}
+function uid(){ return "c"+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36); }
+
+/* 多数据源（锂看板各页 JSON） */
+var SRC={
+  p1:{label:"日度价格", url:"data.json", indicators:null, xlabels:null, years:null, date:null},
+  p2:{label:"产量开工利润", url:"p2.json", indicators:null, xlabels:null, years:null, date:null},
+  p3:{label:"产业链库存", url:"p3.json", indicators:null, xlabels:null, years:null, date:null},
+  p6:{label:"全球锂资源", url:"p6.json", rows:null, years:null, demand:null},
+  p7:{label:"中国锂产业链平衡", url:"p7.json", sheets:null}
+};
+
+var allYears=[], yearVisible={}, charts=[], layout=[], dragFrom=null, currentPickIdx=null;
+var GROUPS=[], LIBMAP={};
+var LS_KEY="lcCoreLayoutV1";
+var LS_SAVED_KEY="lcCoreLayoutV1_saved";
+var CONTENT_KEY="lcCoreContentV1";
+var CONTENT_SAVED_KEY="lcCoreContentV1_saved";
+
+/* 线上共享内容（发布到 GitHub Pages 后他人可见）；本地草稿仅自己可见 */
+var ONLINE_CONTENT_URL="lc_core_content.json";
+var onlineContent=null;   // 线上已发布的内容载荷（含 savedAtISO）
+var onlineLayout=null;    // 线上已发布的布局 {v, savedAtISO}
+function pickNewer(a,b){
+  if(!a) return b; if(!b) return a;
+  var ta=a.savedAtISO?Date.parse(a.savedAtISO):0;
+  var tb=b.savedAtISO?Date.parse(b.savedAtISO):0;
+  return (ta>=tb)?a:b;   // 平局时线上优先
+}
+function pickLocalOrOnline(savedKey, autoKey, online){
+  var cand = online || null;
+  try{ var s=localStorage.getItem(savedKey); if(s) cand=pickNewer(cand, JSON.parse(s)); }catch(e){}
+  try{ var s2=localStorage.getItem(autoKey); if(s2) cand=pickNewer(cand, JSON.parse(s2)); }catch(e){}
+  return cand;
+}
+function fetchOnlineContent(){
+  // 拉取线上共享内容；失败（含 file:// 或离线）时静默回退为纯本地模式
+  try{
+    if(typeof fetch!=="function") return Promise.resolve(null);
+    return fetch(ONLINE_CONTENT_URL+"?t="+Date.now(),{cache:"no-store"})
+      .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+      .then(function(oc){ if(oc){ if(oc.content) onlineContent=oc.content; if(oc.layout) onlineLayout=oc.layout; } return oc; })
+      ["catch"](function(){ return null; });
+  }catch(e){ return Promise.resolve(null); }
+}
+
+/* 定价逻辑默认文本 */
+var DEFAULT_LOGIC=[
+  "供应：**锂盐厂原料库存与港口库存偏高，供给弹性来自回收料与进口矿**，矿端放量是核心慢变量",
+  "需求：新能源车与储能双轮驱动，但增速放缓，**动力电池去库压制短期需求**，关注下游补库节奏",
+  "核心：碳酸锂价格由「成本支撑（矿价）」与「库存周期」共同决定，@@紧盯锂盐厂开工率与港口库存变化@@"
+];
+var logicText=null;
+var rowNotes=[];
+var logicHistory=[];
+
+/* 默认布局：2D 行数组 */
+var DEFAULT_ITEMS=[
+  [{src:'p1', key:'主力收盘价'}, {src:'p1', key:'基差'}, {src:'p1', key:'总持仓量'}, {src:'p1', key:'总成交量'}],
+  [{src:'p2', key:'碳酸锂总产量'}, {src:'p3', key:'锂矿库存：锂盐厂原料库存（吨LCE）'}, {src:'p7', key:'bal::锂矿::prod'}, {src:'p7', key:'bal::碳酸锂::carb_prod'}]
+];
+function defaultLayout(){
+  return DEFAULT_ITEMS.map(function(row){ return row.map(function(it){ return {id:uid(), src:it.src, key:it.key, focus:false}; }); });
+}
+function layoutEnvelope(){ return {v:layout, savedAtISO:new Date().toISOString()}; }
+function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(layoutEnvelope())); }catch(e){} }
+function loadLayout(){
+  // 图表改名后的旧 key 自动迁移（如 9-1月差 → 11-1月差），避免存档卡片因 key 失效变成「未加载」
+  var KEY_ALIASES={"9-1月差":"11-1月差","碳酸锂总库存":"碳酸锂总库存（中样本）","碳酸锂：周度库存":"碳酸锂：周度库存（大样本）"};
+  function norm(it){
+    var key=it.key;
+    if(key && KEY_ALIASES[key]) key=KEY_ALIASES[key];
+    return {id:it.id||uid(), src:it.src, key:key, focus:!!it.focus};
+  }
+  // 兼容两种存储形态：{v, savedAtISO} 信封（现版）与裸数组（旧版，1D 每 4 张拆行 / 2D 行数组）
+  function read(k){
+    try{
+      var s=localStorage.getItem(k);
+      if(s){
+        var o=JSON.parse(s);
+        var a=(o && !Array.isArray(o) && Array.isArray(o.v))?o.v:o;
+        if(Array.isArray(a)){
+          var meta=(o && !Array.isArray(o))?(o.savedAtISO||""):"";
+          if(a.length && !Array.isArray(a[0])){
+            var rows=[], GROUP=4;
+            for(var i=0;i<a.length;i+=GROUP){
+              rows.push(a.slice(i,i+GROUP).map(norm));
+            }
+            return {v:rows, savedAtISO:meta};
+          }
+          if(a.length && a.every(function(r){return Array.isArray(r);})){
+            return {v:a.map(function(row){ return row.map(norm); }), savedAtISO:meta};
+          }
+        }
+      }
+    }catch(e){}
+    return null;
+  }
+  var online=(onlineLayout && Array.isArray(onlineLayout.v))?onlineLayout
+            :(onlineLayout && Array.isArray(onlineLayout))?{v:onlineLayout, savedAtISO:""}
+            :null;
+  var cand=pickNewer(online, read(LS_SAVED_KEY));
+  cand=pickNewer(cand, read(LS_KEY));
+  var rows=(cand && cand.v) ? cand.v : defaultLayout();
+  return rows.map(function(row){ return row.map(norm); });
+}
+
+function fetchJson(u){
+  // 加时间戳绕过 GitHub Pages CDN 缓存（no-store 只约束浏览器，CDN 边缘节点仍可能回旧缓存）
+  return fetch(u+(u.indexOf("?")>=0?"&":"?")+"v="+Date.now(),{cache:"no-store"})
+    .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); });
+}
+
+/* ---- 定价逻辑 / 行标题 / 保存内容 ---- */
+function esc(s){ var d=document.createElement("div"); d.textContent=(s==null?"":String(s)); return d.innerHTML; }
+/* 富文本行净化：只保留 b/strong/u/i/em/span(仅颜色、加粗)/img(data 或 http)/br，其余标签拆掉 */
+function sanitizeLogicHtml(html){
+  var d=document.createElement("div");
+  d.innerHTML=String(html==null?"":html);
+  (function walk(node){
+    Array.prototype.slice.call(node.childNodes).forEach(function(n){
+      if(n.nodeType===3) return;
+      if(n.nodeType!==1){ if(n.parentNode) n.parentNode.removeChild(n); return; }
+      var tag=n.tagName.toLowerCase();
+      if(tag==="script"||tag==="style"||tag==="iframe"||tag==="object"||tag==="embed"){ n.parentNode.removeChild(n); return; }
+      if(tag==="img"){
+        var src=n.getAttribute("src")||"";
+        if(!/^data:image\//i.test(src) && !/^https?:\/\//i.test(src)){ n.parentNode.removeChild(n); return; }
+        Array.prototype.slice.call(n.attributes).forEach(function(a){ if(a.name!=="src") n.removeAttribute(a.name); });
+        n.removeAttribute("onerror"); n.removeAttribute("onload");
+        return;
+      }
+      if(tag==="br") return;
+      if(tag==="b"||tag==="strong"||tag==="u"||tag==="i"||tag==="em"||tag==="span"){
+        walk(n);
+        var keep={};
+        var st=n.getAttribute("style")||"";
+        var m=st.match(/(^|[^-])color\s*:\s*([^;]+)/i);
+        if(m) keep.color=m[2].trim();
+        var bg=st.match(/background(?:-color)?\s*:\s*([^;]+)/i);
+        if(bg) keep.bg=bg[1].trim();
+        if(/font-weight\s*:\s*(bold|[6-9]00)/i.test(st) || tag==="b" || tag==="strong") keep.bold=true;
+        Array.prototype.slice.call(n.attributes).forEach(function(a){ n.removeAttribute(a.name); });
+        var css=(keep.color?"color:"+keep.color+";":"")+(keep.bg?"background-color:"+keep.bg+";":"")+(keep.bold?"font-weight:700;":"");
+        if(css) n.setAttribute("style",css);
+        return;
+      }
+      walk(n);
+      var p=n.parentNode;
+      while(n.firstChild) p.insertBefore(n.firstChild, n);
+      p.removeChild(n);
+    });
+  })(d);
+  return d.innerHTML;
+}
+function isRichLine(s){ return /<(img|span|b|strong|u|i|em|br)[\s>\/]/i.test(String(s||"")); }
+function logicLineToHtml(line){
+  var raw=String(line==null?"":line).trim();
+  if(!raw) return "";
+  if(isRichLine(raw)) return sanitizeLogicHtml(raw);
+  var s=esc(raw);
+  s=s.replace(/^([供应需求核心价格供需]+\s*[:：])/, '<b>$1</b>');
+  s=s.replace(/\*\*([^*]+)\*\*/g, '<span style="color:#e0301e;font-weight:700">$1</span>');
+  s=s.replace(/@@([^@]+)@@/g, '<span style="color:#0f4c81;font-weight:700">$1</span>');
+  s=s.replace(/%%([^%]+)%%/g, '<span style="color:#0a9a5c;font-weight:700">$1</span>');
+  return s;
+}
+/* 编辑区（contenteditable）：行 <-> HTML */
+function logicLinesToEditorHtml(lines){
+  var arr=(lines&&lines.length)?lines:[""];
+  return arr.map(function(l){ var h=logicLineToHtml(l); return "<div>"+(h||"<br>")+"</div>"; }).join("");
+}
+/* 编辑区(contenteditable) → 行数组：递归处理，兼容粘贴进来的 ul/ol 嵌套列表、h1-h6、表格等块级结构（各拍平为一行） */
+function editorHtmlToLines(editor){
+  if(!editor) return [];
+  var out=[""];
+  function add(part){ if(part) out[out.length-1]+=part; }
+  function newline(){ if(out[out.length-1]!=="") out.push(""); }
+  function splitBr(html){
+    String(html).split(/<br\s*\/?>/i).forEach(function(part,i){ if(i>0) newline(); add(part); });
+  }
+  var BLOCK_SEL="div,p,li,ul,ol,table,h1,h2,h3,h4,h5,h6,blockquote,pre";
+  function walk(node){
+    Array.prototype.forEach.call(node.childNodes, function(n){
+      if(n.nodeType===3){ add(esc(n.nodeValue)); return; }
+      if(n.nodeType!==1) return;
+      var tag=n.tagName.toLowerCase();
+      if(tag==="br"){ newline(); return; }
+      if(tag==="ul"||tag==="ol"){ walk(n); newline(); return; }
+      if(tag==="table"){
+        Array.prototype.forEach.call(n.querySelectorAll("td,th"), function(td){
+          splitBr(td.innerHTML); newline();
+        });
+        return;
+      }
+      if(tag==="div"||tag==="p"||tag==="li"){
+        newline();
+        if(n.querySelector(BLOCK_SEL)){ walk(n); newline(); return; }
+        splitBr(n.innerHTML); newline();
+        return;
+      }
+      if(/^h[1-6]$/.test(tag)||tag==="blockquote"||tag==="pre"){
+        newline(); walk(n); newline(); return;
+      }
+      add(n.outerHTML);
+    });
+  }
+  walk(editor);
+  return out.map(function(s){ return String(s).replace(/&nbsp;/g," ").trim(); })
+            .filter(function(s){ return s && !/^<br\s*\/?>$/i.test(s); });
+}
+function renderLogic(){
+  var list=document.getElementById("logicList");
+  if(!list) return;
+  var lines=logicText||DEFAULT_LOGIC;
+  list.innerHTML="";
+  lines.forEach(function(line){
+    var li=document.createElement("li");
+    li.innerHTML=logicLineToHtml(line);
+    if(li.children.length===1 && li.children[0].tagName==="IMG") li.className="li-img";
+    list.appendChild(li);
+  });
+}
+function rowNoteFor(cardId){
+  for(var i=0;i<rowNotes.length;i++){ if(rowNotes[i].cardId===cardId) return rowNotes[i]; }
+  return null;
+}
+function setRowNote(cardId, text){
+  var rn=rowNoteFor(cardId);
+  if(rn){ rn.text=text; } else { rowNotes.push({cardId:cardId, text:text}); }
+  saveContentAuto();
+}
+function contentPayload(){
+  return {logic: logicText||DEFAULT_LOGIC, rowNotes: rowNotes, history: logicHistory,
+          reviewText: reviewText||DEFAULT_REVIEW, reviewCards: reviewCards.map(function(c){ return {title:c.title, sel:c.sel.slice(), unifyY:!!c.unifyY}; }),
+          savedAt: new Date().toLocaleString('zh-CN'), savedAtISO: new Date().toISOString()};
+}
+function saveContentAuto(verbose){
+  try{ localStorage.setItem(CONTENT_KEY, JSON.stringify(contentPayload())); return true; }
+  catch(e){
+    if(verbose) alert("本地保存失败（可能是图片过多超出浏览器存储上限）："+(e&&e.name?e.name:e)+
+      "\n建议减少图片数量，或删除部分图片后重试；已保存到线上的内容不受影响。");
+    return false;
+  }
+}
+function loadContent(){
+  var data=pickLocalOrOnline(CONTENT_SAVED_KEY, CONTENT_KEY, onlineContent);
+  if(data){
+    if(Array.isArray(data.logic)&&data.logic.length) logicText=data.logic;
+    if(Array.isArray(data.rowNotes)) rowNotes=data.rowNotes;
+    if(Array.isArray(data.history)) logicHistory=data.history;
+    if(Array.isArray(data.reviewText)&&data.reviewText.length) reviewText=data.reviewText;
+    if(Array.isArray(data.reviewCards)){
+      data.reviewCards.slice(0, reviewCards.length).forEach(function(rc, i){
+        if(rc && typeof rc==="object"){
+          if(typeof rc.title==="string" && rc.title.trim()) reviewCards[i].title=rc.title.trim();
+          if(Array.isArray(rc.sel)){ reviewCards[i].sel=rc.sel.slice(0,3); for(var k=reviewCards[i].sel.length;k<3;k++) reviewCards[i].sel.push(""); }
+          reviewCards[i].unifyY=rc.unifyY===true;
+        }
+      });
+    } else if(Array.isArray(data.reviewSel)){
+      reviewCards[0].sel=data.reviewSel.slice(0,3); for(var k=reviewCards[0].sel.length;k<3;k++) reviewCards[0].sel.push("");
+    }
+  }
+  renderLogic();
+  renderReviewNoteBox();
+}
+
+function openLogicEdit(){
+  var ed=document.getElementById("logicInput");
+  ed.innerHTML=logicLinesToEditorHtml(logicText||DEFAULT_LOGIC);
+  document.getElementById("modalLogic").style.display="flex";
+  setTimeout(function(){
+    ed.focus();
+    try{ var r=document.createRange(); r.selectNodeContents(ed); r.collapse(false);
+      var s=window.getSelection(); s.removeAllRanges(); s.addRange(r); ed.scrollTop=ed.scrollHeight; }catch(e){}
+  }, 50);
+}
+function closeLogicEdit(){ document.getElementById("modalLogic").style.display="none"; }
+function saveLogicEdit(){
+  var ed=document.getElementById("logicInput");
+  var lines=editorHtmlToLines(ed).map(function(s){ return sanitizeLogicHtml(s); })
+    // 行内有文字 或 含图片 都保留（纯图片行不能被当空行丢弃）
+    .filter(function(s){ return s && (s.replace(/<img\s[^>]*>/gi,"").replace(/<[^>]*>/g,"").trim() || /<img/i.test(s)); });
+  if(!lines.length){ alert("未识别到内容：请输入文字，或重新粘贴图片后保存。"); return; }
+  if(JSON.stringify(lines)!==JSON.stringify(logicText||DEFAULT_LOGIC)){
+    // 历史记录不保存图片 base64，避免 localStorage 膨胀
+    var hist=lines.map(function(l){ return l.replace(/<img\s[^>]*>/gi, "[图片]"); });
+    logicHistory.unshift({date:new Date().toLocaleString('zh-CN'), text:hist});
+    if(logicHistory.length>50) logicHistory.pop();
+  }
+  logicText=lines.slice();
+  saveContentAuto(true);
+  renderLogic();
+  closeLogicEdit();
+}
+function openLogicHistory(){
+  var list=document.getElementById("historyList");
+  list.innerHTML="";
+  if(!logicHistory.length){
+    list.innerHTML='<div style="padding:20px;color:var(--sub);text-align:center">暂无历史记录（编辑并保存定价逻辑后自动记录）</div>';
+    document.getElementById("modalHistory").style.display="flex";
+    return;
+  }
+  logicHistory.forEach(function(h){
+    var item=document.createElement("div");
+    item.style.cssText='border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:10px; background:#fafbfd;';
+    var hd=document.createElement("div");
+    hd.style.cssText='font-size:12px; color:var(--accent); font-weight:700; margin-bottom:6px;';
+    hd.textContent=h.date;
+    item.appendChild(hd);
+    var ul=document.createElement("ul");
+    ul.style.cssText='list-style:none; padding:0; margin:0;';
+    h.text.forEach(function(line){
+      var li=document.createElement("li");
+      li.style.cssText='font-size:13px; color:var(--text); padding-left:14px; position:relative; margin:3px 0;';
+      li.innerHTML='<span style="position:absolute; left:0; color:var(--accent);">●</span>'+logicLineToHtml(line);
+      ul.appendChild(li);
+    });
+    item.appendChild(ul);
+    var rb=document.createElement("button");
+    rb.className="abtn"; rb.textContent="恢复此版本";
+    rb.style.cssText='margin-top:8px; font-size:12px; padding:3px 10px;';
+    rb.onclick=function(){ logicText=h.text.slice(); saveContentAuto(); renderLogic(); openLogicHistory(); };
+    item.appendChild(rb);
+    list.appendChild(item);
+  });
+  document.getElementById("modalHistory").style.display="flex";
+}
+
+/* ---- 指标统计（p1/p2/p3 用 stat） ---- */
+function computeStatMeta(ind){
+  var st=ind.stat||{};
+  var freq=(st.freq||'day');
+  var latest=st.latest!=null?st.latest:null;
+  var chg, pct;
+  if(freq==='week'){ chg=st.weekChg!=null?st.weekChg:null; pct=st.weekPct!=null?st.weekPct:null; }
+  else { chg=st.chg!=null?st.chg:null; pct=st.pct!=null?st.pct:null; }
+  var noWkChg=/周度库存变化/.test(ind.title||'');
+  return {freq:freq, dec:(ind.dec==null?2:ind.dec), latest:latest, unit:ind.unit||'', chg:chg, pct:pct, date:st.latestDate||'', cls:chgCls(chg), noWkChg:noWkChg};
+}
+/* 月度指标 meta：最新实际、年度实际累计（剔除虚线预测）、环比%、同比%、累计同比% */
+function calcMonthMeta(monthVals, unit, dec){
+  var NOW=new Date(); var CUR_M=NOW.getMonth()+1;
+  var years=Object.keys(monthVals).map(Number).sort();
+  dec=(dec==null?2:dec);
+  if(!years.length) return {freq:'month', dec:dec, latest:null, cum:null, momPct:null, yoyPct:null, cumYoy:null, unit:unit, date:''};
+  var ly=years[years.length-1];
+  var arrThis=monthVals[String(ly)]||[];
+  var arrPrev=monthVals[String(ly-1)]||[];
+  /* 实际月份截断：最新年中，实际月 = 1..(CUR_M-1)；超出部分为预测（不计入） */
+  var mActual=0;
+  for(var mi=1; mi<=12; mi++){
+    if(mi>CUR_M-1) break;
+    var v=(arrThis[mi-1]!=null && !isNaN(arrThis[mi-1]))?arrThis[mi-1]:null;
+    if(v!=null) mActual=mi;
+  }
+  if(mActual===0){ for(var mi2=1; mi2<=12; mi2++){ if(arrThis[mi2-1]!=null && !isNaN(arrThis[mi2-1])) mActual=mi2; } }
+  if(mActual===0) return {freq:'month', dec:dec, latest:null, cum:null, momPct:null, yoyPct:null, cumYoy:null, unit:unit, date:''};
+  var latest=arrThis[mActual-1];
+  var cumThis=0; for(var i=0;i<mActual;i++){ if(arrThis[i]!=null && !isNaN(arrThis[i])) cumThis+=arrThis[i]; }
+  var prevM=(mActual>=2)?arrThis[mActual-2]:null;
+  var momPct=(prevM!=null && prevM!==0)?(latest-prevM)/Math.abs(prevM)*100:null;
+  var yoyV=(arrPrev[mActual-1]!=null && !isNaN(arrPrev[mActual-1]))?arrPrev[mActual-1]:null;
+  var yoyPct=(yoyV!=null && yoyV!==0)?(latest-yoyV)/Math.abs(yoyV)*100:null;
+  var cumPrev=0; for(var j=0;j<mActual;j++){ if(arrPrev[j]!=null && !isNaN(arrPrev[j])) cumPrev+=arrPrev[j]; }
+  var cumYoy=(cumPrev!==0)?(cumThis-cumPrev)/Math.abs(cumPrev)*100:null;
+  var dateStr=ly+'年'+(mActual===12?'全年':('1-'+mActual+'月'));
+  return {freq:'month', dec:dec, latest:latest, cum:cumThis, momPct:momPct, yoyPct:yoyPct, cumYoy:cumYoy, unit:unit, date:dateStr};
+}
+/* 将日序季节图 series（[[day,val]...]）转换为按月值数组（索引=月份-1） */
+function seriesToMonthVals(ind){
+  var s=ind.series||{}; var out={};
+  Object.keys(s).forEach(function(y){
+    var arr=s[y]||[];
+    out[y]=arr.map(function(p){ return (p&&p.length>=2)?p[1]:null; });
+  });
+  return out;
+}
+/* 单个比率小标签（带涨跌色） */
+function chgSpan(pct, label){
+  var cls=chgCls(pct); var sgn=pct>0?'+':'';
+  return '<span class="chg '+cls+'">'+label+' '+sgn+pct.toFixed(2)+'%</span>';
+}
+/* 根据频率渲染卡片标题下方 meta */
+function metaHTML(m){
+  if(!m) return '<span class="val">—</span>';
+  if(m.latest==null) return '<span class="val">—</span>';
+  var dec=(m.dec==null?2:m.dec);
+  if(m.freq==='month'){
+    var parts=[];
+    parts.push('<span class="val">'+fmtByUnit(m.latest,dec,m.unit)+'<span class="unit"> '+(m.unit||'')+'</span></span>');
+    if(m.cum!=null) parts.push('<span class="sub">累计 '+fmtByUnit(m.cum,dec,m.unit)+'<span class="unit"> '+(m.unit||'')+'</span></span>');
+    if(m.momPct!=null) parts.push(chgSpan(m.momPct,'环比'));
+    if(m.yoyPct!=null) parts.push(chgSpan(m.yoyPct,'同比'));
+    if(m.cumYoy!=null) parts.push(chgSpan(m.cumYoy,'累计同比'));
+    if(m.date) parts.push('<span class="dt">'+m.date+'</span>');
+    return parts.join('');
+  }
+  if(m.noWkChg){
+    return '<span class="val">'+fmtByUnit(m.latest,dec,m.unit)+'<span class="unit"> '+(m.unit||'')+'</span></span>'+(m.date?'<span class="dt">'+m.date+'</span>':'');
+  }
+  var chgTxt='';
+  if(m.chg!=null){ var sgn=m.chg>0?'+':''; chgTxt='<span class="chg '+m.cls+'">'+arrow(m.chg)+' '+sgn+fmtByUnit(m.chg,dec,m.unit)+'（'+(m.pct!=null?sgn+m.pct.toFixed(2)+'%':'—')+'）</span>'; }
+  return '<span class="val">'+fmtByUnit(m.latest,dec,m.unit)+'<span class="unit"> '+(m.unit||'')+'</span></span>'+chgTxt+(m.date?'<span class="dt">'+m.date+'</span>':'');
+}
+
+/* ---- 图表库构建 ---- */
+function groupFromIndicators(label, src, inds, xlabels, years){
+  if(!inds) return;
+  var items=[];
+  Object.keys(inds).forEach(function(k){
+    var ind=inds[k];
+    var hideYears = (src==='p1' && k.indexOf('月差')>=0) ? ['2023'] : null;
+    var freq=(ind.stat&&ind.stat.freq)||'day';
+    var meta = (freq==='month') ? calcMonthMeta(seriesToMonthVals(ind), ind.unit||'', ind.dec==null?2:ind.dec) : computeStatMeta(ind);
+    items.push({
+      src:src, key:k, title:ind.title||k,
+      meta:meta,
+      hideYears:hideYears,
+      draw:function(div){ drawSeason(div, ind, xlabels, years, hideYears); }
+    });
+  });
+  GROUPS.push({label:label, items:items});
+}
+function buildLibrary(){
+  GROUPS=[]; LIBMAP={};
+  groupFromIndicators('日度价格','p1', SRC.p1.indicators, SRC.p1.xlabels, SRC.p1.years);
+  groupFromIndicators('产量开工利润','p2', SRC.p2.indicators, SRC.p2.xlabels, SRC.p2.years);
+  groupFromIndicators('产业链库存','p3', SRC.p3.indicators, SRC.p3.xlabels, SRC.p3.years);
+
+  /* p7：中国锂产业链平衡表 */
+  if(SRC.p7.sheets){
+    Object.keys(SRC.p7.sheets).forEach(function(sheetName){
+      var sh=SRC.p7.sheets[sheetName];
+      var sea=sh.seasonal||{};
+      var cols=sh.seasonalCols||[];
+      if(!cols.length) return;
+      var items=cols.map(function(sc){
+        var seaObj=sea[sc.key]||{};
+        var byYear={};
+        ['2023','2024','2025','2026'].forEach(function(y){ byYear[y]=(seaObj[y]?seaObj[y].slice(0,12):null); });
+        return {
+          src:'p7', key:'bal::'+sheetName+'::'+sc.key,
+          title:(sc.title||sc.label)+'（'+sheetName+'）',
+          meta:calcMonthMeta(byYear, sc.unit, sc.dec==null?2:sc.dec),
+          draw:function(div){ drawMonthSeason(div, byYear, 2); }
+        };
+      });
+      GROUPS.push({label:'平衡表·'+sheetName, items:items});
+    });
+  }
+
+  /* p6：分地区年度产量折线 */
+  if(SRC.p6.rows){
+    var years=SRC.p6.years.map(String);
+    var regMap={};
+    SRC.p6.rows.forEach(function(r){
+      var reg=r.region||'其他'; var vals=r.vals||[];
+      if(!regMap[reg]) regMap[reg]={};
+      years.forEach(function(y,i){ regMap[reg][y]=(regMap[reg][y]||0)+(vals[i]||0); });
+    });
+    var regions=Object.keys(regMap);
+    var seriesList=regions.map(function(reg,ri){
+      return {name:reg, color:yearColor2(ri), data:years.map(function(y){return regMap[reg][y];})};
+    });
+    var totals=years.map(function(y){ var s=0; regions.forEach(function(reg){s+=regMap[reg][y]||0;}); return s; });
+    var m=totals.length-1;
+    var chg=totals[m]-totals[m-1];
+    var pct=totals[m-1]?(totals[m]-totals[m-1])/totals[m-1]*100:null;
+    GROUPS.push({label:'全球锂资源（分地区年度产量）', items:[{
+      src:'p6', key:'region',
+      title:'全球锂资源产量（分地区·年度合计）',
+      meta:{latest:totals[m], unit:'', chg:chg, pct:pct, date:years[m]+'年', cls:chgCls(chg)},
+      draw:function(div){ drawLine(div, years, seriesList); }
+    }]});
+  }
+
+  GROUPS.forEach(function(g){ g.items.forEach(function(it){ LIBMAP[it.src+'|'+it.key]=it; }); });
+}
+function yearColor2(i){ return PALETTE[((i%PALETTE.length)+PALETTE.length)%PALETTE.length]; }
+
+/* ---- 渲染：日序季节图（p1/p2/p3） ---- */
+function drawSeason(div, ind, xlabels, years, hideYears){
+  var c=echarts.init(div);
+  var n=years.length, series=[], legend=[];
+  years.forEach(function(y){
+    if(!yearVisible[String(y)]) return;
+    if(hideYears && hideYears.indexOf(String(y))>=0) return;
+    var pts=ind.series[String(y)];
+    if(!pts||!pts.length) return;
+    legend.push(String(y));
+    var isLatest=(String(y)===String(years[n-1]));
+    series.push({
+      name:String(y), type:"line", showSymbol:false, connectNulls:true, data:pts,
+      lineStyle:{width:isLatest?2.2:1.4, color:yearColor(y)},
+      itemStyle:{color:yearColor(y)}, emphasis:{focus:"series"}, z:isLatest?10:5,
+      endLabel:{show:isLatest, fontSize:10, color:yearColor(y), formatter:function(p){ return fmt(p.value[1], ind.dec); }}
+    });
+  });
+  c.setOption({
+    animation:false,
+    grid:{left:8,right:14,top:26,bottom:4,containLabel:true},
+    legend:{show:true, top:0, right:0, itemWidth:14, itemHeight:2, icon:"rect", textStyle:{fontSize:11,color:"#6b7686"}, data:legend},
+    tooltip:{trigger:"axis", confine:true, formatter:function(ps){
+      if(!ps.length) return "";
+      var lab=xlabels[ps[0].value[0]];
+      var s=parseInt(lab.slice(0,2),10)+"月"+parseInt(lab.slice(3),10)+"日";
+      ps.sort(function(a,b){return Number(b.seriesName)-Number(a.seriesName);});
+      ps.forEach(function(p){ s+="<br>"+p.marker+p.seriesName+"年： <b>"+fmt(p.value[1], ind.dec)+"</b>"; });
+      return s;
+    }},
+    xAxis:{type:"value", min:0, max:365, interval:1, axisLabel:{fontSize:10,color:"#8a93a3", formatter:function(v){ return MONTH_TICK(v, xlabels); }}, axisTick:{show:false}, axisLine:{lineStyle:{color:"#dde3ec"}}, splitLine:{show:false}},
+    yAxis:{type:"value", scale:true, axisLabel:{fontSize:10,color:"#8a93a3", formatter:function(v){ return Math.abs(v)>=10000?(v/10000)+"万":(Math.abs(v)>=1000?(v/1000)+"k":v); }}, splitLine:{lineStyle:{color:"#eef1f6"}}},
+    series:series
+  });
+  charts.push(c);
+}
+function MONTH_TICK(v, xlabels){
+  if(!xlabels||!xlabels[v]) return "";
+  var lab=xlabels[v];
+  if(lab.slice(3)==="01") return parseInt(lab.slice(0,2),10)+"月";
+  return "";
+}
+/* ---- 渲染：月轴季节图（平衡表等） ---- */
+function drawMonthSeason(div, byYear, dec){
+  var c=echarts.init(div);
+  var years=Object.keys(byYear).map(Number).sort();
+  var legend=[], series=[];
+  var NOW=new Date(); var CUR_Y=NOW.getFullYear(); var CUR_M=NOW.getMonth()+1;
+  years.forEach(function(y){
+    if(!yearVisible[String(y)]) return;
+    var arr=byYear[String(y)]||[];
+    legend.push(String(y));
+    var isLast=String(y)===String(years[years.length-1]);
+    var col=yearColor(y);
+    var predStart=(y<CUR_Y)?13:((y===CUR_Y)?CUR_M:1);
+    var actual=[], pred=[];
+    for(var mi=0; mi<12; mi++){
+      var v=arr[mi], mnum=mi+1;
+      actual.push(mnum <= predStart-1 ? v : null);
+      pred.push(mnum >= predStart-1 ? v : null);
+    }
+    series.push({name:String(y), type:"line", connectNulls:false, symbol:"circle", symbolSize:4,
+      data:actual, lineStyle:{width:isLast?2.2:1.4, color:col}, itemStyle:{color:col}, emphasis:{focus:"series"}});
+    if(pred.some(function(v){ return v!=null; })){
+      series.push({name:String(y), type:"line", connectNulls:false, symbol:"circle", symbolSize:4,
+        data:pred, lineStyle:{width:isLast?2.2:1.4, type:"dashed", color:col}, itemStyle:{color:col}, emphasis:{focus:"series"}});
+    }
+  });
+  function tip(ps){
+    if(!ps.length) return "";
+    var seen={};
+    ps.forEach(function(p){ if(p.seriesName && p.value!=null && !(typeof p.value==='number' && isNaN(p.value))) seen[p.seriesName]=p; });
+    var s=ps[0].axisValue;
+    Object.keys(seen).sort(function(a,b){return Number(b)-Number(a);}).forEach(function(name){
+      var p=seen[name];
+      s+="<br>"+p.marker+name+"年： <b>"+fmt(p.value, dec||0)+"</b>";
+    });
+    return s;
+  }
+  c.setOption({
+    animation:false,
+    grid:{left:8,right:14,top:26,bottom:6,containLabel:true},
+    legend:{show:true, top:0, right:0, itemWidth:14, itemHeight:2, icon:"rect", textStyle:{fontSize:11,color:"#6b7686"}, data:legend},
+    tooltip:{trigger:"axis", confine:true, formatter:tip},
+    xAxis:{type:"category", data:MONTHS, axisLabel:{fontSize:10,color:"#8a93a3"}, axisLine:{lineStyle:{color:"#dde3ec"}}, axisTick:{show:false}},
+    yAxis:{type:"value", scale:true, axisLabel:{fontSize:10,color:"#8a93a3"}, splitLine:{lineStyle:{color:"#eef1f6"}}},
+    series:series
+  });
+  charts.push(c);
+}
+function drawLine(div, years, seriesList){
+  var c=echarts.init(div);
+  var series=seriesList.map(function(s){
+    return {name:s.name, type:"line", smooth:true, symbol:"none", connectNulls:true, data:s.data,
+      lineStyle:{width:2, color:s.color}, itemStyle:{color:s.color}, emphasis:{focus:"series"}};
+  });
+  c.setOption({
+    animation:false,
+    grid:{left:8,right:14,top:26,bottom:6,containLabel:true},
+    legend:{show:true, top:0, right:0, itemWidth:14, itemHeight:2, icon:"rect", textStyle:{fontSize:11,color:"#6b7686"}, data:seriesList.map(function(s){return s.name;})},
+    tooltip:{trigger:"axis", confine:true, formatter:function(ps){
+      if(!ps.length) return "";
+      var s=ps[0].axisValue+"年";
+      ps.sort(function(a,b){return Number(b.seriesName)-Number(a.seriesName);});
+      ps.forEach(function(p){ s+="<br>"+p.marker+p.seriesName+"： <b>"+fmt(p.value,0)+"</b>"; });
+      return s;
+    }},
+    xAxis:{type:"category", data:years, axisLabel:{fontSize:10,color:"#8a93a3"}, axisLine:{lineStyle:{color:"#dde3ec"}}, axisTick:{show:false}},
+    yAxis:{type:"value", scale:true, axisLabel:{fontSize:10,color:"#8a93a3"}, splitLine:{lineStyle:{color:"#eef1f6"}}},
+    series:series
+  });
+  charts.push(c);
+}
+
+function init(){
+  fetchOnlineContent().then(function(){
+  return Promise.allSettled([ fetchJson(SRC.p1.url), fetchJson(SRC.p2.url), fetchJson(SRC.p3.url), fetchJson(SRC.p6.url), fetchJson(SRC.p7.url) ])
+    .then(function(res){
+      if(res[0].status==="fulfilled"){ var d=res[0].value; SRC.p1.indicators=d.indicators; SRC.p1.xlabels=d.xlabels; SRC.p1.years=d.years; SRC.p1.date=d.latestDataDate; }
+      if(res[1].status==="fulfilled"){ var d2=res[1].value; SRC.p2.indicators=d2.indicators; SRC.p2.xlabels=d2.xlabels; SRC.p2.years=d2.years; SRC.p2.date=d2.latestDataDate; }
+      if(res[2].status==="fulfilled"){ var d3=res[2].value; SRC.p3.indicators=d3.indicators; SRC.p3.xlabels=d3.xlabels; SRC.p3.years=d3.years; SRC.p3.date=d3.latestDataDate; }
+      if(res[3].status==="fulfilled"){ var d6=res[3].value; SRC.p6.rows=d6.rows; SRC.p6.years=d6.years; SRC.p6.demand=d6.demand; }
+      if(res[4].status==="fulfilled"){ var d7=res[4].value; SRC.p7.sheets=d7.sheets; }
+      var ys=new Set();
+      [SRC.p1.years, SRC.p2.years, SRC.p3.years].forEach(function(arr){ (arr||[]).forEach(function(y){ ys.add(String(y)); }); });
+      if(SRC.p6.years) SRC.p6.years.forEach(function(y){ ys.add(String(y)); });
+      if(SRC.p7.sheets){ ['2023','2024','2025','2026'].forEach(function(y){ ys.add(String(y)); }); }
+      allYears=Array.from(ys).sort();
+      allYears.forEach(function(y){ yearVisible[y]=(y>='2023' && y<='2026'); });
+      document.getElementById("dataDate").textContent="数据截至 "+(SRC.p1.date||SRC.p2.date||SRC.p3.date||"");
+      buildLibrary();
+      buildReviewCatalog();
+      buildYearBar();
+      loadContent();
+      layout=loadLayout();
+      renderAll();
+      renderReviewCards();
+    })
+    .catch(function(e){ document.getElementById("charts").innerHTML="<div style='padding:20px;color:#c00'>初始化失败："+e.message+"</div>"; });
+  });
+}
+
+function renderAll(){
+  charts.forEach(function(c){ try{ c.dispose(); }catch(e){} });
+  charts=[];
+  var root=document.getElementById("charts");
+  root.innerHTML="";
+  if(!layout.length || (layout.length===1 && layout[0].length===0)){
+    root.innerHTML='<div style="padding:30px;color:#6b7686">暂无卡片，点击上方「＋ 新增一行」添加。</div>';
+    return;
+  }
+  layout.forEach(function(row, ri){
+    if(!row.length){ return; }
+    var rowEl=document.createElement("div"); rowEl.className="crow";
+    rowEl.style.gridTemplateColumns="repeat("+row.length+", 1fr)";
+    var firstId=row[0].id;
+    var header=document.createElement("div"); header.className="row-header";
+    var note=document.createElement("div");
+    note.className="row-note"; note.contentEditable="true";
+    note.setAttribute("data-ph","本行小结：点击输入总结 / 结论…");
+    var rn=rowNoteFor(firstId);
+    if(rn&&rn.text) note.textContent=rn.text;
+    (function(cid, el){
+      el.addEventListener("input", function(){ setRowNote(cid, el.textContent); });
+      el.addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); el.blur(); } });
+    })(firstId, note);
+    var tools=document.createElement("div"); tools.className="row-tools";
+    tools.innerHTML='<button title="整行上移">▲</button><button title="整行下移">▼</button><button title="在本行末尾新增卡片" class="add-card">＋ 新增卡片</button>';
+    var btns=tools.querySelectorAll("button");
+    btns[0].disabled=(ri===0);
+    btns[1].disabled=(ri===layout.length-1);
+    btns.forEach(function(b, bi){
+      if(bi===0) b.addEventListener("click", function(e){ e.stopPropagation(); moveRowUp(ri); });
+      else if(bi===1) b.addEventListener("click", function(e){ e.stopPropagation(); moveRowDown(ri); });
+      else b.addEventListener("click", function(e){ e.stopPropagation(); addCardToRow(ri); });
+    });
+    header.appendChild(note); header.appendChild(tools);
+    rowEl.appendChild(header);
+    row.forEach(function(item, ci){ rowEl.appendChild(makeCard(item, ri, ci)); });
+    root.appendChild(rowEl);
+  });
+  setTimeout(renderCardCharts, 0);
+}
+
+function renderCardCharts(){
+  document.querySelectorAll(".card .chart").forEach(function(div){
+    var cfg=div._chart; if(!cfg) return;
+    if(cfg.def && cfg.def.draw) cfg.def.draw(div);
+    delete div._chart;
+  });
+}
+
+function migrateRowNote(oldId, newId){
+  var rn=rowNoteFor(oldId);
+  if(rn) rn.cardId=newId;
+}
+function moveRowUp(ri){
+  if(ri<=0 || ri>=layout.length) return;
+  var t=layout[ri-1]; layout[ri-1]=layout[ri]; layout[ri]=t;
+  save(); saveContentAuto(); renderAll();
+}
+function moveRowDown(ri){
+  if(ri<0 || ri>=layout.length-1) return;
+  var t=layout[ri+1]; layout[ri+1]=layout[ri]; layout[ri]=t;
+  save(); saveContentAuto(); renderAll();
+}
+function addCardToRow(ri){
+  if(ri<0 || ri>=layout.length) return;
+  layout[ri].push({id:uid(), src:"p1", key:null, focus:false});
+  save(); saveContentAuto(); renderAll();
+}
+function moveCardUp(ri, ci){
+  if(ci>0){
+    var row=layout[ri], t=row[ci-1]; row[ci-1]=row[ci]; row[ci]=t;
+  } else if(ri>0){
+    var row=layout[ri], oldId=row[0].id, it=row.shift();
+    if(row.length>0) migrateRowNote(oldId, row[0].id);
+    if(row.length===0) layout.splice(ri,1);
+    layout[ri-1].push(it);
+  }
+  save(); renderAll();
+}
+function moveCardDown(ri, ci){
+  var row=layout[ri];
+  if(ci<row.length-1){
+    var t=row[ci+1]; row[ci+1]=row[ci]; row[ci]=t;
+  } else if(ri<layout.length-1){
+    var oldId=row[0].id, it=row.pop();
+    if(row.length>0) migrateRowNote(oldId, row[0].id);
+    if(row.length===0) layout.splice(ri,1);
+    layout[ri+1].unshift(it);
+  }
+  save(); renderAll();
+}
+function deleteCard(ri, ci){
+  var row=layout[ri], oldId=row[0].id;
+  row.splice(ci,1);
+  if(row.length>0 && ci===0) migrateRowNote(oldId, row[0].id);
+  if(row.length===0) layout.splice(ri,1);
+  save(); renderAll();
+}
+
+function makeCard(item, ri, ci){
+  var card=document.createElement("div");
+  var def=LIBMAP[item.src+'|'+item.key];
+  card.className="card"+(item.focus?" focus":"")+(def?"":" empty");
+
+  /* 卡片头 + ⋯ 菜单：正常卡片与「数据源未加载」卡片共用，保证坏卡片也能 编辑/移动/删除 */
+  function buildHead(titleText, draggable){
+    var head=document.createElement("div"); head.className="card-head"; head.draggable=!!draggable;
+    var ttl=document.createElement("div"); ttl.className="ttl"; ttl.textContent=titleText;
+    var menuBtn=document.createElement("button"); menuBtn.className="menu-btn"; menuBtn.title="操作"; menuBtn.innerHTML="⋯";
+    var menu=document.createElement("div"); menu.className="menu";
+    menu.innerHTML='<button data-act="pick" title="选择图表">选择</button>'+
+      '<button data-act="clear" title="清空为空白">清空</button>'+
+      '<button data-act="up" title="上移">上移</button>'+
+      '<button data-act="down" title="下移">下移</button>'+
+      '<button data-act="focus" title="关注(蓝框)" class="'+(item.focus?"on":"")+'">'+(item.focus?"★ 关注":"☆ 关注")+'</button>'+
+      '<button data-act="del" title="删除">删除</button>';
+    head.appendChild(ttl); head.appendChild(menuBtn); head.appendChild(menu);
+    menuBtn.addEventListener("click", function(e){
+      e.stopPropagation();
+      document.querySelectorAll(".card .menu.show").forEach(function(mm){ if(mm!==menu) mm.classList.remove("show"); });
+      menu.classList.toggle("show");
+    });
+    menu.addEventListener("click", function(e){
+      e.stopPropagation();
+      var b=e.target.closest("button"); if(!b) return;
+      var act=b.getAttribute("data-act");
+      if(act==="pick") openPicker(ri, ci);
+      else if(act==="clear"){ layout[ri][ci].key=null; layout[ri][ci].src='p1'; save(); renderAll(); }
+      else if(act==="up"){ moveCardUp(ri, ci); }
+      else if(act==="down"){ moveCardDown(ri, ci); }
+      else if(act==="focus"){ layout[ri][ci].focus=!layout[ri][ci].focus; save(); renderAll(); }
+      else if(act==="del"){ deleteCard(ri, ci); }
+    });
+    if(draggable) head.addEventListener("dragstart", function(e){ dragFrom={ri:ri, ci:ci}; e.dataTransfer.effectAllowed="move"; });
+    return head;
+  }
+
+  if(def){
+    card.appendChild(buildHead(def.title, true));
+
+    var meta=def.meta||{};
+    var m=document.createElement("div"); m.className="meta";
+    m.innerHTML=metaHTML(meta);
+    card.appendChild(m);
+
+    var div=document.createElement("div"); div.className="chart";
+    div._chart={def:def};
+    card.appendChild(div);
+  } else if(item.key){
+    /* 数据源未加载：仍渲染卡片头（可拖动）+ 完整菜单，避免坏卡片无法编辑/删除 */
+    var errHead=buildHead("（未加载："+item.src+"｜"+item.key+"）", true);
+    card.appendChild(errHead);
+    var err=document.createElement("div"); err.className="err"; err.textContent="（该图表数据源未加载："+item.src+"）";
+    card.appendChild(err);
+  } else {
+    var ph=document.createElement("button"); ph.className="pick"; ph.textContent="＋ 点击选择图表";
+    ph.onclick=function(){ openPicker(ri, ci); };
+    card.appendChild(ph);
+  }
+  card.addEventListener("dragover", function(e){ e.preventDefault(); });
+  card.addEventListener("drop", function(e){
+    e.preventDefault();
+    if(dragFrom===null || (dragFrom.ri===ri && dragFrom.ci===ci)) return;
+    var srcRow=layout[dragFrom.ri], srcOldId=srcRow[0].id;
+    var it=srcRow.splice(dragFrom.ci,1)[0];
+    var srcEmpty=srcRow.length===0;
+    if(!srcEmpty) migrateRowNote(srcOldId, srcRow[0].id);
+
+    var targetRi=(dragFrom.ri<ri && srcEmpty)?ri-1:ri;
+    var targetRow=layout[targetRi], targetOldId=targetRow[0].id;
+    targetRow.splice(ci,0,it);
+    if(ci===0) migrateRowNote(targetOldId, targetRow[0].id);
+
+    if(srcEmpty) layout.splice(dragFrom.ri,1);
+    dragFrom=null; save(); saveContentAuto(); renderAll();
+  });
+  card.addEventListener("dragend", function(){ dragFrom=null; });
+  return card;
+}
+
+/* 选择图表 modal */
+function openPicker(ri, ci){
+  currentPickIdx={ri:ri, ci:ci};
+  document.getElementById("modalSearch").value="";
+  renderPickerList("");
+  document.getElementById("modal").style.display="flex";
+}
+function closePicker(){ document.getElementById("modal").style.display="none"; currentPickIdx=null; }
+function renderPickerList(q){
+  q=(q||"").trim();
+  var list=document.getElementById("modalList");
+  list.innerHTML="";
+  GROUPS.forEach(function(g){
+    if(!g.items||!g.items.length) return;
+    var items=g.items;
+    if(q) items=items.filter(function(it){ return (it.key.indexOf(q)>=0)||(it.title&&it.title.indexOf(q)>=0); });
+    if(!items.length) return;
+    var gh=document.createElement("div"); gh.className="src-group";
+    gh.textContent=g.label+"（"+items.length+"）";
+    list.appendChild(gh);
+    items.forEach(function(it){
+      var el=document.createElement("div"); el.className="chart-item";
+      el.innerHTML='<span>'+it.title+'</span><span class="k">'+it.src+'</span>';
+      el.onclick=function(){
+        if(currentPickIdx!==null){
+          var r=layout[currentPickIdx.ri], c=currentPickIdx.ci;
+          r[c]={id:uid(), src:it.src, key:it.key, focus:false};
+        }
+        save(); closePicker(); renderAll();
+      };
+      list.appendChild(el);
+    });
+  });
+  if(!list.children.length){
+    var empty=document.createElement("div"); empty.className="src-group"; empty.textContent="无匹配 / 数据源未加载";
+    list.appendChild(empty);
+  }
+}
+
+function buildYearBar(){
+  var bar=document.getElementById("ybar");
+  bar.innerHTML="";
+  allYears.forEach(function(y){
+    var b=document.createElement("button");
+    b.className="ybtn"+(yearVisible[y]?"":" off");
+    b.innerHTML='<span class="dot" style="background:'+yearColor(y)+'"></span>'+y+'年';
+    b.onclick=function(){
+      yearVisible[y]=!yearVisible[y];
+      b.classList.toggle("off",!yearVisible[y]);
+      renderAll();
+    };
+    bar.appendChild(b);
+  });
+}
+
+/* ============ 复盘板块 ============ */
+var REVIEW_CATALOG=[], reviewCatalogMap={};
+var REVIEW_PALETTE=["#1E6FFF","#E0301E","#2a3345","#0a9a5c","#8B5CF6","#F59A23"];
+var reviewText=null;
+/* 复盘对比图实例改由各卡片 reviewCards[i].chart 管理，不再用全局 reviewChart */
+var reviewCards=[
+  {title:"跨页数据对比", sel:["","",""], chart:null, unifyY:false},
+  {title:"跨页数据对比 二", sel:["","",""], chart:null, unifyY:false},
+  {title:"跨页数据对比 三", sel:["","",""], chart:null, unifyY:false}
+];
+var DEFAULT_REVIEW=[
+  "复盘：**记录关键判断与事后验证**，用 **红** / @@蓝@@ / %%绿%% 区分结论、驱动、风险",
+  "供应：",
+  "需求：",
+  "核心："
+];
+function dailySeriesToMap(series, xlabels){
+  var out={};
+  Object.keys(series||{}).forEach(function(y){
+    (series[y]||[]).forEach(function(pt){
+      var di=pt[0], v=pt[1];
+      if(v===null||v===undefined||isNaN(v)) return;
+      var md=(xlabels&&xlabels[di]);
+      if(!md) return;
+      out[y+'-'+md]=v;
+    });
+  });
+  return out;
+}
+function monthlySeriesToMap(seriesObj){
+  var out={};
+  Object.keys(seriesObj||{}).forEach(function(y){
+    var arr=seriesObj[y]||[];
+    for(var i=0;i<arr.length && i<12;i++){
+      var v=arr[i];
+      if(v===null||v===undefined||isNaN(v)) continue;
+      var m=('0'+(i+1)).slice(-2);
+      out[y+'-'+m+'-01']=v;
+    }
+  });
+  return out;
+}
+function buildReviewCatalog(){
+  REVIEW_CATALOG=[]; reviewCatalogMap={};
+  var groups=[];
+  if(SRC.p1.indicators) groups.push({page:"日度价格", src:"p1", inds:SRC.p1.indicators, xl:SRC.p1.xlabels, kind:"daily"});
+  if(SRC.p2.indicators) groups.push({page:"产量开工利润", src:"p2", inds:SRC.p2.indicators, xl:SRC.p2.xlabels, kind:"daily"});
+  if(SRC.p3.indicators) groups.push({page:"产业链库存", src:"p3", inds:SRC.p3.indicators, xl:SRC.p3.xlabels, kind:"daily"});
+  if(SRC.p7.sheets){
+    Object.keys(SRC.p7.sheets).forEach(function(sheetName){
+      var sh=SRC.p7.sheets[sheetName];
+      var sea=sh.seasonal||{};
+      var cols=sh.seasonalCols||[];
+      if(!cols.length) return;
+      var inds={};
+      cols.forEach(function(sc){ inds[sc.key]={title:sc.title||sc.label, unit:sc.unit, dec:2, seriesObj:sea[sc.key]||{}}; });
+      groups.push({page:"平衡表·"+sheetName, src:"p7", inds:inds, kind:"monthly"});
+    });
+  }
+  var idx=0;
+  groups.forEach(function(g){
+    if(!g.inds) return;
+    Object.keys(g.inds).forEach(function(k){
+      var ind=g.inds[k];
+      var full = g.kind==="daily" ? dailySeriesToMap(ind.series, g.xl) : monthlySeriesToMap(ind.seriesObj);
+      if(!Object.keys(full).length) return;
+      var id=g.src+"|"+k;
+      var entry={ id:id, page:g.page, name:ind.title||k, unit:ind.unit||"", dec:ind.dec==null?2:ind.dec, series:full, color:REVIEW_PALETTE[idx%REVIEW_PALETTE.length] };
+      REVIEW_CATALOG.push(entry); reviewCatalogMap[id]=entry; idx++;
+    });
+  });
+}
+function drawReviewChart(div, entries, unifyY){
+  if(!div) return;
+  if(!entries||!entries.length){ div.innerHTML='<div style="padding:30px;color:#6b7686;text-align:center">请在上方的下拉框中选择 1–3 个对比指标（可跨页）</div>'; return; }
+  if(!window.echarts){ div.innerHTML="<div style='padding:20px;color:#c00'>ECharts 未加载</div>"; return; }
+  unifyY=!!unifyY;
+  var fixedColors=["#1E6FFF","#E0301E","#2a3345"];
+  div.style.height='100%';
+  var c=echarts.init(div);
+  var series=[], legend=[], yAxisDefs=[], nameMap={};
+  var allDates=[];
+  entries.forEach(function(en, i){
+    var color=fixedColors[i%fixedColors.length];
+    nameMap[en.name]=en;
+    legend.push(en.name);
+    var data=Object.keys(en.series||{}).sort().map(function(d){ allDates.push(d); return [d, en.series[d]]; });
+    if(unifyY){
+      series.push({name:en.name, type:"line", showSymbol:false, connectNulls:true, yAxisIndex:0, data:data, lineStyle:{width:1.8,color:color}, itemStyle:{color:color}, emphasis:{focus:"series"}});
+    } else {
+      var isLeft=i===0, isRight=i>0;
+      yAxisDefs.push({
+        type:"value", name:en.unit||"", scale:true,
+        position: isLeft?"left":"right",
+        offset: i>=2 ? (i-1)*36 : 0,
+        nameTextStyle:{fontSize:10,color:color,padding:isLeft?[0,0,0,6]:[0,6,0,0]},
+        axisLine:{show:true,lineStyle:{color:color,width:1.5}},
+        axisTick:{show:true,lineStyle:{color:color},inside:true},
+        axisLabel:{fontSize:10,color:color,inside:true, formatter:function(v){ return Math.abs(v)>=10000?(v/10000)+"万":(Math.abs(v)>=1000?(v/1000)+"k":v); }},
+        splitLine:{show:i===0, lineStyle:{color:"#eef1f6"}}
+      });
+      series.push({name:en.name, type:"line", showSymbol:false, connectNulls:true, yAxisIndex:i, data:data, lineStyle:{width:1.8,color:color}, itemStyle:{color:color}, emphasis:{focus:"series"}});
+    }
+  });
+  if(unifyY){
+    var commonUnit = entries.map(function(e){return e.unit||"";}).filter(Boolean).join(" / ");
+    yAxisDefs=[{
+      type:"value", name:commonUnit, scale:true, position:"left",
+      nameTextStyle:{fontSize:10,color:"#5a6675",padding:[0,0,0,6]},
+      axisLine:{show:true,lineStyle:{color:"#5a6675",width:1.5}},
+      axisTick:{show:true,lineStyle:{color:"#5a6675"},inside:true},
+      axisLabel:{fontSize:10,color:"#5a6675",inside:true, formatter:function(v){ return Math.abs(v)>=10000?(v/10000)+"万":(Math.abs(v)>=1000?(v/1000)+"k":v); }},
+      splitLine:{show:true, lineStyle:{color:"#eef1f6"}}
+    }];
+  }
+  var startValue="2026-01-01", endValue=new Date().toISOString().slice(0,10);
+  if(allDates.length){
+    allDates.sort();
+    endValue=allDates[allDates.length-1];
+    if(allDates[0]>startValue) startValue=allDates[0];
+  }
+  var rightPad = unifyY ? 4 : (entries.length>=3 ? 78 : (entries.length===2 ? 42 : 4));
+  var pad2=function(n){return ("0"+n).slice(-2);};
+  c.setOption({
+    animation:false,
+    grid:{left:48, right:rightPad, top:26, bottom:22, containLabel:false},
+    legend:{show:true, top:2, left:"center", itemWidth:14, itemHeight:2, icon:"rect", textStyle:{fontSize:11,color:"#6b7686"}, data:legend},
+    tooltip:{trigger:"axis", confine:true, formatter:function(ps){
+      if(!ps.length) return "";
+      var s=ps[0].axisValueLabel;
+      ps.forEach(function(p){ var en=nameMap[p.seriesName]||{}; var dec=en.dec==null?2:en.dec; s+="<br>"+p.marker+p.seriesName+"： <b>"+fmt(p.value[1],dec)+"</b>"+(en.unit?(" "+en.unit):""); });
+      return s;
+    }},
+    xAxis:{type:"time", boundaryGap:false, axisLabel:{fontSize:10,color:"#8a93a3", formatter:{year:"{yyyy}",month:"{yyyy}-{MM}",day:"{MM}-{dd}"}}, axisTick:{show:false}, axisLine:{lineStyle:{color:"#dde3ec"}}, splitLine:{show:false}},
+    yAxis:yAxisDefs,
+    dataZoom:[
+      {type:"inside", xAxisIndex:0, startValue:startValue, endValue:endValue, zoomOnMouseWheel:true, moveOnMouseMove:true},
+      {type:"slider", xAxisIndex:0, startValue:startValue, endValue:endValue, height:14, bottom:2, borderColor:"#e3e8ef", fillerColor:"rgba(30,111,255,0.10)", handleSize:"120%", handleStyle:{color:"#1E6FFF",borderColor:"#1E6FFF"}, textStyle:{color:"#8a93a3",fontSize:9}, labelFormatter:function(v){ var d=new Date(v); return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()); }}
+    ],
+    series:series
+  });
+  setTimeout(function(){ try{ c.resize(); }catch(e){} }, 0);
+  return c;
+}
+function buildReviewOptions(cur){
+  var byPage={};
+  REVIEW_CATALOG.forEach(function(en){ (byPage[en.page]=byPage[en.page]||[]).push(en); });
+  var html='<option value="">— 对比项 —</option>';
+  Object.keys(byPage).forEach(function(p){
+    html+='<optgroup label="'+esc(p)+'">';
+    byPage[p].forEach(function(en){ html+='<option value="'+esc(en.id)+'"'+(en.id===cur?' selected':'')+'>'+esc(en.name)+'</option>'; });
+    html+='</optgroup>';
+  });
+  return html;
+}
+/* 复盘对比卡片容器：顶部 grid = 卡片0 + 笔记；底部 grid = 卡片1 + 卡片2 */
+function renderReviewCards(){
+  var top=document.getElementById("reviewGridTop"), bot=document.getElementById("reviewGridBottom");
+  if(!top||!bot) return;
+  top.innerHTML=""; bot.innerHTML="";
+  buildReviewCardEl(0, top);
+  var note=document.createElement("div"); note.className="review-card";
+  note.innerHTML='<div class="card-head"><span class="ttl">复盘笔记</span><button class="abtn" id="reviewNoteEdit">编辑</button></div><div class="review-text"><div class="logic" id="reviewNoteBox"><ul id="reviewNoteList"></ul></div></div>';
+  top.appendChild(note);
+  buildReviewCardEl(1, bot);
+  buildReviewCardEl(2, bot);
+  var nb=document.getElementById("reviewNoteEdit"); if(nb) nb.onclick=openReviewNoteEdit;
+  renderReviewNoteBox();
+}
+function buildReviewCardEl(idx, container){
+  var card=reviewCards[idx]; if(!card) return;
+  var wrap=document.createElement("div"); wrap.className="review-card";
+  var selHtml=""; for(var j=0;j<3;j++) selHtml+='<select class="review-sel"></select>';
+  var toggleId='reviewUnifyY'+idx;
+  wrap.innerHTML=
+    '<div class="card-head"><span class="ttl" contenteditable="true" spellcheck="false">'+esc(card.title)+'</span>'+
+    '<div class="actions">'+
+      '<label class="yaxis-toggle" for="'+toggleId+'"><input type="checkbox" id="'+toggleId+'" '+(card.unifyY?'checked':'')+'><span>统一纵轴</span></label>'+
+      '<button class="abtn review-save">保存</button><button class="abtn review-clear">清空</button></div></div>'+
+    '<div class="review-selectors">'+selHtml+'</div>'+
+    '<div class="review-chart" id="reviewChart'+idx+'"></div>';
+  container.appendChild(wrap);
+  var ttl=wrap.querySelector(".ttl");
+  ttl.addEventListener("input", function(){ card.title=ttl.textContent.trim()||("跨页数据对比 "+(idx+1)); saveContentAuto(); });
+  ttl.addEventListener("blur", function(){ var v=ttl.textContent.trim(); card.title=v||("跨页数据对比 "+(idx+1)); ttl.textContent=card.title; saveContentAuto(); });
+  var sels=wrap.querySelectorAll(".review-sel");
+  sels.forEach(function(sel, j){
+    sel.innerHTML=buildReviewOptions(card.sel[j]);
+    sel.onchange=function(){ card.sel[j]=sel.value||""; drawReviewChartForCard(idx); saveContentAuto(); };
+  });
+  var yaxisToggle=wrap.querySelector(".yaxis-toggle input");
+  yaxisToggle.onchange=function(){ card.unifyY=!!yaxisToggle.checked; drawReviewChartForCard(idx); saveContentAuto(); };
+  wrap.querySelector(".review-save").onclick=function(){
+    var b=this, orig=b.textContent;
+    try{
+      localStorage.setItem(CONTENT_SAVED_KEY, JSON.stringify(contentPayload()));
+      saveContentAuto();
+      var t=new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+      b.textContent="已保存 "+t; b.classList.add("saved");
+      setTimeout(function(){ b.textContent=orig; b.classList.remove("saved"); }, 2500);
+    }catch(e){ alert("保存失败："+e.message); }
+  };
+  wrap.querySelector(".review-clear").onclick=function(){ card.sel=["","",""]; var ss=wrap.querySelectorAll(".review-sel"); ss.forEach(function(s){ s.value=""; }); drawReviewChartForCard(idx); saveContentAuto(); };
+  drawReviewChartForCard(idx);
+}
+function drawReviewChartForCard(idx){
+  var card=reviewCards[idx]; if(!card) return;
+  var div=document.getElementById("reviewChart"+idx); if(!div) return;
+  if(card.chart){ try{ card.chart.dispose(); }catch(e){} card.chart=null; }
+  var entries=card.sel.filter(Boolean).map(function(id){ return reviewCatalogMap[id]; }).filter(Boolean);
+  card.chart=drawReviewChart(div, entries, card.unifyY);
+}
+/* 复盘笔记 */
+function renderReviewNoteBox(){
+  var ul=document.getElementById("reviewNoteList"); if(!ul) return;
+  ul.innerHTML="";
+  var lines=reviewText||DEFAULT_REVIEW;
+  lines.forEach(function(line){
+    var li=document.createElement("li");
+    var lead=(line.match(/^[\s\t]*/)||[""])[0];
+    var level=Math.floor(lead.replace(/\t/g,"  ").length/2);
+    if(level>0) li.style.paddingLeft=(level*18)+"px";
+    li.innerHTML=logicLineToHtml(line);
+    ul.appendChild(li);
+  });
+}
+function openReviewNoteEdit(){
+  var ta=document.getElementById("reviewNoteInput");
+  ta.value=(reviewText||DEFAULT_REVIEW).join("\n");
+  document.getElementById("modalReviewNote").style.display="flex";
+  setTimeout(function(){ ta.focus(); }, 50);
+}
+function closeReviewNoteEdit(){ document.getElementById("modalReviewNote").style.display="none"; }
+function saveReviewNoteEdit(){
+  var raw=document.getElementById("reviewNoteInput").value;
+  var lines=raw.split("\n").map(function(s){return s.replace(/\r/g,"");}).filter(function(s){return s.trim()!=="";});
+  if(!lines.length) return;
+  reviewText=lines.slice();
+  saveContentAuto();
+  renderReviewNoteBox();
+  closeReviewNoteEdit();
+}
+
+/* 事件绑定 */
+document.getElementById("addCard").onclick=function(){
+  layout.push([{id:uid(), src:"p1", key:null, focus:false}]);
+  save(); saveContentAuto(); renderAll();
+};
+document.getElementById("saveLayout").onclick=function(){
+  var b=this;
+  try{
+    localStorage.setItem(LS_SAVED_KEY, JSON.stringify(layoutEnvelope()));
+    var orig=b.textContent;
+    var t=new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+    b.textContent="已保存 "+t;
+    b.classList.add("saved");
+    setTimeout(function(){ b.textContent=orig; b.classList.remove("saved"); }, 2500);
+  }catch(e){ alert("保存失败："+e.message); }
+};
+document.getElementById("saveContent").onclick=function(){
+  var b=this;
+  try{
+    localStorage.setItem(CONTENT_SAVED_KEY, JSON.stringify(contentPayload()));
+    saveContentAuto();
+    var orig=b.textContent;
+    var t=new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+    b.textContent="已保存 "+t;
+    b.classList.add("saved");
+    setTimeout(function(){ b.textContent=orig; b.classList.remove("saved"); }, 2500);
+  }catch(e){ alert("保存失败："+e.message); }
+};
+document.getElementById("editLogic").onclick=openLogicEdit;
+document.getElementById("logicClose").onclick=closeLogicEdit;
+document.getElementById("logicCancel").onclick=closeLogicEdit;
+document.getElementById("logicSave").onclick=saveLogicEdit;
+document.getElementById("historyLogic").onclick=openLogicHistory;
+/* 定价逻辑编辑区：粘贴 / 拖拽图片 */
+(function bindLogicEditorImage(){
+  var ed=document.getElementById("logicInput");
+  if(!ed) return;
+  ed.addEventListener("paste", function(e){
+    var cd=e.clipboardData||window.clipboardData;
+    if(!cd) return;
+    var items=cd.items||[], files=[], i;
+    for(i=0;i<items.length;i++){
+      if(items[i] && items[i].type && items[i].type.indexOf("image/")===0){
+        var f=items[i].getAsFile(); if(f) files.push(f);
+      }
+    }
+    if(!files.length){
+      // 纯文本：去掉外部格式
+      e.preventDefault();
+      var txt=cd.getData?cd.getData("text/plain"):"";
+      document.execCommand("insertText", false, txt||"");
+      return;
+    }
+    e.preventDefault();
+    files.forEach(function(file){ compressImageToDataURL(file, function(url){ if(url) insertLogicImage(url); }); });
+  });
+  ed.addEventListener("dragover", function(e){ e.preventDefault(); ed.classList.add("dragover"); });
+  ed.addEventListener("dragleave", function(e){ ed.classList.remove("dragover"); });
+  ed.addEventListener("drop", function(e){
+    var dt=e.dataTransfer;
+    ed.classList.remove("dragover");
+    if(!dt) return;
+    var files=dt.files||[], has=false;
+    Array.prototype.forEach.call(files, function(f){
+      if(f && f.type && f.type.indexOf("image/")===0){ has=true; compressImageToDataURL(f, function(url){ if(url) insertLogicImage(url); }); }
+    });
+    if(has) e.preventDefault();
+  });
+})();
+function compressImageToDataURL(file, cb){
+  var fr=new FileReader();
+  fr.onload=function(){
+    var src=String(fr.result||"");
+    var img=new Image();
+    img.onload=function(){
+      try{
+        var w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+        var scale=Math.min(1, 1000/(w||1), 1000/(h||1));
+        var cv=document.createElement("canvas");
+        cv.width=Math.max(1,Math.round(w*scale)); cv.height=Math.max(1,Math.round(h*scale));
+        cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+        var out=cv.toDataURL("image/jpeg",0.82);
+        cb(out && out.length>2000 ? out : src);
+      }catch(err){ cb(src); }
+    };
+    img.onerror=function(){ cb(src); };
+    img.src=src;
+  };
+  fr.onerror=function(){ cb(""); };
+  fr.readAsDataURL(file);
+}
+function insertLogicImage(dataUrl){
+  var ed=document.getElementById("logicInput");
+  if(!ed) return;
+  ed.focus();
+  var html='<img src="'+dataUrl+'"/><br>';
+  var sel=window.getSelection();
+  if(sel && sel.rangeCount && ed.contains(sel.anchorNode)){
+    var r=sel.getRangeAt(0);
+    r.deleteContents();
+    var frag=r.createContextualFragment(html);
+    var last=frag.lastChild;
+    r.insertNode(frag);
+    if(last){ r.setStartAfter(last); r.collapse(true); sel.removeAllRanges(); sel.addRange(r); }
+  } else {
+    document.execCommand("insertHTML", false, html);
+  }
+}
+document.getElementById("historyClose").onclick=function(){ document.getElementById("modalHistory").style.display="none"; };
+document.getElementById("modalLogic").addEventListener("click", function(e){ if(e.target===this) closeLogicEdit(); });
+document.getElementById("modalHistory").addEventListener("click", function(e){ if(e.target===this) this.style.display="none"; });
+document.getElementById("modalClose").onclick=closePicker;
+document.getElementById("modal").addEventListener("click", function(e){ if(e.target===this) closePicker(); });
+document.getElementById("modalSearch").addEventListener("input", function(e){ renderPickerList(e.target.value); });
+window.addEventListener("resize", function(){ charts.forEach(function(c){ try{ c.resize(); }catch(e){} }); reviewCards.forEach(function(c){ if(c.chart){ try{ c.chart.resize(); }catch(e){} } }); });
+document.addEventListener("click", function(e){
+  if(e.target.closest(".menu-btn")) return;
+  document.querySelectorAll(".card .menu.show").forEach(function(m){ m.classList.remove("show"); });
+});
+/* 复盘事件 */
+document.getElementById("reviewNoteClose").onclick=closeReviewNoteEdit;
+document.getElementById("reviewNoteCancel").onclick=closeReviewNoteEdit;
+document.getElementById("reviewNoteSave").onclick=saveReviewNoteEdit;
+document.getElementById("modalReviewNote").addEventListener("click", function(e){ if(e.target===this) closeReviewNoteEdit(); });
+/* 复盘笔记编辑框：Tab 键插入缩进（2 空格 = 1 层级），渲染时按层级缩进突出 */
+document.getElementById("reviewNoteInput").addEventListener("keydown", function(e){
+  if(e.key==="Tab"){ e.preventDefault(); var s=this.selectionStart, en=this.selectionEnd; this.value=this.value.slice(0,s)+"  "+this.value.slice(en); this.selectionStart=this.selectionEnd=s+2; }
+});
+
+/* ===== 线上直推：GitHub git-data API（令牌仅存本浏览器 localStorage，不进页面源码） ===== */
+var GH_REPO="nekomorning/lithium-dashboard", GH_BRANCH="main", GH_TOKEN_KEY="gh_pat_lithium";
+function ghToken(){ try{ return localStorage.getItem(GH_TOKEN_KEY)||""; }catch(e){ return ""; } }
+function ghSetToken(t){ try{ localStorage.setItem(GH_TOKEN_KEY, t); }catch(e){} }
+function ghClearToken(){ try{ localStorage.removeItem(GH_TOKEN_KEY); }catch(e){} }
+function ghB64(s){ var b=new TextEncoder().encode(s), x=""; for(var i=0;i<b.length;i++){ x+=String.fromCharCode(b[i]); } return btoa(x); }
+function ghApi(method,path,body,token){
+  var h={"Authorization":"Bearer "+token,"Accept":"application/vnd.github+json","Content-Type":"application/json"};
+  var o={method:method,headers:h}; if(body!==undefined){ o.body=JSON.stringify(body); }
+  return fetch("https://api.github.com/"+path,o).then(function(r){
+    return r.text().then(function(t){ var d=null; try{ d=t?JSON.parse(t):null; }catch(e){}
+      if(!r.ok){ throw new Error((d&&d.message)||("HTTP "+r.status)); } return d; });
+  });
+}
+function ghCommitFile(fname,contentStr,msg){
+  var tk=ghToken(); if(!tk){ return Promise.reject(new Error("NO_TOKEN")); }
+  return ghApi("GET","repos/"+GH_REPO+"/git/refs/heads/"+GH_BRANCH,undefined,tk).then(function(ref){
+    var cs=ref.object.sha;
+    return ghApi("GET","repos/"+GH_REPO+"/git/commits/"+cs,undefined,tk).then(function(c){ return {cs:cs,tree:c.tree.sha}; });
+  }).then(function(a){
+    return ghApi("POST","repos/"+GH_REPO+"/git/blobs",{content:ghB64(contentStr),encoding:"base64"},tk).then(function(b){ return {tree:a.tree,cs:a.cs,blob:b.sha}; });
+  }).then(function(b){
+    return ghApi("POST","repos/"+GH_REPO+"/git/trees",{base_tree:b.tree,tree:[{path:fname,mode:"100644",type:"blob",sha:b.blob}]},tk).then(function(t){ return {tree:t.sha,cs:b.cs}; });
+  }).then(function(c){
+    return ghApi("POST","repos/"+GH_REPO+"/git/commits",{message:msg,tree:c.tree,parents:[c.cs]},tk);
+  }).then(function(cm){
+    return ghApi("PATCH","repos/"+GH_REPO+"/git/refs/heads/"+GH_BRANCH,{sha:cm.sha},tk).then(function(){ return cm.sha; });
+  });
+}
+function ghToast(msg){
+  var old=document.getElementById("ghToastBox"); if(old){ old.remove(); }
+  var d=document.createElement("div"); d.id="ghToastBox";
+  d.style.cssText="position:fixed;left:50%;bottom:36px;transform:translateX(-50%);background:#0f4c81;color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,.28);max-width:80vw;line-height:1.6";
+  d.textContent=msg; document.body.appendChild(d);
+  setTimeout(function(){ if(d&&d.parentNode){ d.remove(); } }, 6000);
+}
+function ghOpenTokenModal(onSaved, opt){
+  var ov=document.createElement("div");
+  ov.style.cssText="position:fixed;inset:0;background:rgba(15,20,28,.55);display:flex;align-items:center;justify-content:center;z-index:99998";
+  var box=document.createElement("div");
+  box.style.cssText="background:#fff;border-radius:12px;padding:20px 22px;width:min(520px,92vw);max-height:88vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.25);font-size:13px;color:#1f2733;line-height:1.75";
+  var has=!!ghToken();
+  box.innerHTML='<div style="font-size:15px;font-weight:700;margin-bottom:8px">设置 GitHub 令牌（用于一键发布到线上）</div>'+
+   '<div style="color:#6b7686;margin-bottom:12px">令牌只保存在你自己的浏览器 localStorage，<b>不会</b>写进页面源码，也不会发送给任何人。他人打开链接看不到、也拿不到你的令牌。</div>'+
+   '<div style="background:#f4f6fa;border:1px solid #e5e9f0;border-radius:8px;padding:10px 12px;margin-bottom:12px">'+
+   '到 <a href="https://github.com/settings/personal-access-tokens" target="_blank" rel="noopener" style="color:#2b7cff">GitHub → Settings → Developer settings → Fine-grained tokens</a> 创建令牌：<br>'+
+   '· Repository access：<b>Only select repositories → lithium-dashboard</b><br>'+
+   '· Permissions → Repository permissions：<b>Contents = Read and write</b><br>'+
+   '<span style="color:#d92626">务必按上面限定范围，切勿使用全权限的 classic token。</span></div>'+
+   (has?'<div style="color:#0a9a5c;margin-bottom:10px">当前已保存令牌。粘贴新的可覆盖。</div>':'')+
+   '<input id="ghTokInput" type="password" placeholder="粘贴 github_pat_… 令牌" style="width:100%;box-sizing:border-box;border:1px solid #dfe4ec;border-radius:8px;padding:9px 11px;font-size:13px;outline:none;margin-bottom:14px">'+
+   '<div style="display:flex;gap:8px;align-items:center;justify-content:space-between">'+
+   '<span id="ghTokClear" style="color:#8a93a3;font-size:12px;cursor:pointer;text-decoration:underline;'+(has?'':'display:none;')+'">清除已保存令牌</span>'+
+   '<span><button id="ghTokCancel" style="border:1px solid #dfe4ec;background:#fff;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer">取消</button> '+
+   '<button id="ghTokSave" style="border:0;background:#0f4c81;color:#fff;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer">保存</button></span></div>';
+  ov.appendChild(box); document.body.appendChild(ov);
+  var inp=box.querySelector("#ghTokInput"); setTimeout(function(){ inp.focus(); },60);
+  function close(){ ov.remove(); }
+  box.querySelector("#ghTokCancel").onclick=close;
+  ov.onclick=function(e){ if(e.target===ov){ close(); } };
+  box.querySelector("#ghTokClear").onclick=function(){ ghClearToken(); close(); ghToast("已清除已保存的令牌"); };
+  box.querySelector("#ghTokSave").onclick=function(){
+    var v=(inp.value||"").trim(); if(!v){ inp.style.borderColor="#d92626"; return; }
+    ghSetToken(v); close(); ghToast("令牌已保存（仅存本浏览器）"); if(onSaved){ onSaved(); }
+  };
+  inp.addEventListener("keydown",function(e){ if(e.key==="Enter"){ box.querySelector("#ghTokSave").click(); } });
+}
+function ghPublish(fname,payload,msg,btn){
+  function mark(txt){ if(btn){ if(!btn.dataset.ghOrig){ btn.dataset.ghOrig=btn.innerHTML; } btn.innerHTML=txt; } }
+  function done(){ if(btn){ btn.innerHTML=btn.dataset.ghOrig||btn.innerHTML; btn.disabled=false; } }
+  function push(){
+    if(btn){ btn.disabled=true; } mark("⏳ 正在提交…");
+    ghCommitFile(fname,JSON.stringify(payload,null,2),msg).then(function(sha){
+      mark("✓ 已提交 "+sha.slice(0,8));
+      ghToast("已提交到线上（commit "+sha.slice(0,8)+"）。GitHub Pages 约 1 分钟后更新，他人刷新即可看到。");
+      setTimeout(done,4000);
+    })["catch"](function(e){
+      done();
+      if(String(e.message)==="NO_TOKEN"){ ghOpenTokenModal(push); return; }
+      if(e.message && /401|Bad credentials/.test(e.message)){
+        ghToast("令牌无效或已过期，请重新设置。"); ghOpenTokenModal(push); return;
+      }
+      if(window.confirm("提交失败："+e.message+"\n\n是否改为下载 JSON，交给 AI 手动发布？")){
+        var blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+        var u=URL.createObjectURL(blob); var a=document.createElement("a");
+        a.href=u; a.download=fname; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function(){ URL.revokeObjectURL(u); },1000);
+      }
+    });
+  }
+  if(!ghToken()){ ghOpenTokenModal(push); return; }
+  push();
+}
+document.getElementById("publishCore").onclick=function(){
+  saveContentAuto();
+  var payload={ content: contentPayload(), layout: layoutEnvelope(), savedAtISO:new Date().toISOString() };
+  ghPublish("lc_core_content.json", payload, "核心逻辑页·可编辑内容更新", this);
+};
+document.getElementById("ghTokenBtn").onclick=function(){ ghOpenTokenModal(null); };
+</script>
+</body>
+</html>
