@@ -68,16 +68,10 @@ select:focus{outline:none; border-color:var(--accent);}
 <body>
 <div class="wrap">
   <div class="tabs">
-    <a class="tab" href="index.html">全览</a>
-    <a class="tab" href="core.html">核心逻辑</a>
-    <a class="tab" href="p7.html">中国锂产业链平衡</a>
-    <a class="tab" href="event.html">事件及政策跟踪</a>
-    <a class="tab" href="p6.html">全球年度平衡</a>
-    <a class="tab" href="p5.html">全球汽车</a>
-    <a class="tab" href="p3.html">产业链库存</a>
-    <a class="tab" href="p2.html">产量开工利润</a>
     <a class="tab" href="p1.html">日度价格</a>
-    <a class="tab" href="weekly.html">周报</a>
+    <a class="tab" href="p2.html">产量开工利润</a>
+    <a class="tab" href="p3.html">产业链库存</a>
+    <div class="tab active">数据对比</div>
   </div>
 
   <div class="header">
@@ -126,8 +120,8 @@ select:focus{outline:none; border-color:var(--accent);}
 
 <script>
 (function(){
-  Promise.all([fetch('p4.json?v=0795238028').then(function(r){return r.json();})]).then(function(rs){
-    window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
+  fetch('p4.json').then(function(r){return r.json();}).then(function(data){
+    window.__DATA__=data; window.D=data; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
   });
@@ -336,45 +330,6 @@ function init(){
   });
   window.addEventListener("resize", function(){ chart.resize(); });
 }
-</script>
-<!-- 红色激光笔：点击右下角按钮开/关，鼠标变为红色激光点；光点 pointer-events:none，不影响原有悬停/浮层效果 -->
-<div id="laserBtn" title="激光笔：点击开 / 关">🔴</div>
-<div id="laserDot"></div>
-<style>
-#laserBtn{position:fixed; right:10px; bottom:10px; width:24px; height:24px; border-radius:50%;
-  background:#fff; border:1.5px solid #e43a3a; color:#e43a3a; font-size:11px; line-height:1;
-  display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:99999;
-  box-shadow:0 1px 5px rgba(0,0,0,.15); user-select:none; transition:all .15s; opacity:.92;}
-#laserBtn:hover{transform:scale(1.08);}
-#laserBtn.on{background:#e43a3a; color:#fff; box-shadow:0 0 16px rgba(228,58,58,.65);}
-#laserDot{position:fixed; left:0; top:0; width:10px; height:10px; border-radius:50%;
-  background:#ff2d2d; box-shadow:0 0 6px 2px rgba(255,45,45,.55), 0 0 18px 6px rgba(255,45,45,.28);
-  pointer-events:none; z-index:999999; display:none; transform:translate(-50%,-50%);}
-#laserDot::after{content:''; position:absolute; right:6px; top:50%; width:34px; height:3px;
-  transform:translateY(-50%); border-radius:2px;
-  background:linear-gradient(90deg, rgba(255,45,45,.05), rgba(255,45,45,.6));}
-</style>
-<script>
-(function(){
-  var on=false;
-  var btn=document.getElementById('laserBtn'), dot=document.getElementById('laserDot');
-  function move(e){ dot.style.left=e.clientX+'px'; dot.style.top=e.clientY+'px'; }
-  btn.addEventListener('click', function(ev){
-    ev.stopPropagation();
-    on=!on;
-    btn.classList.toggle('on', on);
-    if(on){
-      dot.style.display='block';
-      document.documentElement.style.cursor='none';
-      window.addEventListener('mousemove', move);
-      move(ev);
-    } else {
-      dot.style.display='none';
-      document.documentElement.style.cursor='';
-      window.removeEventListener('mousemove', move);
-    }
-  });
-})();
 </script>
 </body>
 </html>
