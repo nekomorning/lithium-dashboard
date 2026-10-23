@@ -4200,13 +4200,19 @@ window.RP7 = (function(){
 
     var pane = document.getElementById('pane-wr');
     var host = document.getElementById('boards-wr');
-    var units = [];
+    /* 分组：每段归因文字与其后的板块同属一组 —— 分页时文字必须和对应图表同页起排 */
+    var units = [], gid = 0, pend = [];
     Array.prototype.forEach.call(pane.children, function(el){
-      if(el !== host) units.push({el: el, cut: []});
+      if(el !== host){ gid++; units.push({el: el, cut: [], grp: gid, note: true}); }
     });
     Array.prototype.forEach.call(host.children, function(el){
-      units.push({el: el, cut: (el.classList && el.classList.contains('board')) ? cutPoints(el) : []});
+      if(el.classList && el.classList.contains('wr-note')){ pend.push({el: el, cut: [], note: true}); return; }
+      gid++;
+      pend.forEach(function(u){ u.grp = gid; units.push(u); });
+      pend = [];
+      units.push({el: el, cut: (el.classList && el.classList.contains('board')) ? cutPoints(el) : [], grp: gid});
     });
+    pend.forEach(function(u){ gid++; u.grp = gid; units.push(u); });
 
     /* ---------- 1) 排版预演：只用 CSS 尺寸算切块与分页 ---------- */
     /* 块在页面上的高度 = cssH × CW/cssW，与截图倍率无关，所以能先算准总页数 */
@@ -4219,7 +4225,7 @@ window.RP7 = (function(){
       var start = bounds[0], prev = bounds[0];
       function push(a, b){
         if(b - a <= 1) return;
-        plan.push({ui: ui, y0: a, y1: b, h: Math.min((b - a) * f, CH), page: 0});
+        plan.push({ui: ui, y0: a, y1: b, h: Math.min((b - a) * f, CH), page: 0, grp: u.grp, note: !!u.note});
       }
       for(var bi = 1; bi < bounds.length; bi++){
         var b = bounds[bi];
@@ -4231,13 +4237,34 @@ window.RP7 = (function(){
       }
       push(start, prev);
     });
+    /* 分组排版：「归因文字 + 板块首块」视为不可拆的头部，杜绝文字单独留在上一页页尾 */
     var NP = 1, cy = MG;
+    var grps = [], gmap = {};
     plan.forEach(function(b){
-      if(cy + b.h > MG + CH + 0.5){ NP++; cy = MG; }
-      b.page = NP - 1;
-      cy += b.h + 16;
+      if(gmap[b.grp] === undefined){ gmap[b.grp] = grps.length; grps.push([]); }
+      grps[gmap[b.grp]].push(b);
+    });
+    grps.forEach(function(bs){
+      var i = 0, headH = 0;
+      while(i < bs.length && bs[i].note){ headH += bs[i].h + 16; i++; }
+      var firstBody = bs[i];
+      var reserve = headH + (firstBody ? Math.min(firstBody.h, CH) : 0);
+      if(cy > MG + 0.5 && cy + reserve > MG + CH + 0.5){ NP++; cy = MG; }
+      for(var hj = 0; hj < i; hj++){ bs[hj].page = NP - 1; cy += bs[hj].h + 16; }
+      for(; i < bs.length; i++){
+        var b = bs[i];
+        if(cy + b.h > MG + CH + 0.5){
+          var room = MG + CH - cy;
+          if(i > 0 && bs[i - 1].note && b === firstBody && room > CH * 0.35){
+            b.shrinkTo = room;              /* 与文字同页：按剩余空间等比缩小整块 */
+          } else if(cy > MG + 0.5){ NP++; cy = MG; }
+        }
+        b.page = NP - 1;
+        cy += (b.shrinkTo || b.h) + 16;
+      }
     });
     if(!plan.length){ setBusy(null); document.body.classList.remove('wr-exporting'); window.scrollTo(0, y0); throw new Error('没有可导出的内容'); }
+    window.__WR_PLAN__ = plan;   /* 调试/校验用：可核对文字块与其板块首块是否同页 */
     console.log('[wr] plan blocks', plan.length, 'pages', NP);
 
     /* ---------- 2) 逐板块栅格化，逐页落盘（同一时刻只留一页画布，避免大页吃内存） ---------- */
@@ -4298,7 +4325,8 @@ window.RP7 = (function(){
         if(sh <= 1) continue;
         if(b.page !== curPage){ flush(); curPage = b.page; newPageCanvas(); }
         var dw = CW, dh = sh * f2;
-        if(dh > CH){ var f3 = CH / sh; dw = cv.width * f3; dh = CH; }
+        var cap = b.shrinkTo ? Math.min(CH, b.shrinkTo) : CH;
+        if(dh > cap){ var f3 = cap / sh; dw = cv.width * f3; dh = cap; }
         var bx = MG + (CW - dw) / 2;
         pgcv.getContext('2d').drawImage(cv, 0, sy, cv.width, sh, bx, pgy, dw, dh);
         pgy += dh + 16;
