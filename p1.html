@@ -179,7 +179,17 @@ tr.abn td{background:#fff7f0;}
 </div>
 <div id="expHost" style="position:fixed;left:-100000px;top:0;width:0;height:0;overflow:hidden;"></div>
 
-
+<script>
+window.__DATA__ = /*DATA*/null/*DATA_END*/;
+/* 矿价警戒线（来源：《碳酸锂成本曲线与供应主体行为复盘》）：key 命中的图叠加水平参考线 */
+window.__MARKLINES__ = {
+  "锂矿：辉石价格（美元）": [
+    {name:"1500 → LC 11.0万（Finniss 复产利润线）", yAxis:1500, lineStyle:{color:"#e08a2b", type:"dashed", width:1}},
+    {name:"1100 → LC 8.6万（Finniss 现金成本）", yAxis:1100, lineStyle:{color:"#d92626", type:"dashed", width:1}},
+    {name:"800 → LC 6.7万（Bald Hill / Cattlin 现金成本）", yAxis:800, lineStyle:{color:"#7a5fd0", type:"dashed", width:1}}
+  ]
+};
+</script>
 <script>
 (function(){
   Promise.all([fetch('data.json?v=037a332855').then(function(r){return r.json();})]).then(function(rs){
@@ -401,6 +411,14 @@ function makeCard(ch,ticks,grid){
       z: y===D.years[D.years.length-1]?10:5
     });
   });
+  /* 命中 __MARKLINES__ 的指标叠加水平警戒线（如辉石 CIF 矿价 1500/1100/800） */
+  var mlDef=(window.__MARKLINES__||{})[ch.key];
+  if(mlDef&&series.length){
+    series[series.length-1].markLine={silent:true,symbol:"none",
+      lineStyle:{width:1,type:"dashed"},
+      label:{fontSize:9,position:"insideEndTop",formatter:"{b}"},
+      data:mlDef};
+  }
   c.setOption({
     animation:false,
     grid:{left:10,right:16,top:26,bottom:8,containLabel:true},
