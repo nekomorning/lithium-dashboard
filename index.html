@@ -829,7 +829,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
   <button class="ttab" data-t="hf">高频数据<span class="tn">3 板块</span></button>
   <button class="ttab" data-t="bal">平衡表<span class="tn">6 张平衡表</span></button>
   <button class="ttab" data-t="auto">汽车<span class="tn">6 子页</span></button>
-  <button class="ttab" data-t="policy">政策<span class="tn">6 条线 · 48 节点</span></button>
+  <button class="ttab" data-t="policy">政策<span class="tn">6 条线 · 49 节点</span></button>
   <button class="ttab" data-t="core">核心逻辑<span class="tn">4 板块</span></button>
   <button class="ttab" data-t="wr">周报<span class="tn">小结 + 全量图表</span></button>
 </div>
@@ -910,6 +910,8 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
 .pol-jump{display:flex;gap:2px;padding-left:6px;margin-left:4px;border-left:1px solid #e5e9f0;}
 .pol-jump a{font-size:11.5px;color:#5b6473;text-decoration:none;padding:5px 7px;border-radius:5px;}
 .pol-jump a:hover{background:#eef2f8;color:#0f4c81;}
+.pol-jump a.on{background:#0f4c81;color:#fff;font-weight:600;}
+.pol-hint{font-size:11px;color:#8a93a3;line-height:1.5;margin-left:6px;white-space:nowrap;}
 .pol-legend{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-left:auto;font-size:11.5px;color:#5b6473;}
 .pol-legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:1px;}
 .pol-dash{display:inline-block;width:14px;height:9px;border:1px dashed #9aa6b8;border-radius:2px;margin-right:5px;vertical-align:1px;}
@@ -973,6 +975,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
   .pol-row{grid-template-columns:58px repeat(6,minmax(0,1fr));}
   .pol-chip .s{display:none;}
   .pol-yband .yn{display:none;}
+  .pol-hint{display:none;}
 }
 @media print{
   .pol-tools{display:none;}
@@ -991,7 +994,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
       <b>实线卡＝已生效/已发生</b>，<b>虚线卡＝未生效或待定</b>（含待成员国表决、待政策续接的项）。数据窗口截至 2026-10-28。
     </div>
     <div class="pol-read">
-      <div><b>供给端：冲击从“中国整顿”转向“资源国禁出口”</b>2023–2025 的扰动来自宜春整顿与采矿权换证；2027.1 起津巴布韦禁锂精矿出口，才是真正改变贸易流的硬约束。</div>
+      <div><b>供给端：冲击从“中国整顿”转向“资源国禁出口”</b>2023–2025 的扰动来自宜春整顿与采矿权换证；枧下窝 2026.6 复产后仅一个半月再度停产，国内云母供给弹性依旧脆弱；2027.1 起津巴布韦禁锂精矿出口，才是真正改变贸易流的硬约束。</div>
       <div><b>财政端：2026–2027 是锂电“税负抬升的两年”</b>消费税 0→2%→4%（2026.9、2027.9），电池退税 9%→6%→0（2026.4、2027.1）、整车退税 13%→9%（2027.4），车船税优惠同步取消——成本抬升是叠加，不是替代。</div>
       <div><b>海外准入：从“关税”升级为“合规门槛”</b>欧盟电池法三阶段（碳足迹申报→分级→阈值禁入）与电池护照、尽职调查，构成 2027–2028 的非价格壁垒，比关税更难绕。</div>
       <div><b>两个真正的分叉点</b>2026.11.10（中美出口管制暂停到期 + 301 豁免到期）与 2027.12.31（购置税减半到期）——方向未定，直接决定 2028 年需求曲线。</div>
@@ -1003,10 +1006,11 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
     <button class="pol-btn" data-f="high" aria-pressed="false" type="button">仅高影响</button>
     <button class="pol-btn" data-f="past" aria-pressed="false" type="button">仅已生效</button>
     <button class="pol-btn" data-f="fut" aria-pressed="false" type="button">仅未生效</button>
-    <div class="pol-jump">
-      <a href="#pol-y2023">2023</a><a href="#pol-y2024">2024</a><a href="#pol-y2025">2025</a>
-      <a href="#pol-y2026">2026</a><a href="#pol-y2027">2027</a><a href="#pol-y2028">2028</a>
+    <div class="pol-jump" title="按年份跳转">
+      <a href="#pol-y2023" data-y="2023">2023</a><a href="#pol-y2024" data-y="2024">2024</a><a href="#pol-y2025" data-y="2025">2025</a>
+      <a href="#pol-y2026" data-y="2026">2026</a><a href="#pol-y2027" data-y="2027">2027</a><a href="#pol-y2028" data-y="2028">2028</a>
     </div>
+    <div class="pol-hint">默认 2026 · 上下滚动或点年份跳转</div>
     <div class="pol-legend">
       <span><i style="background:#0f4c81"></i>锂矿与资源</span>
       <span><i style="background:#a4552f"></i>关税与贸易</span>
@@ -1087,6 +1091,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
     {d:"2026-06",L:"A",t:"枧下窝复产",s:"2026.6.29 取得安全生产许可证并复产；采矿规模由4500万吨/年下调至3000万吨/年",i:"高",g:"A"},
     {d:"2026-06",L:"B",t:"欧盟完成对华插混反补贴扩围准备",s:"规则就绪待成员国表决；通过后部分车型综合税负最高45.3%",i:"高",g:"B"},
     {d:"2026-07",L:"B",t:"巴西整车新能源关税升至 35%",s:"2026.7.1 CBU 整车至35%；CKD/SKD 给予6个月4.63亿美元免税配额",i:"中",g:"A"},
+    {d:"2026-08",L:"A",t:"枧下窝再次停产",s:"2026.8 再度停产，距 6.29 复产仅约一个半月；该矿月产碳酸锂约7000–8000吨、约占国内需求10%",i:"高",g:"A"},
     {d:"2026-08",L:"E",t:"欧盟电池碳足迹分级标签强制",s:"第二阶段：按碳足迹水平分级并强制标注，低等级电池在采购中处劣势",i:"中",g:"A"},
     {d:"2026-09",L:"C",t:"锂电池消费税 2% 开征",s:"2026.9.1 起锂离子/锂原电池按2%征收（2026.7.17 公告）；钠电、固态、燃料电池免征至2028.12.31",i:"高",g:"A"},
     {d:"2026-10",L:"D",t:"新能源汽车出口退税 13% → 9%",s:"2026.10.12 公告（2026年第29号），2027.4.1 起执行；覆盖67款纯电/插混乘用车",i:"高",g:"A",fut:"待2027.4"},
@@ -1114,7 +1119,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
     2023:"供给整顿元年：宜春停产 + 欧盟立案 + 智利资源主权转向",
     2024:"关税落地年：欧盟终裁、美国301、退税首降",
     2025:"规则重构：新矿产资源法、美国退补、枧下窝停产、中美管制互换",
-    2026:"财政抬升起点：消费税开征、退税再降、枧下窝复产、休战到期",
+    2026:"财政抬升起点：消费税开征、退税再降、枧下窝复产后再停产",
     2027:"三重叠加：退税归零 + 消费税4% + 欧盟合规门槛生效",
     2028:"红线年：碳足迹阈值、购置税情景切换"
   };
@@ -1158,6 +1163,60 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
       rowsEl.appendChild(row);
     }
   }
+
+  /* ---- 默认定位到 2026 年；年份标签随滚动高亮 ---- */
+  var jumpLinks = document.querySelectorAll(".pol-jump a");
+  var OFFSET = 70;
+  function setYearOn(y){
+    Array.prototype.forEach.call(jumpLinks, function(a){
+      a.classList.toggle("on", a.getAttribute("data-y") === String(y));
+    });
+  }
+  function paneVisible(){
+    var pane = document.getElementById("pane-policy");
+    return !!(pane && pane.offsetParent !== null);
+  }
+  function jumpTo2026(){
+    if(!paneVisible()) return;
+    var band = document.getElementById("pol-y2026");
+    if(!band) return;
+    var top = band.getBoundingClientRect().top + (window.pageYOffset || document.documentElement.scrollTop || 0) - OFFSET;
+    if(top < 0) top = 0;
+    window.scrollTo(0, top);
+    setYearOn(2026);
+  }
+  var yRaf = null;
+  function syncYearOn(){
+    if(yRaf) return;
+    yRaf = requestAnimationFrame(function(){
+      yRaf = null;
+      if(!paneVisible()) return;
+      var cur = 2023;
+      for(var yy=2023; yy<=2028; yy++){
+        var b = document.getElementById("pol-y" + yy);
+        if(b && b.getBoundingClientRect().top <= OFFSET + 40) cur = yy;
+      }
+      setYearOn(cur);
+    });
+  }
+  window.addEventListener("scroll", syncYearOn, {passive:true});
+
+  var polPane = document.getElementById("pane-policy");
+  var polTabBtn = document.querySelector('.ttab[data-t="policy"]');
+  if(polTabBtn) polTabBtn.addEventListener("click", function(){
+    setTimeout(jumpTo2026, 60);
+    setTimeout(function(){
+      if(!paneVisible()) return;
+      var band = document.getElementById("pol-y2026");
+      if(band && Math.abs(band.getBoundingClientRect().top - OFFSET) > 50) jumpTo2026();
+    }, 320);
+  });
+  if(polPane && window.MutationObserver){
+    new MutationObserver(function(){
+      if(paneVisible()) setTimeout(jumpTo2026, 60);
+    }).observe(polPane, {attributes:true, attributeFilter:["style","class"]});
+  }
+  if(paneVisible()) setTimeout(jumpTo2026, 80);
 
   var tl = document.getElementById("polTl");
   var btns = document.querySelectorAll(".pol-btn");
