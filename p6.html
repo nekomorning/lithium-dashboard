@@ -103,41 +103,6 @@ td.pct-name{border-bottom:1px dashed #cdd9e8;}
 .dd.open .dd-panel{display:block;}
 .dd-panel .ybtn{margin:3px; font-size:12px; padding:3px 10px;}
 
-/* 核心变化编辑框 */
-.supply-summary{margin:8px 0 16px; padding:10px 14px; background:var(--card); border:1px solid var(--border); border-radius:10px; position:relative;}
-.supply-summary .lbl{font-size:13px; font-weight:700; color:var(--accent); margin-right:6px;}
-.supply-summary .status{font-size:12px; color:var(--sub); margin-left:6px;}
-.supply-summary .status.unsaved{color:#d97706;}
-.supply-summary .status.saved{color:#1a8a4a;}
-.supply-summary .sum-btns{position:absolute; top:10px; right:12px; display:flex; gap:6px;}
-.supply-summary .btn-sm{padding:3px 10px; border:1px solid var(--border); border-radius:6px; background:#fff; cursor:pointer; font-size:12px;}
-.supply-summary .btn-sm:hover{border-color:var(--accent); color:var(--accent);}
-.supply-summary .sum-body{min-height:32px; padding:4px 0 4px 4px; font-size:13px; color:var(--text); line-height:1.7; white-space:pre-wrap; word-break:break-word;}
-.supply-summary .sum-body.empty{color:var(--sub); font-style:italic;}
-.supply-summary .sum-body textarea{width:100%; min-height:90px; padding:6px 8px; border:1px solid var(--accent); border-radius:6px; font-family:inherit; font-size:13px; resize:vertical;}
-.supply-summary .save-bar{margin-top:8px; display:flex; gap:6px; justify-content:flex-end;}
-.supply-summary .save-bar .btn-sm{border-color:var(--accent); background:var(--accent); color:#fff;}
-.btn-sm{padding:3px 10px; border:1px solid var(--border); border-radius:6px; background:#fff; cursor:pointer; font-size:12px;}
-.btn-sm:hover{border-color:var(--accent); color:var(--accent);}
-
-/* Modal */
-.modal-mask{position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:1000; display:flex; align-items:flex-start; justify-content:center; padding-top:60px;}
-.modal-card{background:#fff; border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,.2); min-width:340px; max-width:92vw; max-height:80vh; display:flex; flex-direction:column; overflow:hidden;}
-.modal-head{display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border); font-weight:700; color:var(--accent);}
-.modal-x{background:none; border:0; cursor:pointer; font-size:20px; color:var(--sub); padding:0 4px;}
-.modal-x:hover{color:var(--accent);}
-.modal-body{overflow-y:auto;}
-/* 历史记录条目 */
-.hist-item{padding:8px 0; border-bottom:1px solid #eee;}
-.hist-item:last-child{border-bottom:0;}
-.hist-head{display:flex; justify-content:space-between; align-items:center; gap:8px;}
-.hist-pre{white-space:pre-wrap; margin:6px 0; font-family:inherit; background:#f7f8fa; border-radius:6px; padding:8px 10px; font-size:12.5px; color:var(--text);}
-.hist-btn{padding:2px 10px; border:1px solid var(--border); border-radius:6px; background:#fff; cursor:pointer; font-size:12px; margin-left:4px;}
-.hist-btn:hover{border-color:var(--accent); color:var(--accent);}
-.hist-btn.hist-del:hover{border-color:#d8392b; color:#d8392b;}
-.hist-btn.hist-save{border-color:var(--accent); background:var(--accent); color:#fff;}
-.hist-text{width:100%; min-height:80px; padding:6px 8px; border:1px solid var(--accent); border-radius:6px; font-family:inherit; font-size:13px; resize:vertical; box-sizing:border-box;}
-.hist-edit-bar{margin-top:6px; text-align:right;}
 th.sortable{cursor:pointer; user-select:none;}
 th.sortable:hover{background:#e4ebf3;}
 th .sort-arrow{margin-left:4px; font-size:11px; color:var(--accent);}
@@ -242,15 +207,6 @@ table.t18 td{text-align:right;}
 
   <div class="tablecard">
     <h2>明细表（各锂矿项目）<span class="note">共 <span id="projCount"></span> 个项目；将鼠标悬停于「项目名称」可查看公司股权</span></h2>
-    <div class="supply-summary" id="supplySummary">
-      <span class="lbl">核心变化</span>
-      <span class="status" id="summaryStatus"></span>
-      <div class="sum-btns">
-        <button type="button" class="btn-sm" id="summaryEdit">编辑</button>
-        <button type="button" class="btn-sm" id="summaryHistory">历史</button>
-      </div>
-      <div class="sum-body" id="summaryBody"></div>
-    </div>
 
     <div class="filterbar detail-filter" id="detailFilter">
       <input type="text" class="search-input" id="searchInput" placeholder="搜索：项目名称 / 股权">
@@ -305,7 +261,7 @@ table.t18 td{text-align:right;}
 
 <script>
 (function(){
-  Promise.all([fetch('p6.json?v=c5ad370f6d').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('p6.json?v=4ddf0c756c').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -665,206 +621,6 @@ function loadECharts(){
     });
   }
 
-  // ---------- 核心变化编辑（云端 + localStorage） ----------
-  var CLOUD_URL = 'https://api.restful-api.dev/objects/ff8081819ff5b110019ff9e7115c0a02';
-  var SUMMARY_KEY = 'lc_supply_summary';
-  var summaryOrig = '';
-  var summaryDirty = false;
-  var summaryEditing = false;
-  function getStore(){
-    try { return JSON.parse(localStorage.getItem(SUMMARY_KEY) || '{}'); }
-    catch(e){ return {}; }
-  }
-  function putStore(d){ try{ localStorage.setItem(SUMMARY_KEY, JSON.stringify(d)); }catch(e){} }
-  function escSummary(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
-  function renderCoreChange(){
-    var body = document.getElementById('summaryBody');
-    var status = document.getElementById('summaryStatus');
-    if(summaryEditing){
-      body.classList.remove('empty');
-      body.innerHTML = '<textarea id="summaryText">'+escSummary(summaryOrig)+'</textarea>'
-        + '<div class="save-bar"><button type="button" class="btn-sm" id="summarySave">保存</button><button type="button" class="btn-sm" id="summaryCancel">取消</button></div>';
-      status.textContent = '尚未保存';
-      status.className = 'status unsaved';
-      document.getElementById('summarySave').addEventListener('click', saveSummary);
-      document.getElementById('summaryCancel').addEventListener('click', cancelSummary);
-      document.getElementById('summaryText').addEventListener('input', function(e){
-        summaryDirty = (e.target.value !== summaryOrig);
-        status.textContent = summaryDirty ? '尚未保存' : '';
-        status.className = summaryDirty ? 'status unsaved' : 'status';
-      });
-    } else {
-      if(summaryOrig){
-        body.classList.remove('empty');
-        body.textContent = summaryOrig;
-      } else {
-        body.classList.add('empty');
-        body.textContent = '（暂无内容，点击「编辑」添加核心变化记录）';
-      }
-      status.textContent = summaryOrig ? '已保存' : '';
-      status.className = summaryOrig ? 'status saved' : 'status';
-    }
-  }
-  function loadSummary(){
-    var d = getStore();
-    summaryOrig = d.current || '';
-    renderCoreChange();
-    // 云端优先：拉取最新覆盖本地
-    fetch(CLOUD_URL, {method:'GET'})
-      .then(function(r){ return r.ok ? r.json() : null; })
-      .then(function(j){
-        if(j && j.data && typeof j.data.current === 'string'){
-          var cd = j.data;
-          summaryOrig = cd.current || '';
-          putStore(cd);
-          renderCoreChange();
-          var st = document.getElementById('summaryStatus');
-          if(summaryOrig){ st.textContent = '已同步云端'; st.className = 'status saved'; }
-        }
-      })
-      .catch(function(){});
-  }
-  function editSummary(){
-    summaryEditing = true;
-    document.getElementById('summaryEdit').textContent = '关闭';
-    renderCoreChange();
-  }
-  function cancelSummary(){
-    summaryEditing = false;
-    summaryDirty = false;
-    document.getElementById('summaryEdit').textContent = '编辑';
-    renderCoreChange();
-  }
-  function syncCloud(d, done){
-    fetch(CLOUD_URL, {
-      method:'PUT',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({name:'lc-summary', data: d})
-    }).then(function(r){ if(done) done(r.ok); })
-      .catch(function(){ if(done) done(false); });
-  }
-  function saveSummary(){
-    var ta = document.getElementById('summaryText');
-    if(!ta) return;
-    var txt = ta.value;
-    var d = getStore();
-    if(d.current !== txt){
-      d.history = d.history || [];
-      d.history.unshift({ts: new Date().toISOString(), current: d.current || ''});
-      if(d.history.length > 50) d.history = d.history.slice(0, 50);
-    }
-    d.current = txt;
-    putStore(d);                       // 先写本地（离线可用）
-    summaryOrig = txt; summaryDirty = false; summaryEditing = false;
-    document.getElementById('summaryEdit').textContent = '编辑';
-    renderCoreChange();
-    var st = document.getElementById('summaryStatus');
-    st.textContent = '已保存，正在同步云端…';
-    st.className = 'status';
-    syncCloud(d, function(ok){
-      st.textContent = ok ? '已保存（云端同步）' : '已保存（云端同步失败，仅本地）';
-      st.className = ok ? 'status saved' : 'status unsaved';
-    });
-  }
-  function showHistory(){
-    var d = getStore();
-    var hist = d.history || [];
-    var html = '<div style="max-height:60vh;overflow-y:auto" id="histList">';
-    /* 当前版本 */
-    html += '<div class="hist-item" data-idx="cur">'
-      + '<div class="hist-head"><b>当前版本</b><span><button type="button" class="hist-btn" data-act="edit" data-idx="cur">编辑</button></span></div>'
-      + '<pre class="hist-pre" data-idx="cur">'+(summaryOrig?escSummary(summaryOrig):'(空)')+'</pre></div>';
-    if(hist.length){
-      hist.forEach(function(h,i){
-        var ts = h.ts ? new Date(h.ts).toLocaleString() : '';
-        html += '<div class="hist-item" data-idx="'+i+'">'
-          + '<div class="hist-head"><b>历史版本 '+(hist.length-i)+'</b><span style="color:#888;font-size:12px">'+ts+'</span><span><button type="button" class="hist-btn" data-act="edit" data-idx="'+i+'">编辑</button> <button type="button" class="hist-btn hist-del" data-act="del" data-idx="'+i+'">删除</button></span></div>'
-          + '<pre class="hist-pre" data-idx="'+i+'">'+escSummary(h.current||'(空)')+'</pre></div>';
-      });
-    } else {
-      html += '<div style="padding:10px;color:#888">暂无历史版本</div>';
-    }
-    html += '</div>';
-    showModal('历史编辑记录', html);
-    var list = document.getElementById('histList');
-    list.addEventListener('click', function(e){
-      var btn = e.target.closest ? e.target.closest('.hist-btn') : null;
-      if(!btn) return;
-      var act = btn.getAttribute('data-act');
-      var idx = btn.getAttribute('data-idx');
-      if(act==='edit') editHistItem(idx);
-      else if(act==='del') delHistItem(idx);
-      else if(act==='save') saveHistItem(idx);
-      else if(act==='cancel') showHistory();
-    });
-  }
-  function editHistItem(idx){
-    var list = document.getElementById('histList'); if(!list) return;
-    var item = list.querySelector('.hist-item[data-idx="'+idx+'"]'); if(!item) return;
-    var cur = '';
-    if(idx==='cur') cur = summaryOrig;
-    else { var d = getStore(); cur = (d.history[parseInt(idx,10)]||{}).current || ''; }
-    var pre = item.querySelector('.hist-pre');
-    var edit = document.createElement('div');
-    edit.className = 'hist-edit';
-    edit.innerHTML = '<textarea class="hist-text">'+escSummary(cur)+'</textarea>'
-      + '<div class="hist-edit-bar"><button type="button" class="hist-btn hist-save" data-act="save" data-idx="'+idx+'">保存</button> <button type="button" class="hist-btn" data-act="cancel">取消</button></div>';
-    pre.parentNode.replaceChild(edit, pre);
-  }
-  function saveHistItem(idx){
-    var list = document.getElementById('histList'); if(!list) return;
-    var item = list.querySelector('.hist-item[data-idx="'+idx+'"]'); if(!item) return;
-    var ta = item.querySelector('.hist-text'); if(!ta) return;
-    var val = ta.value;
-    var d = getStore();
-    if(idx==='cur'){
-      if(d.current !== val){
-        d.history = d.history || [];
-        d.history.unshift({ts: new Date().toISOString(), current: d.current || ''});
-        if(d.history.length > 50) d.history = d.history.slice(0, 50);
-      }
-      d.current = val;
-      summaryOrig = val;
-    } else {
-      var hi = parseInt(idx,10);
-      if(d.history[hi]){ d.history[hi].current = val; d.history[hi].ts = new Date().toISOString(); }
-    }
-    putStore(d);
-    syncCloud(d, function(){});
-    showHistory();
-  }
-  function delHistItem(idx){
-    var d = getStore();
-    if(idx==='cur'){
-      if(d.current){
-        d.history = d.history || [];
-        d.history.unshift({ts: new Date().toISOString(), current: d.current});
-        if(d.history.length > 50) d.history = d.history.slice(0, 50);
-      }
-      d.current = '';
-      summaryOrig = '';
-    } else {
-      var hi = parseInt(idx,10);
-      if(d.history[hi]) d.history.splice(hi,1);
-    }
-    putStore(d);
-    syncCloud(d, function(){});
-    showHistory();
-  }
-  function showModal(title, bodyHtml){
-    var mask = document.createElement('div');
-    mask.className = 'modal-mask';
-    mask.innerHTML = '<div class="modal-card" style="max-width:680px"><div class="modal-head"><span>'+title+'</span><button type="button" class="modal-x">×</button></div><div class="modal-body" style="padding:14px 18px;font-size:13px;line-height:1.7">'+bodyHtml+'</div></div>';
-    document.body.appendChild(mask);
-    mask.addEventListener('click', function(e){
-      if(e.target===mask || e.target.classList.contains('modal-x')) mask.remove();
-    });
-  }
-  document.getElementById('summaryEdit').addEventListener('click', function(){
-    if(summaryEditing) cancelSummary(); else editSummary();
-  });
-  document.getElementById('summaryHistory').addEventListener('click', showHistory);
-  loadSummary();
 
   // ---------- 股权浮层 ----------
   var tip = document.getElementById('tip');
