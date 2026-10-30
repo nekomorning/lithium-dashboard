@@ -150,7 +150,7 @@ tr.abn td{background:#fff7f0;}
 
 <script>
 (function(){
-  Promise.all([fetch('p2.json?v=f6d69aa5c6').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('p2.json?v=1bba81c9d3').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -405,7 +405,7 @@ function renderRegionalSeasonal(root){
     var momCls=chgCls(st.mom), ytdCls=chgCls(st.ytdYoy);
     var valTxt=(st.latest==null||st.latest===undefined)?"—":fmt(st.latest,0);
     var momTxt=(st.mom==null||st.mom===undefined)?"—":
-      (st.mom>0?"+":"")+fmt(st.mom,0)+"（"+(st.momPct==null?"—":(st.momPct>0?"+":"")+st.momPct.toFixed(2)+"%")+" 月环比）";
+      (st.mom>0?"+":"")+fmt(st.mom,0)+" 吨 月环比";
     var ytdTxt=(st.ytdYoy==null||st.ytdYoy===undefined)?"—":
       (st.ytdYoy>0?"+":"")+st.ytdYoy.toFixed(2)+"% 累计同比";
     var meta=elR("div","meta");
