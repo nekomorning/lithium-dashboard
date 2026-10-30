@@ -88,6 +88,11 @@ tr.abn td{background:#fff7f0;}
 .grid.c5 .card .meta{gap:6px; margin:2px 0 1px;}
 .grid.c5 .card .val{font-size:16px;}
 .grid.c5 .card .chg{font-size:11.5px;}
+/* 分地区产量季节图 */
+.regional-cell{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:8px 10px 4px; min-width:0;}
+.regional-cap{font-size:13px; font-weight:700; color:#2a3345; margin-bottom:2px;}
+.regional-ech{width:100%; aspect-ratio:16/9; height:auto; min-width:0;}
+.grid-blank{visibility:hidden;}
 .footer{margin-top:30px; color:var(--sub); font-size:12px; text-align:center;}
 </style>
 </head>
@@ -145,7 +150,7 @@ tr.abn td{background:#fff7f0;}
 
 <script>
 (function(){
-  Promise.all([fetch('p2.json?v=0a68900003').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('p2.json?v=2e9efbf4f7').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -299,6 +304,7 @@ function buildSections(){
       root.appendChild(grid);
       row.charts.forEach(function(ch){ makeCard(ch,ticks,grid); });
     });
+    if(sec.section==="周度产量" && D.regional){ renderRegionalSeasonal(root); }
   });
 }
 
@@ -370,6 +376,65 @@ function makeCard(ch,ticks,grid){
     if(!yearVisible[y]) c.dispatchAction({type:"legendToggleSelect",name:String(y)});
   });
   charts.push(c);
+}
+
+/* 分地区产量季节图：D.regional（数据源桌面 LC.xlsx 锂盐 sheet 省份列）。
+   x=月份，年=线；当前源仅 2026 年 6-10 月有数据，展示 2026 轨迹，逐年补全。 */
+function elR(tag,cls,html){ var e=document.createElement(tag); if(cls) e.className=cls; if(html!==undefined) e.innerHTML=html; return e; }
+function padGridReg(g,n){ var rem=(4-(n%4))%4; for(var k=0;k<rem;k++) g.appendChild(elR("div","grid-blank")); }
+function renderRegionalSeasonal(root){
+  var R=D.regional; if(!R||!R.seasonalCols) return;
+  var title=document.createElement("div");
+  title.className="section-title";
+  title.textContent="分地区产量季节图（SMM · 吨）";
+  root.appendChild(title);
+  var group=null, grid=null, cnt=0;
+  R.seasonalCols.forEach(function(sc){
+    if(sc.group!==group){
+      if(grid) padGridReg(grid,cnt);
+      group=sc.group; cnt=0;
+      grid=document.createElement("div"); grid.className="grid c4"; root.appendChild(grid);
+    }
+    var ser=R.seasonal[sc.key]||{};
+    var cell=document.createElement("div"); cell.className="regional-cell";
+    cell.appendChild(elR("div","regional-cap",sc.title));
+    var ech=document.createElement("div"); ech.className="regional-ech"; cell.appendChild(ech);
+    grid.appendChild(cell); cnt++;
+    var years=Object.keys(ser).sort();
+    var legend=[], series=[];
+    years.forEach(function(y){
+      legend.push(y+"年");
+      var col=yearColor(y);
+      series.push({name:y+"年",type:"line",showSymbol:false,connectNulls:true,
+        data:ser[y],
+        lineStyle:{width:y===years[years.length-1]?2.4:1.4,color:col},
+        itemStyle:{color:col}, z:y===years[years.length-1]?10:5});
+    });
+    var c=echarts.init(ech);
+    c.setOption({
+      animation:false,
+      grid:{left:6,right:8,top:16,bottom:4,containLabel:true},
+      legend:{show:years.length>1,top:0,right:0,itemWidth:12,itemHeight:2,icon:"rect",
+        textStyle:{fontSize:10,color:"#6b7686"},data:legend},
+      tooltip:{trigger:"axis",confine:true,formatter:function(ps){
+        if(!ps||!ps.length) return "";
+        var lab=R.monthLabels[ps[0].value]||ps[0].value; var s=lab+"<br>";
+        ps.forEach(function(p){ if(p.value!=null) s+=p.marker+p.seriesName+"： <b>"+fmt(p.value,0)+"</b> 吨<br>"; });
+        return s;
+      }},
+      xAxis:{type:"category",data:R.monthLabels,
+        axisLabel:{fontSize:9,color:"#8a93a3",interval:1},
+        axisTick:{show:false},axisLine:{lineStyle:{color:"#dde3ec"}},splitLine:{show:false}},
+      yAxis:{type:"value",scale:true,
+        axisLabel:{fontSize:9,color:"#8a93a3",
+          formatter:function(v){return Math.abs(v)>=10000?(v/10000)+"万":(Math.abs(v)>=1000?(v/1000)+"k":v);}},
+        splitLine:{lineStyle:{color:"#eef1f6"}}},
+      series:series
+    });
+    years.forEach(function(y){ if(yearVisible[y]===false) c.dispatchAction({type:"legendToggleSelect",name:y+"年"}); });
+    charts.push(c);
+  });
+  if(grid) padGridReg(grid,cnt);
 }
 </script>
 <!-- 红色激光笔：点击右下角按钮开/关，鼠标变为红色激光点；光点 pointer-events:none，不影响原有悬停/浮层效果 -->
