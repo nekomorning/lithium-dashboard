@@ -150,7 +150,7 @@ tr.abn td{background:#fff7f0;}
 
 <script>
 (function(){
-  Promise.all([fetch('p2.json?v=2e9efbf4f7').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('p2.json?v=f6d69aa5c6').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -378,16 +378,18 @@ function makeCard(ch,ticks,grid){
   charts.push(c);
 }
 
-/* 分地区产量季节图：D.regional（数据源桌面 LC.xlsx 锂盐 sheet 省份列）。
-   x=月份，年=线；当前源仅 2026 年 6-10 月有数据，展示 2026 轨迹，逐年补全。 */
+/* 分地区产量季节图：D.regional（数据源桌面 LC.xlsx 锂盐 sheet BO-BW 省份列，日期列 BG）。
+   x=月份，年=线；展示 2023-2026，配色与周度产量卡片一致（yearColor）；
+   每张卡片含统计行：最新月 / 月环比 / 累计同比（与周度产量卡片同格式）。 */
 function elR(tag,cls,html){ var e=document.createElement(tag); if(cls) e.className=cls; if(html!==undefined) e.innerHTML=html; return e; }
 function padGridReg(g,n){ var rem=(4-(n%4))%4; for(var k=0;k<rem;k++) g.appendChild(elR("div","grid-blank")); }
 function renderRegionalSeasonal(root){
   var R=D.regional; if(!R||!R.seasonalCols) return;
   var title=document.createElement("div");
   title.className="section-title";
-  title.textContent="分地区产量季节图（SMM · 吨）";
+  title.textContent="分地区产量季节图（SMM · 吨 · 2023–2026）";
   root.appendChild(title);
+  var SHOW_FROM=2023;
   var group=null, grid=null, cnt=0;
   R.seasonalCols.forEach(function(sc){
     if(sc.group!==group){
@@ -396,15 +398,30 @@ function renderRegionalSeasonal(root){
       grid=document.createElement("div"); grid.className="grid c4"; root.appendChild(grid);
     }
     var ser=R.seasonal[sc.key]||{};
-    var cell=document.createElement("div"); cell.className="regional-cell";
+    var st=(R.stats&&R.stats[sc.key])||{};
+    var cell=document.createElement("div"); cell.className="regional-cell card";
     cell.appendChild(elR("div","regional-cap",sc.title));
+    // 统计行：最新月 / 月环比 / 累计同比（与周度产量卡片同格式）
+    var momCls=chgCls(st.mom), ytdCls=chgCls(st.ytdYoy);
+    var valTxt=(st.latest==null||st.latest===undefined)?"—":fmt(st.latest,0);
+    var momTxt=(st.mom==null||st.mom===undefined)?"—":
+      (st.mom>0?"+":"")+fmt(st.mom,0)+"（"+(st.momPct==null?"—":(st.momPct>0?"+":"")+st.momPct.toFixed(2)+"%")+" 月环比）";
+    var ytdTxt=(st.ytdYoy==null||st.ytdYoy===undefined)?"—":
+      (st.ytdYoy>0?"+":"")+st.ytdYoy.toFixed(2)+"% 累计同比";
+    var meta=elR("div","meta");
+    meta.innerHTML="<span class='val'>"+valTxt+"<span class='unit'> 吨</span></span>"
+      +"<span class='chg "+momCls+"'>"+arrow(st.mom)+" "+momTxt+"</span>"
+      +"<span class='chg "+ytdCls+"'>"+ytdTxt+"</span>"
+      +"<span class='dt'>"+(st.latestDate||"")+"</span>";
+    cell.appendChild(meta);
     var ech=document.createElement("div"); ech.className="regional-ech"; cell.appendChild(ech);
     grid.appendChild(cell); cnt++;
-    var years=Object.keys(ser).sort();
+    // 折线：仅 2023-2026，配色 yearColor（与周度产量一致）
+    var years=Object.keys(ser).filter(function(y){return (+y)>=SHOW_FROM;}).sort();
     var legend=[], series=[];
     years.forEach(function(y){
       legend.push(y+"年");
-      var col=yearColor(y);
+      var col=yearColor(+y);
       series.push({name:y+"年",type:"line",showSymbol:false,connectNulls:true,
         data:ser[y],
         lineStyle:{width:y===years[years.length-1]?2.4:1.4,color:col},
@@ -431,7 +448,6 @@ function renderRegionalSeasonal(root){
         splitLine:{lineStyle:{color:"#eef1f6"}}},
       series:series
     });
-    years.forEach(function(y){ if(yearVisible[y]===false) c.dispatchAction({type:"legendToggleSelect",name:y+"年"}); });
     charts.push(c);
   });
   if(grid) padGridReg(grid,cnt);
