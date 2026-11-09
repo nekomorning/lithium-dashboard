@@ -908,7 +908,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
 </div>
 
 
-<div class="rl-section">
+<div class="rl-section" id="recentLogic">
   <div class="rl-head">
     <div class="rl-title">近期逻辑和要点</div>
     <div class="rl-sub">8 张重点指标近期概览（与「高频数据」各板块同源，原位置保留）· 截至 2026-11-09</div>
@@ -1399,6 +1399,15 @@ function switchTab(t){
     var btn = document.querySelector('.ttab[data-t="' + x.id + '"]');
     if(btn) btn.classList.toggle('on', on);
   });
+  /* 「近期逻辑和要点」只属于高频数据标签，其余标签不出现。
+     隐藏期间 ECharts 容器宽度为 0，切回 hf 后必须 resize 才能恢复 8 张图。 */
+  var rl = document.getElementById('recentLogic');
+  if(rl) rl.style.display = (t === 'hf') ? '' : 'none';
+  if(t === 'hf' && window.__RECENT_CHARTS__){
+    setTimeout(function(){
+      (window.__RECENT_CHARTS__||[]).forEach(function(c){ try{ c.resize(); }catch(e){} });
+    }, 60);
+  }
   var root = document.getElementById('boards-' + t);
   if(root && root.dataset.inited !== '1'){
     root.dataset.inited = '1';
@@ -1639,14 +1648,15 @@ function syncToc(t){
   window.addEventListener('scroll', window.__tocHandler, {passive: true});
 }
 
-/* 顶部「近期逻辑和要点」常驻且占满首屏：只换 pane 的话首屏看起来完全没变，
-   用户会误判为「点击没反应」。切换后滚到内容区起点，让新标签内容立刻进入视口。 */
+/* 「近期逻辑和要点」只在 hf 显示；切到其他标签后滚到该 pane 的起点，
+   让标签栏吸顶、内容紧跟其下，避免首屏残留上一标签的视觉。 */
 function scrollToTabContent(t){
-  var tabsEl = document.querySelector('.toptabs');
-  var rl = document.querySelector('.rl-section');
   if(t === 'hf'){ window.scrollTo(0, 0); return; }
+  var tabsEl = document.querySelector('.toptabs');
+  var pane = document.getElementById('pane-' + t);
+  if(!pane){ window.scrollTo(0, 0); return; }
   var stickyH = tabsEl ? tabsEl.getBoundingClientRect().height : 0;
-  var y = rl ? (rl.getBoundingClientRect().bottom + (window.scrollY || 0) - stickyH - 12) : 0;
+  var y = pane.getBoundingClientRect().top + (window.scrollY || 0) - stickyH - 12;
   window.scrollTo(0, Math.max(0, y));
 }
 function boot(){
