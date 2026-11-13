@@ -211,7 +211,7 @@ window.__DATA__ = /*DATA*/null/*DATA_END*/;
 </script>
 <script>
 (function(){
-  Promise.all([fetch('weekly.json?v=5e378b83c8').then(function(r){return r.json();})]).then(function(rs){
+  Promise.all([fetch('weekly.json?v=756fa6c58a').then(function(r){return r.json();})]).then(function(rs){
     window.__DATA__=rs[0]; window.D=rs[0]; loadECharts();
   }).catch(function(){
     document.body.insertAdjacentHTML("afterbegin","<div style='padding:20px;color:#c00'>数据加载失败，请检查网络或刷新后重试。</div>");
@@ -1210,7 +1210,8 @@ function saveLayout(){
 /* 指标改名后的旧 chart_id → 新 chart_id 迁移映射（避免已保存布局出现缺失卡片） */
 var CHART_ALIASES={
   "p3_碳酸锂总库存":"p3_碳酸锂总库存（中样本）",
-  "p3_碳酸锂：周度库存":"p3_碳酸锂：周度库存（大样本）"
+  "p3_碳酸锂：周度库存":"p3_碳酸锂：周度库存（大样本）",
+  "p1_锂盐：电碳价格":"p1_锂盐：电池级碳酸锂价格"
 };
 function aliasCid(cid){ return CHART_ALIASES[cid]||cid; }
 
