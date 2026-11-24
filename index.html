@@ -1814,6 +1814,51 @@ function scrollToTabContent(t){
   var y = pane.getBoundingClientRect().top + (window.scrollY || 0) - stickyH - 12;
   window.scrollTo(0, Math.max(0, y));
 }
+/* 目录跳转：子锚点由懒渲染生成，冷启动时 DOM 里还没有对应元素，
+   原生 #hash 只改地址不滚动。这里统一拦截：先切标签、强制渲染所属板块，再按吸顶高度定位。 */
+function tocOwner(id){
+  for(var i=0;i<BOARDS.length;i++){
+    var b=BOARDS[i];
+    if('b-'+b.pid===id) return b;
+    var subs=b.subs||[];
+    for(var j=0;j<subs.length;j++) if(subs[j].anchor===id) return b;
+  }
+  return null;
+}
+function tocJump(id){
+  if(!id) return false;
+  var owner=tocOwner(id), el=null;
+  if(owner){
+    var pane=document.getElementById('pane-'+owner.tab);
+    if(pane && pane.style.display==='none') switchTab(owner.tab);
+    var sec=document.getElementById('b-'+owner.pid);
+    if(sec && sec.dataset.done!=='1') lazyRender(sec);
+  }
+  el=document.getElementById(id);
+  if(!el) return false;
+  try{ history.replaceState(null,'','#'+id); }catch(e){ location.hash=id; }
+  var go=function(){
+    var sticky=document.querySelector('.toptabs');
+    var h=sticky?sticky.getBoundingClientRect().height:0;
+    var y=el.getBoundingClientRect().top+(window.scrollY||0)-h-14;
+    window.scrollTo(0,Math.max(0,y));
+  };
+  go(); setTimeout(go,80);
+  return true;
+}
+document.addEventListener('click', function(e){
+  var t=e.target;
+  while(t && t!==document && !(t.tagName==='A' && t.closest('.toc-panel'))) t=t.parentNode;
+  if(!t || t===document || t.tagName!=='A') return;
+  var href=t.getAttribute('href')||'';
+  if(href.charAt(0)!=='#') return;
+  if(tocJump(decodeURIComponent(href.slice(1)))) e.preventDefault();
+}, false);
+window.addEventListener('hashchange', function(){
+  var id=(location.hash||'').replace(/^#/,'');
+  if(id) setTimeout(function(){ tocJump(id); },0);
+});
+
 function boot(){
   if((location.search||"").indexOf("noboot")>=0) return;
   initYearState();
