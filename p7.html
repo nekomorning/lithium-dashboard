@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>碳酸锂数据看板 · 中国锂产业链平衡</title>
+<title>锂数据看板 · 中国锂产业链平衡</title>
 <style>
 :root{
   --bg:#f4f6fa; --card:#ffffff; --border:#e5e9f0; --text:#1f2733; --sub:#6b7686;
@@ -138,7 +138,7 @@ td .pos{color:var(--up);} td .neg{color:var(--down);}
   <div class="section-title">季节图<span class="sub-inline" id="seasonalSub"></span></div>
   <div class="grid-4" id="seasonalWrap"></div>
 
-  <div class="footer">碳酸锂数据看板 · 中国锂产业链平衡 · 数据来源：SMM / 海关（底稿《碳酸锂产业链平衡表.xlsx》） · 单位：吨 LCE</div>
+  <div class="footer">锂数据看板 · 中国锂产业链平衡 · 数据来源：SMM / 海关（底稿《碳酸锂产业链平衡表.xlsx》） · 单位：吨 LCE</div>
 </div>
 
 
@@ -582,7 +582,7 @@ function loadECharts(){
     document.getElementById("pageSub").textContent = (D.pageSub||"") + " · 数据截至 " + (D.latestDate||"") + " · 实际数据截至 " + (D.actualCutoff||D.latestDate||"");
     buildBalanceTabs();
     var ftr = document.querySelector(".footer");
-    if(ftr) ftr.textContent = "碳酸锂数据看板 · 中国锂产业链平衡 · 数据来源：SMM / 海关（底稿《碳酸锂产业链平衡表.xlsx》） · 单位：" + D.unit;
+    if(ftr) ftr.textContent = "锂数据看板 · 中国锂产业链平衡 · 数据来源：SMM / 海关（底稿《碳酸锂产业链平衡表.xlsx》） · 单位：" + D.unit;
     renderMonthly();
     renderFilterBar();
     renderAnnual();

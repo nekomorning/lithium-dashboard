@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>碳酸锂数据看板 · 全览（单页纵向）</title>
+<title>锂数据看板 · 全览（单页纵向）</title>
 <style>/* ===== lc_template.html ===== */
 
 :root{
@@ -921,7 +921,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
 <body>
 
 <div class="hero">
-  <h1>碳酸锂数据看板 · 全览</h1>
+  <h1>锂数据看板 · 全览</h1>
   <div class="sub"><b>高频数据</b>（日度价格 / 产量开工利润 / 产业链库存 / 氢氧化锂季节图）· <b>平衡表</b>（中国锂产业链平衡）· <b>汽车</b>（全球汽车）· <b>政策</b>（2023–2028 政策时间轴）· <b>核心逻辑</b>· <b>周报</b>（周度小结 + 归因 + 附录）。左侧目录 hover 浮现、滚动自动高亮；<b>年份标签默认折叠最早一年（2023），点击可显示/隐藏，且在当前标签页所有板块联动</b>，标题下方标注数据截至日。</div>
   <div class="note">数据截至 <b style="color:#fff">2026-11-25</b>　　图表懒加载：首次进入标签时建骨架，滚动到板块附近才初始化</div>
 </div>
@@ -4851,7 +4851,7 @@ window.RP7 = (function(){
       ctx.fillStyle="#0f4c81"; ctx.fillRect(0,0,W,BANNER*SCALE);
       ctx.fillStyle="#ffffff"; ctx.textBaseline="middle";
       ctx.font="bold "+(32*SCALE)+"px 'Microsoft YaHei','PingFang SC',sans-serif";
-      ctx.fillText("碳酸锂数据看板", MARGIN*SCALE, BANNER*SCALE/2);
+      ctx.fillText("锂数据看板", MARGIN*SCALE, BANNER*SCALE/2);
       textOps.forEach(function(t){
         ctx.fillStyle=t.color; ctx.textBaseline="middle";
         ctx.font=(t.bold?"bold ":"")+(t.size*SCALE)+"px 'Microsoft YaHei','PingFang SC',sans-serif";
@@ -4895,7 +4895,7 @@ window.RP7 = (function(){
   function downloadExpImage(){
     var canvas=window.__expCanvas; if(!canvas) return;
     var a=document.createElement("a");
-    a.download="碳酸锂数据看板.png";
+    a.download="锂数据看板.png";
     a.href=canvas.toDataURL("image/png");
     a.click();
   }
@@ -5158,7 +5158,7 @@ window.RP7 = (function(){
       var n = imgs.length + 1;
       c.fillStyle = '#8a93a3'; c.font = '30px ' + FONT;
       c.textAlign = 'left';
-      c.fillText('碳酸锂数据看板 · 周报　数据截至 ' + ASOF, MG, A4H - 36);
+      c.fillText('锂数据看板 · 周报　数据截至 ' + ASOF, MG, A4H - 36);
       c.textAlign = 'right';
       c.fillText('第 ' + n + ' / ' + NP + ' 页', A4W - MG, A4H - 36);
       c.textAlign = 'left';
