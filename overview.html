@@ -4860,9 +4860,11 @@ window.RP7 = (function(){
           itemStyle:{color:colOf(D,y)}, emphasis:{focus:'series'}});
       });
       var mls=(window.__MARKLINES__||{})[m.key]||[];
-      if(mls.length && series.length){
-        series[0].markLine={silent:true,symbol:'none',data:mls.map(function(x){
-          return {yAxis:x.yAxis,name:x.name,lineStyle:x.lineStyle,label:x.label}; })};
+      if(mls.length){
+        /* 独立空 series 承载标线：不进 legend.data，也不随 2023 默认折叠而隐藏 */
+        series.push({name:'__markline__',type:'line',data:[],silent:true,
+          markLine:{silent:true,symbol:'none',data:mls.map(function(x){
+            return {yAxis:x.yAxis,name:x.name,lineStyle:x.lineStyle,label:x.label}; })}});
       }
       c.setOption({
         animation:false,
